@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bot-prod
+  template:
+    metadata:
+      labels:
+        app: bot-prod
+    spec:
+      containers:
+      - name: bot-prod
+        image: polinetwork/botcsharp:dockerhub
+        imagePullPolicy: IfNotPresent
