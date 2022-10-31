@@ -13,6 +13,14 @@ spec:
         app: bot-dev
     spec:
       containers:
-      - name: bot-dev
-        image: polinetwork/botcsharp_dev:54d6c08a1363dcacc393ba5be4878a4ffd9b5fbc
-        imagePullPolicy: IfNotPresent
+        - name: bot-dev
+          image: polinetwork/botcsharp_dev:54d6c08a1363dcacc393ba5be4878a4ffd9b5fbc
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+          - name: config
+            mountPath: "/config"
+            subPath: bots_info.json
+      volumes:
+      - name: config
+        secret:
+          secretName: bot-config-secret
