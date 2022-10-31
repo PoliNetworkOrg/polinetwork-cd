@@ -23,7 +23,5 @@ spec:
             readOnly: false
       volumes:
       - name: config
-        persistentVolumeClaim:
-          readOnly: false
         secret:
           secretName: bot-config-secret
