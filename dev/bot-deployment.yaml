@@ -18,7 +18,7 @@ spec:
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
-            mountPath: /config1
+            mountPath: /config
       volumes:
       - name: config
         secret:
