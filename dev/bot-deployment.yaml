@@ -1,18 +1,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bot-prod
+  name: bot-dev
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: bot-prod
+      app: bot-dev
   template:
     metadata:
       labels:
-        app: bot-prod
+        app: bot-dev
     spec:
       containers:
-      - name: bot-prod
+      - name: bot-dev
         image: 
         imagePullPolicy: IfNotPresent
