@@ -18,9 +18,13 @@ spec:
           command: ['sh', '-c', 'cp /config_readonly/* /config']
           imagePullPolicy: IfNotPresent
           volumeMounts:
+          - name: scripts
+            mountPath: /config
           - name: config
             mountPath: /config_readonly
       volumes:
+      - name: config
+        emptyDir: {}
       - name: config
         secret:
           secretName: bot-config-secret
