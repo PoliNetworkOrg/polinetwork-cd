@@ -18,7 +18,7 @@ spec:
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
-            mountPath: "/config"
+            mountPath: "/config1"
             subPath: bots_info.json
       volumes:
       - name: config
