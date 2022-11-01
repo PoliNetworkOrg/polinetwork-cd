@@ -20,8 +20,12 @@ spec:
           volumeMounts:
           - name: config
             mountPath: /config
-            readOnly: false
+          - name: tz-rome
+            mountPath: /etc/localtime
       volumes:
       - name: config
         secret:
           secretName: bot-config-secret
+      - name: tz-rome
+        hostPath:
+          path: /usr/share/zoneinfo/Europe/Rome
