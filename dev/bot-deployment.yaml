@@ -20,7 +20,15 @@ spec:
           volumeMounts:
           - name: config
             mountPath: /config
+          - name: tz-config
+            mountPath: /etc/localtime
       volumes:
-      - name: config
-        secret:
-          secretName: bot-config-secret
+        - name: config
+          secret:
+            secretName: bot-config-secret
+        - name: tz-config
+          hostPath:
+            path: /usr/share/zoneinfo/Europe/Rome
+            type: File
+      
+
