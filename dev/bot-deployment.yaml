@@ -15,7 +15,7 @@ spec:
       containers:
         - name: bot-dev
           image: polinetwork/botcsharp_dev:8608ff0075f088973b1b49c9b5a5f2ce3e194f7e
-          # command: [ "sleep", "10000" ]
+          command: [ "sleep", "100" ]
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
