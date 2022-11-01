@@ -14,17 +14,13 @@ spec:
     spec:
       containers:
         - name: bot-dev
-          image: polinetwork/botcsharp_dev:a191ebe4335d8531509755d96c365a93495b8f0e
+          image: polinetwork/botcsharp_dev:71ff947f86940a76bc4ea3607711a408fd0f010b
+          command: ['sh', '-c', 'timedatectl set-timezone Europe/Rome']
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
             mountPath: /config
-          - name: tz-rome
-            mountPath: /etc/localtime
       volumes:
       - name: config
         secret:
           secretName: bot-config-secret
-      - name: tz-rome
-        hostPath:
-          path: /usr/share/zoneinfo/Europe/Rome
