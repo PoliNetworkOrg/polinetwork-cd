@@ -15,14 +15,13 @@ spec:
       containers:
         - name: bot-dev
           image: polinetwork/botcsharp_dev:45c0827e345873fc3ad9122e319ff7864c18cdf3
-          command: [ "sleep", "10000" ]
+          # command: [ "sleep", "10000" ]
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
             mountPath: /config
           - name: tz
             mountPath: /etc/localtime
-            subPath: Rome
       volumes:
       - name: config
         secret:
