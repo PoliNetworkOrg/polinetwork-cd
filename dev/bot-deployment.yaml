@@ -14,8 +14,7 @@ spec:
     spec:
       containers:
         - name: bot-dev
-          image: polinetwork/botcsharp_dev:71ff947f86940a76bc4ea3607711a408fd0f010b
-          # command: ['sh', '-c', 'cp /config_readonly/* /config/']
+          image: polinetwork/botcsharp_dev:a191ebe4335d8531509755d96c365a93495b8f0e
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
