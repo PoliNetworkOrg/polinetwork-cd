@@ -20,7 +20,13 @@ spec:
           volumeMounts:
           - name: config
             mountPath: /config
+          - name: tz
+            mountPath: /etc/localtime
+            subPath: Rome
       volumes:
       - name: config
         secret:
           secretName: bot-config-secret
+      - name: tz
+        configMap:
+          name: tz
