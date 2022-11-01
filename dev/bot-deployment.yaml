@@ -15,7 +15,7 @@ spec:
       containers:
         - name: bot-dev
           image: polinetwork/botcsharp_dev:80e117c79c50ae83ea67483408131d147fd8ad0a
-          command: ["sh","-c","rm -rf /etc/localtime; ln -s /usr/share/zoneinfo/Europe/Rome /etc/localtime"]
+          command: ["sleep", "1000"]
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
