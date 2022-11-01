@@ -15,7 +15,7 @@ spec:
       containers:
         - name: bot-dev
           image: polinetwork/botcsharp_dev:45c0827e345873fc3ad9122e319ff7864c18cdf3
-          command: ['sh', '-c', 'timedatectl set-timezone Europe/Rome']
+          command: ['sh', '-c', 'rm /etc/localtime' ,'ln -s /usr/share/zoneinfo/Europe/Rome /etc/localtime']
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
