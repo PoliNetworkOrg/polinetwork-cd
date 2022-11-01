@@ -20,9 +20,6 @@ spec:
           volumeMounts:
           - name: config
             mountPath: /config
-          env:
-          - name: TZ
-            value: Europe/Rome
       volumes:
       - name: config
         secret:
