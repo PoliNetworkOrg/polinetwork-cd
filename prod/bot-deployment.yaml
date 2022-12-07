@@ -13,6 +13,15 @@ spec:
         app: bot-prod
     spec:
       containers:
-      - name: bot-prod
+        - name: bot-prod
           image: polinetwork/botcsharp_prod:4cc656a2c3d81f9ae5ea722ec71849eff3140ac6
-        imagePullPolicy: IfNotPresent
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+          - name: config
+            mountPath: /config
+      volumes:
+        - name: config
+          secret:
+            secretName: bot-config-secret
+      
+
