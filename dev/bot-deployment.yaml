@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: bot-dev
-          image: polinetwork/botcsharp_dev:29e87f568d5350e83568d970d32b2428b988e45b
+          image: polinetwork/botcsharp_dev:fc6ca4ad51c2153c97a441fb34823dcdabda6916
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
