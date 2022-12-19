@@ -14,8 +14,8 @@ spec:
         app: mysql
     spec:
       containers:
-      - image: mariadb:10.9.4
-        name: mysql
+      - image: container-registry.oracle.com/database/express:21.3.0-xe
+        name: oracle
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
