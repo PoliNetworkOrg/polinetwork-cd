@@ -14,8 +14,8 @@ spec:
         app: mysql
     spec:
       containers:
-      - image: container-registry.oracle.com/database/express:21.3.0-xe
-        name: oracle
+      - image: mariadb:10.9.4
+        name: mysql
         env:
         - name: ORACLE_PWD
           valueFrom:
