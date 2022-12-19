@@ -17,7 +17,7 @@ spec:
       - image: mariadb:10.9.4
         name: mysql
         env:
-        - name: ORACLE_PWD
+        - name: MARIADB_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
               name: mysql-secret
