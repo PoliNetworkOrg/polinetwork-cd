@@ -1,40 +1,40 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mysql
+  name: mariadb
 spec:
   selector:
     matchLabels:
-      app: mysql
+      app: mariadb
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: mysql
+        app: mariadb
     spec:
       containers:
       - image: mariadb:10.9.4
-        name: mysql
+        name: mariadb
         env:
         - name: MARIADB_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: mysql-secret
-              key: MYSQL_ROOT_PASSWORD
+              name: mariadb-secret
+              key: MARIADB_ROOT_PASSWORD
               optional: false
         ports:
         - containerPort: 3306
-          name: mysql
+          name: mariadb
         volumeMounts:
-        - name: mysql-persistent-storage
-          mountPath: /var/lib/mysql
-        - name: mysql-initdb
+        - name: mariadb-persistent-storage
+          mountPath: /var/lib/mariadb
+        - name: mariadb-initdb
           mountPath: /docker-entrypoint-initdb.d
       volumes:
-      - name: mysql-persistent-storage
+      - name: mariadb-persistent-storage
         persistentVolumeClaim:
-          claimName: mysql-storage-claim
-      - name: mysql-initdb
+          claimName: mariadb-storage-claim
+      - name: mariadb-initdb
         secret:
           secretName: initdb
