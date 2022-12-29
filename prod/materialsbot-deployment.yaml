@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bot-prod
+  template:
+    metadata:
+      labels:
+        app: bot-prod
+    spec:
+      containers:
+        - name: bot-prod
+          image: polinetwork/botcsharp_prod:d24510342bc312466d00cc42197c90bf1fa8b4d5
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+          - name: config
+            mountPath: /config
+          - name: mat-storage
+            mountPath: /Repos
+      volumes:
+        - name: config
+          secret:
+            secretName: bot-config-secret
+        - name: mat-persistent-storage
+          persistentVolumeClaim:
+            claimName: bot-pvc
+      
+
