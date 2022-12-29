@@ -13,7 +13,7 @@ spec:
         app: bot-prod
     spec:
       containers:
-        - name: bot-prod
+        - name: bot-mat
           image: polinetwork/botcsharp_prod:d24510342bc312466d00cc42197c90bf1fa8b4d5
           imagePullPolicy: IfNotPresent
           volumeMounts:
