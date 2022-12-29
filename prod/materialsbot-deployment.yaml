@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bot-prod
+  name: bot-mat
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: bot-prod
+      app: bot-mat
   template:
     metadata:
       labels:
-        app: bot-prod
+        app: bot-mat
     spec:
       containers:
         - name: bot-mat
