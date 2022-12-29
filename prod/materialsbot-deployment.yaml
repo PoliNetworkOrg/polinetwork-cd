@@ -19,7 +19,7 @@ spec:
           volumeMounts:
           - name: config
             mountPath: /config
-          - name: mat-storage
+          - name: mat-persistent-storage
             mountPath: /Repos
       volumes:
         - name: config
