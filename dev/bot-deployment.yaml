@@ -19,6 +19,9 @@ spec:
           volumeMounts:
           - name: config
             mountPath: /config
+          securityContext:
+            runAsUser: 7999
+            allowPrivilegeEscalation: false
       volumes:
         - name: config
           secret:
