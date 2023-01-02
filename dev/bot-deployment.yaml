@@ -21,6 +21,8 @@ spec:
             mountPath: /config
           securityContext:
             runAsUser: 7999
+            fsGroup: 7999
+            fsGroupChangePolicy: "OnRootMismatch"
             allowPrivilegeEscalation: false
       volumes:
         - name: config
