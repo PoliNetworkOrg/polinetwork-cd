@@ -21,7 +21,7 @@ spec:
             mountPath: /config
           resources:
             limits:
-              cpu: "1"
+              cpu: "0.5"
               memory: "1000Mi"
       securityContext:
         runAsUser: 7999
