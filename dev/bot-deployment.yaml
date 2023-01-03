@@ -22,7 +22,7 @@ spec:
           resources:
             limits:
               cpu: "200m"
-              memory: "500Mi"
+              memory: "300Mi"
       securityContext:
         runAsUser: 7999
         runAsGroup: 7999
