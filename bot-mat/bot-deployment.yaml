@@ -21,6 +21,10 @@ spec:
             mountPath: /config
           - name: mat-persistent-storage
             mountPath: /Repos
+          securityContext:
+            runAsUser: 7999
+            runAsGroup: 7999
+            allowPrivilegeEscalation: false
       volumes:
         - name: config
           secret:
