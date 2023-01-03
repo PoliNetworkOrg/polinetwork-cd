@@ -20,9 +20,12 @@ spec:
           - name: config
             mountPath: /config
           resources:
-            limits:
+            requests:
               cpu: "200m"
               memory: "300Mi"
+            limits:
+              cpu: "500m"
+              memory: "1000Mi"
       volumes:
         - name: config
           secret:

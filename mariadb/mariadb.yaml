@@ -24,9 +24,12 @@ spec:
               key: MARIADB_ROOT_PASSWORD
               optional: false
         resources:
-            limits:
+            requests:
               cpu: "200m"
               memory: "300Mi"
+            limits:
+              cpu: "500m"
+              memory: "1000Mi"
         ports:
         - containerPort: 3306
           name: mariadb
