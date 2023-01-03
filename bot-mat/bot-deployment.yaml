@@ -16,7 +16,6 @@ spec:
         runAsUser: 7999
         runAsGroup: 7999
         fsGroup: 7999
-        allowPrivilegeEscalation: false
       containers:
         - name: bot-mat
           image: polinetwork/botcsharp_prod:a6c39332640f6b9f6d77957353a3936fc0c87b10
