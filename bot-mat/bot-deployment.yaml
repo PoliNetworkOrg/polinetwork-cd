@@ -28,7 +28,7 @@ spec:
             mountPath: /Repos
           resources:
             limits:
-              cpu: "500m"
+              cpu: "400m"
               memory: "1000Mi"
       volumes:
         - name: config
