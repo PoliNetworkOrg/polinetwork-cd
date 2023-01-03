@@ -19,6 +19,10 @@ spec:
           volumeMounts:
           - name: config
             mountPath: /config
+          resources:
+            limits:
+              cpu: "1"
+              memory: "1000Mi"
       volumes:
         - name: config
           secret:
