@@ -3,16 +3,16 @@ kind: Deployment
 metadata:
   name: bot-mat
 spec:
+  securityContext:
+      runAsUser: 7999
+      runAsGroup: 7999
+      fsGroup: 7999
+      allowPrivilegeEscalation: false
   replicas: 1
   selector:
     matchLabels:
       app: bot-mat
-  securityContext:
-    runAsUser: 7999
-    runAsGroup: 7999
-    fsGroup: 7999
-    allowPrivilegeEscalation: false
-  template:
+  template: 
     metadata:
       labels:
         app: bot-mat
