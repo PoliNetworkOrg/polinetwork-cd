@@ -23,6 +23,10 @@ spec:
               name: mariadb-secret
               key: MARIADB_ROOT_PASSWORD
               optional: false
+        resources:
+            limits:
+              cpu: "1"
+              memory: "1000Mi"
         ports:
         - containerPort: 3306
           name: mariadb
