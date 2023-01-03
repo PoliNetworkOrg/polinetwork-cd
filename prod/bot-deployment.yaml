@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: bot-prod
-          image: polinetwork/botcsharp_prod:b38d67876125f331cbae181feafe7a7256ef01d0
+          image: polinetwork/botcsharp_prod:c2757e1d916edf5e66f6d3cc0d0880dcdf265852
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
