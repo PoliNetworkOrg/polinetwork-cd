@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bot-dev
+  name: app-dev
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: bot-dev
+      app: app-dev
   template:
     metadata:
       labels:
-        app: bot-dev
+        app: app-dev
     spec:
       containers:
-        - name: bot-dev
-          image: polinetwork/botcsharp_dev:f8f7e0aef40689c225688d7c12673182a80c2459
+        - name: app-dev
+          image: not_initialized
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
@@ -32,6 +32,6 @@ spec:
       volumes:
         - name: config
           secret:
-            secretName: bot-config-secret
+            secretName: app-config-secret
       
 
