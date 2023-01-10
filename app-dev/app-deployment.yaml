@@ -16,9 +16,6 @@ spec:
         - name: app-dev
           image: not_initialized
           imagePullPolicy: IfNotPresent
-          volumeMounts:
-          - name: config
-            mountPath: /config
           resources:
             requests:
               cpu: "100m"
@@ -29,9 +26,4 @@ spec:
       securityContext:
         runAsUser: 7999
         runAsGroup: 7999
-      volumes:
-        - name: config
-          secret:
-            secretName: app-config-secret
-      
 
