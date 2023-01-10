@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bot-dev
+  template:
+    metadata:
+      labels:
+        app: bot-dev
+    spec:
+      containers:
+        - name: bot-dev
+          image: polinetwork/botcsharp_dev:1adea442d66328ff0d823a3050cc7fdee2ca8d2f
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+          - name: config
+            mountPath: /config
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "300Mi"
+            limits:
+              cpu: "500m"
+              memory: "1000Mi"
+      volumes:
+        - name: config
+          secret:
+            secretName: bot-config-secret
+      
+
