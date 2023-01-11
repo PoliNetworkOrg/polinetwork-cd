@@ -15,10 +15,6 @@ spec:
     spec:
       containers:
       - image: mariadb:10.9.4
-        lifecycle:
-          postStart:
-            exec:
-              command: ["/bin/sh", "-c", "chmod +x /config/startup.sh"]
         name: mariadb
         env:
         - name: MARIADB_ROOT_PASSWORD
@@ -27,6 +23,10 @@ spec:
               name: mariadb-secret
               key: MARIADB_ROOT_PASSWORD
               optional: false
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "chmod +x /config/startup.sh"]
         resources:
             requests:
               cpu: "200m"
