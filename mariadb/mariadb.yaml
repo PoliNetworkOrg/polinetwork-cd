@@ -23,6 +23,10 @@ spec:
               name: mariadb-secret
               key: MARIADB_ROOT_PASSWORD
               optional: false
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "./scripts/startup.sh"]
         resources:
             requests:
               cpu: "200m"
