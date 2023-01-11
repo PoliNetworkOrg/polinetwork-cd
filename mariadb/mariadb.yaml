@@ -26,7 +26,7 @@ spec:
         lifecycle:
           postStart:
             exec:
-              command: ["/bin/sh", "-c", "chmod +x /config/startup.sh"]
+              command: ["/bin/sh", "-c", "chmod +x /docker-entrypoint-initdb.d/startup.sh"]
         resources:
             requests:
               cpu: "200m"
