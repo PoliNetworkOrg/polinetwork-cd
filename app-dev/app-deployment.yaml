@@ -16,11 +16,11 @@ spec:
     spec:
       containers:
         - name: app-dev
-          image: polinetwork/polifemo_backend_dev:e891502e7e91a7a7226efe0d58ac76c56ab67a4e
+          image: polinetwork/polifemo_backend_:b05bc62e86e9350c22d19ab602e64cf1b5054ef6
           imagePullPolicy: IfNotPresent
           volumeMounts:
-          - name: config
-            mountPath: /config
+            - name: config
+              mountPath: /config
           resources:
             requests:
               cpu: "200m"
@@ -29,10 +29,10 @@ spec:
               cpu: "500m"
               memory: "1000Mi"
           ports:
-          - containerPort: 5000
+            - containerPort: 5000
           env:
-          - name: TITLE
-            value: "Welcome to Azure Kubernetes Service (AKS)"
+            - name: TITLE
+              value: "Welcome to Azure Kubernetes Service (AKS)"
       volumes:
         - name: config
           secret:
@@ -48,11 +48,14 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 80
-    targetPort: 5000
+    - port: 80
+      targetPort: 5000
   selector:
     app: app-dev
-
+  template:
+    spec:
+      containers:
+        - image: polinetwork/polifemo_backend_:b05bc62e86e9350c22d19ab602e64cf1b5054ef6
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -65,12 +68,16 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: app-dev-service
-            port:
-              number: 80
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: app-dev-service
+                port:
+                  number: 80
+  template:
+    spec:
+      containers:
+        - image: polinetwork/polifemo_backend_:b05bc62e86e9350c22d19ab602e64cf1b5054ef6
