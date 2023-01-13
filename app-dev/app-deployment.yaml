@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: app-dev
-          image: polinetwork/polifemo_backend_dev:b88f4d83feefdafef952235a4289a97cde2e516c
+          # image: polinetwork/polifemo_backend_dev:b88f4d83feefdafef952235a4289a97cde2e516c
+          image: mcr.microsoft.com/azuredocs/aks-helloworld:v1
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
@@ -29,7 +30,10 @@ spec:
               cpu: "500m"
               memory: "1000Mi"
           ports:
-          - containerPort: 443
+          - containerPort: 80
+          env:
+          - name: TITLE
+            value: "Welcome to Azure Kubernetes Service (AKS)"
       volumes:
         - name: config
           secret:
@@ -46,7 +50,7 @@ spec:
   type: ClusterIP
   ports:
   - port: 80
-    targetPort: 443
+    targetPort: 80
   selector:
     app: app-dev
 
