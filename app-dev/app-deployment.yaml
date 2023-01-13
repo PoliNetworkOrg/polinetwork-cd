@@ -51,26 +51,27 @@ spec:
     app: app-dev
 
 ---
-# apiVersion: networking.k8s.io/v1
-# kind: Ingress
-# metadata:
-#   name: app-dev-ingress
-#   annotations:
-#     nginx.ingress.kubernetes.io/ssl-redirect: "false"
-#     nginx.ingress.kubernetes.io/use-regex: "true"
-#     nginx.ingress.kubernetes.io/rewrite-target: /$2
-# spec:
-#   ingressClassName: ingress-nginx-controller
-#   rules:
-#   - http:
-#       paths:
-#       - path: /
-#         pathType: Prefix
-#         backend:
-#           service:
-#             name: app-dev-service
-#             port:
-#               number: 80
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hello-world-ingress2
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /app
+        pathType: Prefix
+        backend:
+          service:
+            name: app-dev-service
+            port:
+              number: 80
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
