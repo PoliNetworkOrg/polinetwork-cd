@@ -16,8 +16,7 @@ spec:
     spec:
       containers:
         - name: app-dev
-          # image: polinetwork/polifemo_backend_dev:b88f4d83feefdafef952235a4289a97cde2e516c
-          image: mcr.microsoft.com/azuredocs/aks-helloworld:v1
+          image: polinetwork/polifemo_backend_dev:b88f4d83feefdafef952235a4289a97cde2e516c
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
