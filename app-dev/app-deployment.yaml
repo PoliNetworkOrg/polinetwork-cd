@@ -45,8 +45,8 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 443
-    targetPort: 80
+  - port: 80
+    targetPort: 443
   selector:
     app: app-dev
 
@@ -64,7 +64,7 @@ spec:
   rules:
   - http:
       paths:
-      - path: /(.*)
+      - path: /
         pathType: Prefix
         backend:
           service:
