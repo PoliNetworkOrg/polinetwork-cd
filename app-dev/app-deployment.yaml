@@ -46,6 +46,7 @@ spec:
   type: ClusterIP
   ports:
   - port: 443
+    targetPort: 80
   selector:
     app: app-dev
 
@@ -69,4 +70,4 @@ spec:
           service:
             name: app-dev-service
             port:
-              number: 443
+              number: 80
