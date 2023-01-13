@@ -16,7 +16,8 @@ spec:
     spec:
       containers:
         - name: app-dev
-          image: polinetwork/polifemo_backend_dev:b88f4d83feefdafef952235a4289a97cde2e516c
+          # image: polinetwork/polifemo_backend_dev:b88f4d83feefdafef952235a4289a97cde2e516c
+          image: mcr.microsoft.com/azuredocs/aks-helloworld:v1
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
@@ -37,9 +38,9 @@ spec:
         - name: config
           secret:
             secretName: app-secrets
-      # securityContext:
-      #   runAsUser: 7999
-      #   runAsGroup: 7999
+      securityContext:
+        runAsUser: 7999
+        runAsGroup: 7999
 ---
 apiVersion: v1
 kind: Service
