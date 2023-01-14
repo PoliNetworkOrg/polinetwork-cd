@@ -38,9 +38,6 @@ spec:
         - name: config
           secret:
             secretName: app-secrets
-      securityContext:
-        runAsUser: 7999
-        runAsGroup: 7999
 ---
 apiVersion: v1
 kind: Service
