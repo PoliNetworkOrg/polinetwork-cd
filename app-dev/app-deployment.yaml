@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
         - name: app-dev
-          image: polinetwork/polifemo_backend_dev:96921e230a31f60c6a4acc771e99d25bb13b0faa
-          # image: polinetwork/simple_test_image:v1
+          # image: polinetwork/polifemo_backend_dev:96921e230a31f60c6a4acc771e99d25bb13b0faa
+          image: polinetwork/simple_test_image:v1
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
@@ -55,10 +55,6 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: app-dev-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   ingressClassName: nginx
   rules:
