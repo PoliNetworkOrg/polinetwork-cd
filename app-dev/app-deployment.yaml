@@ -48,8 +48,7 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    - port: 80
-      targetPort: 5000
+    - port: 5000
   selector:
     app: app-dev
 ---
@@ -72,4 +71,4 @@ spec:
               service:
                 name: app-dev-service
                 port:
-                  number: 80
+                  number: 5000
