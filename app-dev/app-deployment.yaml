@@ -70,4 +70,4 @@ spec:
               service:
                 name: app-dev-service
                 port:
-                  number: 8000
+                  number: 80
