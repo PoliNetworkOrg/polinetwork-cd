@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: app-dev
-          image: polinetwork/polifemo_backend_:b05bc62e86e9350c22d19ab602e64cf1b5054ef6
+          image: polinetwork/polifemo_backend_dev:d07fc6c6fd3216de73581b2362e5fc9f5deb4ede
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
@@ -55,7 +55,7 @@ spec:
   template:
     spec:
       containers:
-        - image: polinetwork/polifemo_backend_:b05bc62e86e9350c22d19ab602e64cf1b5054ef6
+        - image: polinetwork/polifemo_backend_dev:d07fc6c6fd3216de73581b2362e5fc9f5deb4ede
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -80,4 +80,4 @@ spec:
   template:
     spec:
       containers:
-        - image: polinetwork/polifemo_backend_:b05bc62e86e9350c22d19ab602e64cf1b5054ef6
+        - image: polinetwork/polifemo_backend_dev:d07fc6c6fd3216de73581b2362e5fc9f5deb4ede
