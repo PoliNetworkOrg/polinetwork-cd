@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
         - name: app-dev
-          # image: polinetwork/polifemo_backend_dev:96921e230a31f60c6a4acc771e99d25bb13b0faa
-          image: mcr.microsoft.com/azuredocs/aks-helloworld:v1
+          image: polinetwork/polifemo_backend_dev:96921e230a31f60c6a4acc771e99d25bb13b0faa
+          # image: mcr.microsoft.com/azuredocs/aks-helloworld:v1
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
@@ -47,7 +47,7 @@ spec:
   type: ClusterIP
   ports:
     - port: 8000
-      targetPort: 80
+      targetPort: 5000
   selector:
     app: app-dev
 ---
