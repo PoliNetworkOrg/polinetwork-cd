@@ -57,7 +57,7 @@ metadata:
   name: app-dev-ingress
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/issuer: "letsencrypt-dev"
+    cert-manager.io/issuer: "letsencrypt-prod"
 spec:
   tls:
   - hosts:
