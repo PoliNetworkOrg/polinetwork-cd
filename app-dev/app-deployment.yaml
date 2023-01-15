@@ -64,7 +64,8 @@ spec:
     - aks.polinetwork.org
     secretName: app-dev-tls
   rules:
-    - http:
+    - host: aks.polinetwork.org
+      http:
         paths:
           - path: /
             pathType: Prefix
