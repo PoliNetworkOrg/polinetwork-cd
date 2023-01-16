@@ -59,7 +59,7 @@ metadata:
     kubernetes.io/ingress.class: "nginx"
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
     nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/rewrite-target: /$3
 spec:
   tls:
   - hosts:
@@ -69,7 +69,7 @@ spec:
     - host: aks.polinetwork.org
       http:
         paths:
-          - path: /hello-world-one(/|$)(.*)
+          - path: /staging/v1/(/|$)(.*)
             pathType: Prefix
             backend:
               service:
