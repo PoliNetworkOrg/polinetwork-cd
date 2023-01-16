@@ -69,7 +69,7 @@ spec:
     - host: aks.polinetwork.org
       http:
         paths:
-          - path: /staging/v1/(/|$)(.*)
+          - path: /staging/v1/(/|$)
             pathType: Prefix
             backend:
               service:
@@ -79,7 +79,7 @@ spec:
     - host: aks.polinetwork.org
       http:
         paths:
-          - path: /(.*)
+          - path: /
             pathType: Prefix
             backend:
               service:
