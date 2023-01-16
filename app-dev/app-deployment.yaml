@@ -68,14 +68,14 @@ spec:
     - host: aks.polinetwork.org
       http:
         paths:
-          - path: /staging/v1/(/|$)(.*)
+          - path: /staging/v1/
             pathType: Prefix
             backend:
               service:
                 name: app-dev-service
                 port:
                   number: 8000
-          - path: /(*)
+          - path: /
             pathType: Prefix
             backend:
               service:
