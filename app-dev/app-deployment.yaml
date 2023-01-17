@@ -32,8 +32,8 @@ spec:
           ports:
             - containerPort: 5000
           env:
-            - name: TITLE
-              value: "Welcome to Azure Kubernetes Service (AKS)"
+            - name: BASE_PATH
+              value: "/staging/v1/"
       volumes:
         - name: config
           secret:
