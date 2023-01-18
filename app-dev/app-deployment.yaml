@@ -17,7 +17,7 @@ spec:
       containers:
         - name: app-dev
           # image: polinetwork/polifemo_backend_dev:2ef72e290910240d696e19c640d960cde9e4b37b
-          image: polinetwork/polifemo_backend_dev:0210adeb4d785f7a196e24cd76ae9ee513cf87f3
+          image: polinetwork/polifemo_backend_dev:e170efacab7d11124898de87a784c6b49f76b6eb
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
@@ -64,9 +64,9 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   tls:
-  - hosts:
-    - aks.polinetwork.org
-    secretName: app-dev-tls
+    - hosts:
+        - aks.polinetwork.org
+      secretName: app-dev-tls
   rules:
     - host: aks.polinetwork.org
       http:
@@ -131,5 +131,3 @@ spec:
 #                 name: app-dev-service
 #                 port:
 #                   number: 8000
-
-
