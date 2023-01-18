@@ -16,7 +16,6 @@ spec:
     spec:
       containers:
         - name: app-dev
-          # image: polinetwork/polifemo_backend_dev:2ef72e290910240d696e19c640d960cde9e4b37b
           image: polinetwork/polifemo_backend_dev:e170efacab7d11124898de87a784c6b49f76b6eb
           imagePullPolicy: IfNotPresent
           volumeMounts:
@@ -78,34 +77,10 @@ spec:
                 name: app-dev-service
                 port:
                   number: 8000
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: app-dev-ingress
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-spec:
-  tls:
-  - hosts:
-    - aks.polinetwork.org
-    secretName: app-dev-tls
-  rules:
-    - host: aks.polinetwork.org
-      http:
-        paths:
-          - path: /argocd(/|$)(.*)
-            pathType: Prefix
-            backend:
-              service:
-                name: app-dev-service
-                port:
-                  number: 8000
+
 # ---
 # TO BE ENABLED WHEN ALL THE ERRORS ARE FIXED
+#
 # apiVersion: networking.k8s.io/v1
 # kind: Ingress
 # metadata:
