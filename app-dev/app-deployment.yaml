@@ -64,10 +64,10 @@ metadata:
 spec:
   tls:
     - hosts:
-        - aks.polinetwork.org
+        - api.polinetwork.org
       secretName: app-dev-tls
   rules:
-    - host: aks.polinetwork.org
+    - host: api.polinetwork.org
       http:
         paths:
           - path: /staging/v1(/|$)(.*)
@@ -92,10 +92,10 @@ spec:
 # spec:
 #   tls:
 #   - hosts:
-#     - aks.polinetwork.org
+#     - api.polinetwork.org
 #     secretName: app-dev-tls
 #   rules:
-#     - host: aks.polinetwork.org
+#     - host: api.polinetwork.org
 #       http:
 #         paths:
 #           - path: /(.*)
