@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: app-dev
-          image: polinetwork/polifemo_backend_dev:e170efacab7d11124898de87a784c6b49f76b6eb
+          image: polinetwork/polifemo_backend_dev:e9e8078d1c5d3f1d88d6a7f434e3f9348946126a
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
@@ -77,7 +77,6 @@ spec:
                 name: app-dev-service
                 port:
                   number: 8000
-
 # ---
 # TO BE ENABLED WHEN ALL THE ERRORS ARE FIXED
 #
