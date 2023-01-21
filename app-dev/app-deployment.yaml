@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: app-dev
-          image: polinetwork/polifemo_backend_dev:3c56d2a6e1845867e347cb7fe89d2b58a1913493
+          image: polinetwork/polifemo_backend_dev:f846eb8ef5dabfbcb8915ec377e42222bbec64ce
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
