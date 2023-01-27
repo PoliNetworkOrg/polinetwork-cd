@@ -23,7 +23,7 @@ spec:
       initContainers:
       - name: init-myservice
         image: registry.access.redhat.com/ubi8/ubi:latest
-        command: ['sh', '-c', 'apt install curl; curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash']
+        command: ['sh', '-c', 'apt install curl']
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
