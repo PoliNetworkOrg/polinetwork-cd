@@ -19,6 +19,7 @@ spec:
           runAsGroup: 121
           fsGroup: 7999
           fsGroupChangePolicy: "OnRootMismatch"
+      terminationGracePeriodSeconds: 240
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
@@ -31,7 +32,6 @@ spec:
               cpu: "500m"
               memory: "500Mi"
           command: ["curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash"]
-          terminationGracePeriodSeconds: 240
           env:
           - name: ACCESS_TOKEN
             valueFrom:
