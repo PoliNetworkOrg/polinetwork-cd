@@ -32,7 +32,7 @@ spec:
               cpu: "500m"
               memory: "500Mi"
           command: ["nohup"]
-          args: ["curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash"]
+          args: ["echo 'ciao'"]
           env:
           - name: ACCESS_TOKEN
             valueFrom:
