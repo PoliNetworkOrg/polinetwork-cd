@@ -23,7 +23,8 @@ spec:
       initContainers:
       - name: init-myservice
         image: ubuntu:latest
-        command: ['curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash']
+        command: ["/bin/sh"]
+        args: ["-c", "curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash"]
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
