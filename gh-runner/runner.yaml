@@ -21,7 +21,7 @@ spec:
           fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: app-dev
-          image: myoung34/github-runner:2.301.0-ubuntu-bionic
+          image: myoung34/github-runner:latest
           imagePullPolicy: IfNotPresent
           resources:
             requests:
