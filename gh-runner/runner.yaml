@@ -19,7 +19,7 @@ spec:
           runAsGroup: 121
           fsGroup: 7999
           fsGroupChangePolicy: "OnRootMismatch"
-      terminationGracePeriodSeconds: 240
+      terminationGracePeriodSeconds: 400
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
