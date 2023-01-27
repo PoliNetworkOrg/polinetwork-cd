@@ -23,7 +23,7 @@ spec:
       initContainers:
       - name: init-myservice
         image: alpine:latest
-        command: ['apk add --no-cache curl']
+        command: ['curl google.com']
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
