@@ -23,7 +23,7 @@ spec:
       initContainers:
       - name: init-myservice
         image: alpine/curl:latest
-        command: ['curl google.com']
+        command: ['echo ciao']
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
