@@ -22,7 +22,7 @@ spec:
       terminationGracePeriodSeconds: 400
       initContainers:
       - name: init-myservice
-        image: alpine:latest
+        image: alpine/curl:latest
         command: ['curl google.com']
       containers:
         - name: app-dev
