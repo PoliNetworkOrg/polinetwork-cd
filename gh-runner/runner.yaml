@@ -22,8 +22,8 @@ spec:
       terminationGracePeriodSeconds: 400
       initContainers:
       - name: init-myservice
-        image: curlimages/curl:7.87.0
-        command: ['curl -sL https://aka.ms/InstallAzureCLIDeb']
+        image: alpine:latest
+        command: ['apk add --no-cache curl']
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
