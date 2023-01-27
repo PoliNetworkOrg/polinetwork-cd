@@ -29,6 +29,6 @@ spec:
           - name: RUNNER_TOKEN
             valueFrom:
               secretKeyRef:
-                name: runner_token
+                name: runner-token
                 key: RUNNER_TOKEN
                 optional: false
