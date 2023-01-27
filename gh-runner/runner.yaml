@@ -22,9 +22,8 @@ spec:
       terminationGracePeriodSeconds: 400
       initContainers:
       - name: init-myservice
-        image: ubuntu:latest
-        command: ["/bin/sh"]
-        args: ["-c", "apt install curl"]
+        image: registry.access.redhat.com/ubi8/ubi:latest
+        command: ['sh', '-c', 'echo "ciao"; sleep 10']
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
