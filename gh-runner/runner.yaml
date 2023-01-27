@@ -23,7 +23,8 @@ spec:
       initContainers:
       - name: init-myservice
         image: alpine/curl:latest
-        command: ['echo ciao']
+        command: ['sh']
+        args: ['-c', 'echo ciao']
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
