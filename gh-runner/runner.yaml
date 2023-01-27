@@ -23,7 +23,7 @@ spec:
       initContainers:
       - name: init-myservice
         image: registry.access.redhat.com/ubi8/ubi:latest
-        command: ['apt install curl']
+        command: ['apt-get install curl']
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
