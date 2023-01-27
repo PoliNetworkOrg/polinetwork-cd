@@ -20,6 +20,10 @@ spec:
           fsGroup: 7999
           fsGroupChangePolicy: "OnRootMismatch"
       terminationGracePeriodSeconds: 400
+      initContainers:
+      - name: init-myservice
+        image: ubuntu:latest
+        command: ['sh', '-c', "curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash"]
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
