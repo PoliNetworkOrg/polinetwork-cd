@@ -34,7 +34,6 @@ spec:
             postStart:
               exec:
                 command: ["curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash"]
-          terminationGracePeriodSeconds: 240
           env:
           - name: ACCESS_TOKEN
             valueFrom:
