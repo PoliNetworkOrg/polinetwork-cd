@@ -22,8 +22,8 @@ spec:
       terminationGracePeriodSeconds: 400
       initContainers:
       - name: init-myservice
-        image: registry.access.redhat.com/ubi8/ubi:latest
-        command: ['apt-get install curl']
+        image: curl:7.87.0
+        command: ['apt-get install curl; curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash']
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
