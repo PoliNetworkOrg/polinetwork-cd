@@ -14,13 +14,11 @@ spec:
       labels:
         app: gh-runner
     spec:
-      volumes:
-      - name: dockersock
-        hostPath:
-          path: /var/run/docker.sock
-      - name: workdir
-        hostPath:
-          path: /tmp/github-runner-terraform
+      securityContext:
+          runAsUser: 1001
+          runAsGroup: 121
+          fsGroup: 7999
+          fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: app-dev
           image: myoung34/github-runner:2.301.0-ubuntu-bionic
@@ -39,22 +37,17 @@ spec:
                 name: runner-token
                 key: RUNNER_TOKEN
                 optional: false
-          - name: RUNNER_SCOPE
-            value: "org"
-          - name: ORG_NAME
-            value: polinetworkorg
+          - name: EPHEMERAL
+            value: "1"
+          - name: RUN_AS_ROOT
+            value: "false"
           - name: REPO_URL
             value: https://github.com/polinetworkorg/terraform
           - name: RUNNER_NAME_PREFIX
             value: gh-action
+          - name: RUNNER_WORKDIR
+            value: "/home/runner/"
           - name: RUNNER_NAME
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
-          - name: RUNNER_WORKDIR
-            value: /tmp/github-runner-terraform
-          volumeMounts:
-          - name: dockersock
-            mountPath: /var/run/docker.sock
-          - name: workdir
-            mountPath: /tmp/github-runner-terraform
