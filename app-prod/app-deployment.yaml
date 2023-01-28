@@ -12,6 +12,11 @@ spec:
       labels:
         app: app-prod
     spec:
+      securityContext:
+        runAsUser: 7999
+        runAsGroup: 7999
+        fsGroup: 7999
+        fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: app-prod
           image: not_initialized
