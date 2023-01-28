@@ -22,9 +22,9 @@ spec:
       terminationGracePeriodSeconds: 400
       initContainers:
       - name: init-myservice
-        image: alpine/curl:latest
+        image: ubuntu:latest
         command: ['sh']
-        args: ['-c', 'curl -sL https://aka.ms/InstallAzureCLIDeb | sh']
+        args: ['-c', 'curl -sL https://aka.ms/InstallAzureCLIDeb | bash']
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
