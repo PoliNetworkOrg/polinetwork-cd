@@ -26,6 +26,8 @@ spec:
             mountPath: /config
           - name: git
             mountPath: /git
+          - name: ssh
+            mountPath: /home/runner/.ssh
           resources:
             requests:
               cpu: "200m"
@@ -40,5 +42,8 @@ spec:
         - name: git
           secret:
             secretName: git-config
+        - name: ssh
+          secret:
+            secretName: ssh-config
       
 
