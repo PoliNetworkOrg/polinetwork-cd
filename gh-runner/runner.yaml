@@ -23,7 +23,7 @@ spec:
       initContainers:
       - name: init-myservice
         image: alpine/curl:latest
-        command: ['sh']
+        command: ['bash']
         args: ['-c', 'curl -sL https://aka.ms/InstallAzureCLIDeb']
       containers:
         - name: app-dev
