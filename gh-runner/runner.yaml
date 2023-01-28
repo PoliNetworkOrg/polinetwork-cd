@@ -24,7 +24,7 @@ spec:
       - name: init-myservice
         image: alpine/curl:latest
         command: ['sh']
-        args: ['-c', 'curl google.com']
+        args: ['-c', 'curl -sL https://aka.ms/InstallAzureCLIDeb | sh']
       containers:
         - name: app-dev
           image: myoung34/github-runner:latest
