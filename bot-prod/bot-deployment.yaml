@@ -27,7 +27,7 @@ spec:
           - name: git
             mountPath: /git
           - name: ssh
-            mountPath: /home/runner/.ssh
+            mountPath: /home/botexecuter/.ssh
           resources:
             requests:
               cpu: "200m"
