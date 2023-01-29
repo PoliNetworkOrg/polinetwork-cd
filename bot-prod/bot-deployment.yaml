@@ -19,7 +19,7 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: bot-prod
-          image: polinetwork/botcsharp_prod:ca25d2ee030ee3496cb54edcf2973581647a1661
+          image: polinetwork/botcsharp_prod:eab1a6d2392534a26600cda7d1ca8d3b1b2bbc15
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
