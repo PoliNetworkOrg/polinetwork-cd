@@ -19,7 +19,7 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: bot-prod
-          image: polinetwork/botcsharp_prod:045c2be2c4e1e0d34258ba4bbbf8af7c7580efdf
+          image: polinetwork/botcsharp_prod:e0cf74b89219b89fa99822b348e37a2425ca8c8f
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh", "-c", 'eval "$(ssh-agent -s)" && ssh-add /git/ssh-key && dotnet PoliNetworkBot_CSharp.dll 2']
           volumeMounts:
