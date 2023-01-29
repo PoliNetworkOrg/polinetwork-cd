@@ -29,7 +29,7 @@ spec:
           lifecycle:
             postStart:
               exec:
-                command: ['mkdir ~/.ssh/ && ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts && eval "$(ssh-agent -s)" && ssh-add /git/ssh-key']
+                command: ['mkdir ~/.ssh/ && ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts']
           resources:
             requests:
               cpu: "200m"
