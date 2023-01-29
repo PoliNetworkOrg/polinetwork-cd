@@ -16,16 +16,16 @@ spec:
     spec:
       terminationGracePeriodSeconds: 400
       containers:
-        - name: app-dev
+        - name: gh-runner
           image: myoung34/github-runner:latest
           imagePullPolicy: IfNotPresent
           resources:
             requests:
-              cpu: "200m"
-              memory: "300Mi"
+              cpu: "300m"
+              memory: "400Mi"
             limits:
               cpu: "500m"
-              memory: "500Mi"
+              memory: "600Mi"
           lifecycle:
             postStart:
               exec:
