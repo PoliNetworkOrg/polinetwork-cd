@@ -26,8 +26,10 @@ spec:
             mountPath: /config
           - name: git
             mountPath: /git
-          - name: ssh
-            mountPath: /home/botexecuter/.ssh
+          lifecycle:
+            postStart:
+              exec:
+                command: ["/bin/sh", "-c", 'ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts && eval "$(ssh-agent -s)" && ssh-add /git/ssh-key']
           resources:
             requests:
               cpu: "200m"
@@ -42,8 +44,3 @@ spec:
         - name: git
           secret:
             secretName: git-config
-        - name: ssh
-          secret:
-            secretName: ssh-config
-      
-
