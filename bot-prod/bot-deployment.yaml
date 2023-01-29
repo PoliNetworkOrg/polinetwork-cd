@@ -32,8 +32,8 @@ spec:
                 command: ["/bin/sh", "-c", "mkdir ~/.ssh/ && ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts && eval `ssh-agent -s`"]
           resources:
             requests:
-              cpu: "200m"
-              memory: "300Mi"
+              cpu: "300m"
+              memory: "500Mi"
             limits:
               cpu: "500m"
               memory: "1000Mi"
