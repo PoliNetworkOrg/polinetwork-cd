@@ -14,11 +14,6 @@ spec:
       labels:
         app: gh-runner
     spec:
-      securityContext:
-          runAsUser: 1001
-          runAsGroup: 121
-          fsGroup: 7999
-          fsGroupChangePolicy: "OnRootMismatch"
       terminationGracePeriodSeconds: 400
       containers:
         - name: app-dev
