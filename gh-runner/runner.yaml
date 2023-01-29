@@ -37,8 +37,6 @@ spec:
                 name: runner-token
                 key: RUNNER_TOKEN
                 optional: false
-          - name: EPHEMERAL
-            value: "1"
           - name: RUN_AS_ROOT
             value: "false"
           - name: REPO_URL
