@@ -21,7 +21,7 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: app-dev
-          image: polinetwork/polifemo_backend_dev:a8b1c33e0aac3567b77ea519e17963d8191daa52
+          image: polinetwork/polifemo_backend_dev:c92741e8402784c06e9a3afc81030d51133ba119
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
