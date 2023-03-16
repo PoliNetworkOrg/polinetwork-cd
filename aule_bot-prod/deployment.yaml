@@ -19,14 +19,14 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: aule-bot
-          image: polinetwork/botcsharp_prod:e5b242110cc37810ffa33116c6bdf6f00722f0cd
+          image: polinetwork/aule_bot_main:67680c6ea8988e67be501527b5ce38cebac0df62
           imagePullPolicy: IfNotPresent
           env:
             - name: TOKEN
               valueFrom:
                 secretKeyRef:
                   name: aule-bot-secret
-                  key: TOKEN                
+                  key: TOKEN
           resources:
             requests:
               cpu: "100m"
