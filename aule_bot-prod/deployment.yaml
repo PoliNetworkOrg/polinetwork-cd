@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aule-bot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aule-bot
+  template:
+    metadata:
+      labels:
+        app: aule-bot
+    spec:
+      securityContext:
+        runAsUser: 7999
+        runAsGroup: 7999
+        fsGroup: 7999
+        fsGroupChangePolicy: "OnRootMismatch"
+      containers:
+        - name: aule-bot
+          image: polinetwork/botcsharp_prod:e5b242110cc37810ffa33116c6bdf6f00722f0cd
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: aule-bot-secret
+                  key: TOKEN                
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "200Mi"
+            limits:
+              cpu: "400m"
+              memory: "400Mi"
