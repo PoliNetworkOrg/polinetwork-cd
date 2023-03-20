@@ -19,7 +19,7 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: aule-bot
-          image: polinetwork/aule_bot_prod:58a3e5db0e96fed792326b5d4dbe209adf30fef0
+          image: polinetwork/aule_bot_prod:883c5d71cf29e42495f1d217bdb240f3f07e749f
           imagePullPolicy: IfNotPresent
           env:
             - name: TOKEN
