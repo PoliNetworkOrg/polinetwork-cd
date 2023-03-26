@@ -26,11 +26,11 @@ spec:
             mountPath: /config
           resources:
             requests:
-              cpu: "100m"
-              memory: "300Mi"
+              cpu: "300m"
+              memory: "500Mi"
             limits:
-              cpu: "200m"
-              memory: "400Mi"
+              cpu: "500m"
+              memory: "600Mi"
       volumes:
         - name: config
           secret:
