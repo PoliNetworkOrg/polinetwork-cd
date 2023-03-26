@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-rooms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bot-rooms
+  template:
+    metadata:
+      labels:
+        app: bot-rooms
+    spec:
+      securityContext:
+        runAsUser: 7999
+        runAsGroup: 7999
+        fsGroup: 7999
+        fsGroupChangePolicy: "OnRootMismatch"
+      containers:
+        - name: bot-prod
+          image: polinetwork/botcsharp_prod:e5b242110cc37810ffa33116c6bdf6f00722f0cd
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+          - name: config
+            mountPath: /config
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "300Mi"
+            limits:
+              cpu: "200m"
+              memory: "400Mi"
+      volumes:
+        - name: config
+          secret:
+            secretName: bot-config-secret
