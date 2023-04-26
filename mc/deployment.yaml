@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,7 +19,7 @@ spec:
         runAsUser: 7999
         runAsGroup: 7999
         fsGroup: 7999
-        fsGroupChangePolicy: "OnRootMismatch"
+        fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: mc
           image: mitchtalmadge/amp-dockerized:v21-ampcore2430-ampinstmgr2430-1678835832
@@ -38,17 +39,18 @@ spec:
               value: 7999
           resources:
             requests:
-              cpu: "800m"
-              memory: "1000Mi"
+              cpu: 800m
+              memory: 1000Mi
             limits:
-              cpu: "1800m"
-              memory: "3000Mi"
+              cpu: 1800m
+              memory: 3000Mi
           ports:
             - containerPort: 8080
       volumes:
         - name: home
           persistentVolumeClaim:
             claimName: mc-pvc
+
 ---
 apiVersion: v1
 kind: Service
@@ -61,14 +63,15 @@ spec:
       targetPort: 8080
   selector:
     app: mc
+
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: mc-ingress
   annotations:
-    kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod-issuer"
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod-issuer
     nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
   tls:
