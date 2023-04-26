@@ -33,8 +33,6 @@ spec:
                 secretKeyRef:
                   name: mc-secret
                   key: AMP_LICENSE
-            - name: IPBINDING
-              value: "127.0.0.1"
             - name: UID
               value: "7999"
             - name: GID
