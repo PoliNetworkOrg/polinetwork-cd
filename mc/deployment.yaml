@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: mc
-          image: mitchtalmadge/amp-dockerized:v21-ampcore2430-ampinstmgr2430-1678835832
+          image: polinetwork/amp_instance_mgr_kubernetes
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: home
