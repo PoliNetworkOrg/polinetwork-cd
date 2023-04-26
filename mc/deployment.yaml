@@ -26,9 +26,7 @@ spec:
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: home
-              mountPath: /home/amp
-            - name: opt
-              mountPath: /opt
+              mountPath: /home/amp/.ampdata
           env:
             - name: PASSWORD
               valueFrom:
@@ -52,9 +50,6 @@ spec:
         - name: home
           persistentVolumeClaim:
             claimName: mc-pvc
-        - name: opt
-          persistentVolumeClaim:
-            claimName: mc-pvc-2
 
 ---
 apiVersion: v1
