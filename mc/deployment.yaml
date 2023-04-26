@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: mc
-          image: polinetwork/amp_instance_mgr_kubernetes:95477bdc6087db3e6cc7d3d2afcfa182bdfcd32a
+          image: polinetwork/amp_instance_mgr_kubernetes:550eab736e22b1dbbee0703f57d15b2b06f5f211
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: home
