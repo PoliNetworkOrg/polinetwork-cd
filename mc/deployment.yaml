@@ -15,11 +15,6 @@ spec:
       labels:
         app: mc
     spec:
-      securityContext:
-        runAsUser: 7999
-        runAsGroup: 7999
-        fsGroup: 7999
-        fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: mc
           image: mitchtalmadge/amp-dockerized:v21-ampcore2430-ampinstmgr2430-1678835832
