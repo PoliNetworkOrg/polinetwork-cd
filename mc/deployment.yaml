@@ -46,6 +46,7 @@ spec:
               memory: 3000Mi
           ports:
             - containerPort: 8080
+            - containerPort: 3306
       volumes:
         - name: home
           persistentVolumeClaim:
@@ -61,6 +62,10 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
+      name: ui
+    - port: 3306
+      targetPort: 3306
+      name: mc
   selector:
     app: mc
 
@@ -88,4 +93,14 @@ spec:
               service:
                 name: mc-service
                 port:
-                  number: 8080
+                  name: ui
+    - host: mc.polinetwork.org
+      http:
+        paths:
+          - path: /mc/(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: mc-service
+                port:
+                  name: mc
