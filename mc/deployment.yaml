@@ -54,7 +54,7 @@ spec:
             claimName: mc-pvc
         - name: opt
           persistentVolumeClaim:
-            claimName: mc-pvc2
+            claimName: mc-pvc-2
 
 ---
 apiVersion: v1
