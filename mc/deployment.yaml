@@ -34,7 +34,7 @@ spec:
                   name: mc-secret
                   key: AMP_LICENSE
             - name: PORT
-              value: "20.23.157.7"
+              value: "127.0.0.1"
             - name: UID
               value: "7999"
             - name: GID
