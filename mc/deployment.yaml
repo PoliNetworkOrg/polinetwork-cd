@@ -25,7 +25,7 @@ spec:
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: home
-              mountPath: /home/amp
+              mountPath: /opt
           env:
             - name: PASSWORD
               valueFrom:
