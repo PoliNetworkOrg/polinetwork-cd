@@ -32,6 +32,10 @@ spec:
                 secretKeyRef:
                   name: mc-secret
                   key: PASSWORD
+            - name: UID
+              value: 7999
+            - name: GID
+              value: 7999
           resources:
             requests:
               cpu: "800m"
