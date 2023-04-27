@@ -40,10 +40,10 @@ spec:
           resources:
             requests:
               cpu: 800m
-              memory: 1000Mi
+              memory: 2000Mi
             limits:
               cpu: 1800m
-              memory: 3000Mi
+              memory: 4000Mi
           ports:
             - containerPort: 8080
             - containerPort: 3306
