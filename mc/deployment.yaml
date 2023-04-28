@@ -39,7 +39,7 @@ spec:
               value: "7999"
           resources:
             requests:
-              cpu: 1500m
+              cpu: 1000m
               memory: 2000Mi
             limits:
               cpu: 3000m
