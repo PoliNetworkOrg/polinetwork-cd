@@ -46,7 +46,7 @@ spec:
               memory: 5000Mi
           ports:
             - containerPort: 8080
-            - containerPort: 3306
+            - containerPort: 25565
       volumes:
         - name: home
           persistentVolumeClaim:
@@ -63,8 +63,8 @@ spec:
     - port: 8080
       targetPort: 8080
       name: ui
-    - port: 3306
-      targetPort: 3306
+    - port: 25565
+      targetPort: 25565
       name: mc
   selector:
     app: mc
@@ -81,10 +81,13 @@ metadata:
 spec:
   tls:
     - hosts:
+        - amp.polinetwork.org
+      secretName: amp-tls
+    - hosts:
         - mc.polinetwork.org
       secretName: mc-tls
   rules:
-    - host: mc.polinetwork.org
+    - host: amp.polinetwork.org
       http:
         paths:
           - path: /(.*)
@@ -97,7 +100,7 @@ spec:
     - host: mc.polinetwork.org
       http:
         paths:
-          - path: /mc/(.*)
+          - path: /(.*)
             pathType: Prefix
             backend:
               service:
