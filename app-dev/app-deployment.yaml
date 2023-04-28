@@ -62,7 +62,7 @@ kind: Ingress
 metadata:
   name: app-dev-ingress
   annotations:
-    kubernetes.io/ingress.class: "addon-http-application-routing-nginx-ingress"
+    kubernetes.io/ingress.class: "addon-http-application-routing"
     cert-manager.io/cluster-issuer: "letsencrypt-prod-issuer"
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/rewrite-target: /staging/v1/$2
@@ -90,7 +90,7 @@ spec:
 # metadata:
 #   name: app-dev-ingress-root
 #   annotations:
-#     kubernetes.io/ingress.class: "addon-http-application-routing-nginx-ingress"
+#     kubernetes.io/ingress.class: "addon-http-application-routing"
 #     cert-manager.io/cluster-issuer: "letsencrypt-prod-issuer"
 #     nginx.ingress.kubernetes.io/use-regex: "true"
 #     nginx.ingress.kubernetes.io/rewrite-target: /$1
