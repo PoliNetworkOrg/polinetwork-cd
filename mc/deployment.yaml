@@ -75,7 +75,7 @@ kind: Ingress
 metadata:
   name: mc-ingress
   annotations:
-    kubernetes.io/ingress.class: "addon-http-application-routing-nginx-ingress"
+    kubernetes.io/ingress.class: "addon-http-application-routing"
     cert-manager.io/cluster-issuer: letsencrypt-prod-issuer
     nginx.ingress.kubernetes.io/use-regex: "true"
 spec:
