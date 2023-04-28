@@ -39,11 +39,11 @@ spec:
               value: "7999"
           resources:
             requests:
-              cpu: 800m
+              cpu: 1500m
               memory: 2000Mi
             limits:
-              cpu: 1800m
-              memory: 4000Mi
+              cpu: 3000m
+              memory: 5000Mi
           ports:
             - containerPort: 8080
             - containerPort: 3306
