@@ -81,6 +81,7 @@ spec:
               readOnly: true
             - name: fluentd-config-volume
               mountPath: /fluentd/etc
+              subPath: fluent.conf
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
