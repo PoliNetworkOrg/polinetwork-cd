@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: fluentd
+  namespace: kube-logs
   labels:
     app: fluentd
 automountServiceAccountToken: false
@@ -34,12 +35,13 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: fluentd
-    namespace: logging
+    namespace: kube-logs
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: fluentd
+  namespace: kube-logs
   labels:
     app: fluentd
 spec:
@@ -59,17 +61,20 @@ spec:
       containers:
         - name: fluentd
           image: fluent/fluentd-kubernetes-daemonset:v1.4.2-debian-elasticsearch-1.1
-          command:
-            [
-              "fluentd",
-              "-c",
-              "/fluentd/etc/fluent.conf",
-              "-p",
-              "/fluentd/plugins",
-              "--gemfile",
-              "/fluentd/Gemfile",
-            ]
           env:
+            - name: FLUENT_ELASTICSEARCH_HOST
+              value: "elasticsearch.kube-logs.svc.cluster.local"
+            - name: FLUENT_ELASTICSEARCH_PORT
+              value: "9200"
+            - name: FLUENT_ELASTICSEARCH_USER
+              value: "elastic"
+            - name: FLUENT_ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-credentials
+                  key: ELASTIC_PASSWORD
+            - name: FLUENT_ELASTICSEARCH_SCHEME
+              value: "http"
             - name: FLUENTD_SYSTEMD_CONF
               value: disable
             - name: FLUENT_CONTAINER_TAIL_EXCLUDE_PATH
@@ -89,8 +94,6 @@ spec:
             - name: varlibdockercontainers
               mountPath: /var/lib/docker/containers
               readOnly: true
-            - name: fluentd-config-volume
-              mountPath: /fluentd/etc
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
@@ -102,7 +105,4 @@ spec:
         - name: varlibdockercontainers
           hostPath:
             path: /var/lib/docker/containers
-        - name: fluentd-config-volume
-          configMap:
-            name: fluentd-config
       automountServiceAccountToken: true
