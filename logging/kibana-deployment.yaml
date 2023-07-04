@@ -38,10 +38,10 @@ spec:
           resources:
             requests:
               cpu: "50m"
-              memory: "250Mi"
+              memory: "300Mi"
             limits:
               cpu: "500m"
-              memory: "500Mi"
+              memory: "600Mi"
           volumeMounts:
             - name: secret
               mountPath: /usr/share/kibana/config/kibana.yml
