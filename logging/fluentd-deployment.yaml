@@ -80,7 +80,8 @@ spec:
               mountPath: /var/lib/docker/containers
               readOnly: true
             - name: fluentd-config-volume
-              mountPath: /fluentd/etc
+              mountPath: /fluentd/etc/fluent.conf
+              subPath: fluent.conf
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
