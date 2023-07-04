@@ -49,9 +49,7 @@ spec:
               readOnly: true
           env:
             - name: ELASTICSEARCH_URL
-              value:
-            - name: SERVER_BASEPATH
-              value: "/"
+              value: ""
             - name: SERVER_REWRITEBASEPATH
               value: "true"
             - name: SERVER_PUBLICBASEURL
