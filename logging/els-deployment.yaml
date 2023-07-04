@@ -124,7 +124,7 @@ spec:
       volumes:
         - name: els-data
           persistentVolumeClaim:
-            claimName: kube-logs-pvc
+            claimName: elasticsearch-pvc
         - name: elasticsearch-yml
           configMap:
             name: elasticsearch-config
