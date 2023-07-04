@@ -79,7 +79,7 @@ spec:
   tls:
     - hosts:
         - kibana.polinetwork.org
-      secretName: kibana-tls
+      secretName: kibana-tls-cert
   rules:
     - host: kibana.polinetwork.org
       http:
