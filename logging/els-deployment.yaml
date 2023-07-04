@@ -1,0 +1,149 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: es-cluster
+spec:
+  serviceName: elasticsearch
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: agentpool
+                    operator: In
+                    values:
+                      - system
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 0
+        fsGroup: 0
+        runAsNonRoot: true
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:7.2.0
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1400Mi
+            requests:
+              cpu: 200m
+              memory: 600Mi
+          ports:
+            - containerPort: 9200
+              name: rest
+              protocol: TCP
+            - containerPort: 9300
+              name: transport
+              protocol: TCP
+          volumeMounts:
+            - name: els-data
+              mountPath: /usr/share/elasticsearch/data
+            - name: elasticsearch-yml
+              mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+              subPath: elasticsearch.yml
+          env:
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: NODE_MASTER
+              valueFrom:
+                configMapKeyRef:
+                  name: elasticsearch-config
+                  key: NODE_MASTER
+            - name: NODE_DATA
+              valueFrom:
+                configMapKeyRef:
+                  name: elasticsearch-config
+                  key: NODE_DATA
+            - name: NUMBER_OF_MASTERS
+              valueFrom:
+                configMapKeyRef:
+                  name: elasticsearch-config
+                  key: NUMBER_OF_MASTERS
+            - name: NUMBER_OF_REPLICAS
+              valueFrom:
+                configMapKeyRef:
+                  name: elasticsearch-config
+                  key: NUMBER_OF_REPLICAS
+            - name: ES_JAVA_OPTS
+              value: "-Xms512m -Xmx512m"
+            - name: ES_PORT
+              value: "9200"
+            - name: ELASTIC_USERNAME
+              value: "elastic"
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-credentials
+                  key: ELASTIC_PASSWORD
+            - name: xpack.security.enabled
+              value: "true"
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: false
+            allowPrivilegeEscalation: false
+      # initContainers:
+      #   - name: fix-permissions
+      #     image: busybox
+      #     command:
+      #       - sh
+      #       - -c
+      #       - chown -R 1000:0 /usr/share/elasticsearch/data
+      #     securityContext:
+      #       privileged: true
+      #     volumeMounts:
+      #       - name: els-data
+      #         mountPath: /usr/share/elasticsearch/data
+      #   - name: increase-vm-max-map
+      #     image: busybox
+      #     command:
+      #       - sysctl
+      #       - -w
+      #       - vm.max_map_count=262144
+      #     securityContext:
+      #       privileged: true
+      #   - name: increase-fd-ulimit
+      #     image: busybox
+      #     command:
+      #       - sh
+      #       - -c
+      #       - ulimit -n 65536
+      #     securityContext:
+      #       privileged: true
+      volumes:
+        - name: els-data
+          persistentVolumeClaim:
+            claimName: kube-logs-pvc
+        - name: elasticsearch-yml
+          configMap:
+            name: elasticsearch-config
+            items:
+              - key: elasticsearch.yml
+                path: elasticsearch.yml
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: elasticsearch
+  labels:
+    app: elasticsearch
+spec:
+  selector:
+    app: elasticsearch
+  clusterIP: None
+  ports:
+    - port: 9200
+      name: rest
+    - port: 9300
+      name: inter-node

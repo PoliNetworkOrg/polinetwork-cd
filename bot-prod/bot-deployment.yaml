@@ -19,7 +19,7 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: bot-prod
-          image: polinetwork/botcsharp_prod:e36dd446af35c835a814b1e804d221beae866096
+          image: polinetwork/botcsharp_prod:e6d26ff3ebf19829ae4189e2765012ec1b1c8e16
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
@@ -32,11 +32,11 @@ spec:
                 command: ["/bin/sh", "-c", "mkdir ~/.ssh/ && ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts && eval `ssh-agent -s`"]
           resources:
             requests:
-              cpu: "300m"
-              memory: "500Mi"
+              cpu: "150m"
+              memory: "200Mi"
             limits:
-              cpu: "500m"
-              memory: "1000Mi"
+              cpu: "250m"
+              memory: "400Mi"
       volumes:
         - name: config
           secret:

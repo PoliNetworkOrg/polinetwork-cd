@@ -17,11 +17,11 @@ spec:
     spec:
       containers:
         - name: mc
-          image: polinetwork/amp_instance_mgr_kubernetes:e42e8c9f5cf7efdceedde62dc5b94fb43713a5ca
+          image: polinetwork/amp_instance_mgr_kubernetes:c911663d0e5416f47dcb265d9b80a5e4ce042acd
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: home
-              mountPath: /home/amp/.ampdata
+              mountPath: /home/amp
           env:
             - name: PASSWORD
               valueFrom:
@@ -39,14 +39,14 @@ spec:
               value: "7999"
           resources:
             requests:
-              cpu: 800m
+              cpu: 1000m
               memory: 2000Mi
             limits:
-              cpu: 1800m
-              memory: 4000Mi
+              cpu: 3000m
+              memory: 5000Mi
           ports:
             - containerPort: 8080
-            - containerPort: 3306
+            - containerPort: 25565
       volumes:
         - name: home
           persistentVolumeClaim:
@@ -56,24 +56,33 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mc-service
+  name: mc-service-ui
 spec:
   type: ClusterIP
   ports:
     - port: 8080
       targetPort: 8080
       name: ui
-    - port: 3306
-      targetPort: 3306
+  selector:
+    app: mc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-service-server
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 25565
+      targetPort: 25565
       name: mc
   selector:
     app: mc
-
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: mc-ingress
+  name: mc-ingress-ui
   annotations:
     kubernetes.io/ingress.class: "addon-http-application-routing"
     cert-manager.io/cluster-issuer: letsencrypt-prod-issuer
@@ -81,26 +90,16 @@ metadata:
 spec:
   tls:
     - hosts:
-        - mc.polinetwork.org
-      secretName: mc-tls
+        - amp.polinetwork.org
+      secretName: amp-tls
   rules:
-    - host: mc.polinetwork.org
+    - host: amp.polinetwork.org
       http:
         paths:
           - path: /(.*)
             pathType: Prefix
             backend:
               service:
-                name: mc-service
+                name: mc-service-ui
                 port:
                   name: ui
-    - host: mc.polinetwork.org
-      http:
-        paths:
-          - path: /mc/(.*)
-            pathType: Prefix
-            backend:
-              service:
-                name: mc-service
-                port:
-                  name: mc

@@ -19,18 +19,18 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: bot-dev
-          image: polinetwork/botcsharp_dev:45a79b0e486eaeae35f3d9d28b4c284fc86c0940
+          image: polinetwork/botcsharp_dev:06b971bdceebf25b209a168278d92001a897c938
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
             mountPath: /config
           resources:
             requests:
-              cpu: "200m"
-              memory: "300Mi"
+              cpu: "10m"
+              memory: "100Mi"
             limits:
-              cpu: "500m"
-              memory: "1000Mi"
+              cpu: "100m"
+              memory: "400Mi"
       volumes:
         - name: config
           secret:

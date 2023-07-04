@@ -29,8 +29,8 @@ spec:
               cpu: "100m"
               memory: "400Mi"
             limits:
-              cpu: "500m"
-              memory: "1000Mi"
+              cpu: "300m"
+              memory: "500Mi"
       securityContext:
         runAsUser: 7999
         runAsGroup: 7999

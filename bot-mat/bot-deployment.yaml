@@ -4,6 +4,8 @@ metadata:
   name: bot-mat
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: bot-mat
@@ -19,7 +21,7 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: bot-mat
-          image: polinetwork/botcsharp_prod:e36dd446af35c835a814b1e804d221beae866096
+          image: polinetwork/botcsharp_prod:e6d26ff3ebf19829ae4189e2765012ec1b1c8e16
           imagePullPolicy: IfNotPresent
           volumeMounts:
           - name: config
@@ -28,11 +30,11 @@ spec:
             mountPath: /Repos
           resources:
             requests:
-              cpu: "100m"
-              memory: "200Mi"
+              cpu: "50m"
+              memory: "300Mi"
             limits:
               cpu: "150m"
-              memory: "400Mi"
+              memory: "500Mi"
       volumes:
         - name: config
           secret:

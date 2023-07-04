@@ -29,10 +29,10 @@ spec:
               command: ["/bin/sh", "-c", "./scripts/startup.sh"]
         resources:
             requests:
-              cpu: "200m"
-              memory: "300Mi"
+              cpu: "50m"
+              memory: "500Mi"
             limits:
-              cpu: "500m"
+              cpu: "100m"
               memory: "1000Mi"
         ports:
         - containerPort: 3306
