@@ -85,7 +85,7 @@ spec:
             - name: ELASTIC_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: elasticsearch-credentials
+                  name: elastic-credentials
                   key: ELASTIC_PASSWORD
             - name: xpack.security.enabled
               value: "true"
