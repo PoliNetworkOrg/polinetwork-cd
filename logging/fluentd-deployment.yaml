@@ -59,6 +59,16 @@ spec:
       containers:
         - name: fluentd
           image: fluent/fluentd-kubernetes-daemonset:v1.4.2-debian-elasticsearch-1.1
+          command:
+            [
+              "fluentd",
+              "-c",
+              "/fluentd/etc/fluent.conf",
+              "-p",
+              "/fluentd/plugins",
+              "--gemfile",
+              "/fluentd/Gemfile",
+            ]
           env:
             - name: FLUENTD_SYSTEMD_CONF
               value: disable
@@ -80,8 +90,7 @@ spec:
               mountPath: /var/lib/docker/containers
               readOnly: true
             - name: fluentd-config-volume
-              mountPath: /fluentd/etc/fluent.conf
-              subPath: fluent.conf
+              mountPath: /fluentd/etc
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
