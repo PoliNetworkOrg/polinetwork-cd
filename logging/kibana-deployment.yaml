@@ -48,10 +48,6 @@ spec:
               subPath: kibana.yml
               readOnly: true
           env:
-            - name: ELASTICSEARCH_URL
-              value: ""
-            - name: SERVER_REWRITEBASEPATH
-              value: "true"
             - name: SERVER_PUBLICBASEURL
               value: "https://kibana.polinetwork.org/"
           ports:
