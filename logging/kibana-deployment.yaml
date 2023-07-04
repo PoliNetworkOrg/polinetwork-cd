@@ -32,15 +32,6 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         runAsNonRoot: true
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: agentpool
-                    operator: In
-                    values:
-                      - system
       containers:
         - name: kibana
           image: docker.elastic.co/kibana/kibana:7.2.0
