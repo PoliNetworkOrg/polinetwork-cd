@@ -79,7 +79,8 @@ spec:
             - name: varlibdockercontainers
               mountPath: /var/lib/docker/containers
               readOnly: true
-
+            - name: fluentd-config-volume
+              mountPath: /fluentd/etc
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: false
