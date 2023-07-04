@@ -55,16 +55,16 @@ spec:
             - name: secret
               mountPath: /usr/share/kibana/config/kibana.yml
               subPath: kibana.yml
-              readOnly: false
+              readOnly: true
           env:
             - name: ELASTICSEARCH_URL
-              value: http://elasticsearch:9200
+              value:
             - name: SERVER_BASEPATH
-              value: "/kibana"
+              value: "/"
             - name: SERVER_REWRITEBASEPATH
               value: "true"
             - name: SERVER_PUBLICBASEURL
-              value: "https://my.domain.com/kibana"
+              value: "https://kibana.polinetwork.org/"
           ports:
             - containerPort: 5601
           securityContext:
@@ -93,7 +93,7 @@ spec:
     - host: kibana.polinetwork.org
       http:
         paths:
-          - path: /(.*)
+          - path: /
             pathType: Prefix
             backend:
               service:
