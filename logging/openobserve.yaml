@@ -10,9 +10,7 @@ spec:
     - name: http
       port: 5080
       targetPort: 5080
-
 ---
-# create statefulset
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
