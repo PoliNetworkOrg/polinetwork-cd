@@ -68,3 +68,28 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: logging-pvc
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kibana-ingress
+  annotations:
+    kubernetes.io/ingress.class: "addon-http-application-routing"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod-issuer"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  tls:
+    - hosts:
+        - logging.polinetwork.org
+      secretName: logging-tls-cert
+  rules:
+    - host: logging.polinetwork.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: openobserve
+                port:
+                  name: http
