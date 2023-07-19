@@ -70,3 +70,29 @@ spec:
       targetPort: 3306
   selector:
     app: mariadb
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mariadb-ingress
+  annotations:
+    kubernetes.io/ingress.class: "addon-http-application-routing"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod-issuer"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  tls:
+    - hosts:
+        - api.polinetwork.org
+      secretName: mariadb-tls
+  rules:
+    - host: api.polinetwork.org
+      http:
+        paths:
+          - path: /db(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: mariadb-service
+                port:
+                  name: mariadb
