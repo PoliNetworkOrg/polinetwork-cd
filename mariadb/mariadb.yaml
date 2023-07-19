@@ -63,7 +63,7 @@ metadata:
   labels:
     app: mariadb
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
     - name: mariadb
       port: 3306
