@@ -55,3 +55,18 @@ spec:
         configMap:
           name: scripts
           defaultMode: 0777
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb-service
+  labels:
+    app: mariadb
+spec:
+  type: LoadBalancer
+  ports:
+    - name: mariadb
+      port: 3306
+      targetPort: 3306
+  selector:
+    app: mariadb
