@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bot-dev
+  name: newbot-dev
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: bot-dev
+      app: newbot-dev
   template:
     metadata:
       labels:
-        app: bot-dev
+        app: newbot-dev
     spec:
       securityContext:
         runAsUser: 7999
@@ -18,7 +18,7 @@ spec:
         fsGroup: 7999
         fsGroupChangePolicy: "OnRootMismatch"
       containers:
-        - name: bot-dev
+        - name: newbot-dev
           image: polinetwork/botcsharp_prod:e6d26ff3ebf19829ae4189e2765012ec1b1c8e16
           imagePullPolicy: IfNotPresent
           volumeMounts:
