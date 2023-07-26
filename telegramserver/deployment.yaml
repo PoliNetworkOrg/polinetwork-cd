@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegram-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telegram-api
+  template:
+    metadata:
+      labels:
+        app: telegram-api
+    spec:
+      securityContext:
+        runAsUser: 7999
+        runAsGroup: 7999
+        fsGroup: 7999
+        fsGroupChangePolicy: "OnRootMismatch"
+      containers:
+        - name: telegram-api
+          image: aiogram/telegram-bot-api:latest
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "100Mi"
+            limits:
+              cpu: "100m"
+              memory: "200Mi"
+      volumes:
+        - name: config
+          secret:
+            secretName: bot-config-secret
