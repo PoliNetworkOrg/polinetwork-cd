@@ -19,7 +19,7 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: newbot-prod
-          image: "polinetwork/polinetworkbot:EchoBot-main-2ad72d3ca373e544ce349e5e7d19f41fb95f1c81"
+          image: "polinetwork/polinetworkbot:EchoBot-main-3114fd28a201942e3f67ff6d728a1090552904b7"
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
