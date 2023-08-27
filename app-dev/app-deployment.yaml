@@ -85,24 +85,3 @@ spec:
                 name: app-dev-service
                 port:
                   number: 8000
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: app-dev-service-monitor
-  labels:
-    release: prometheus
-spec:
-  selector:
-    matchLabels:
-      app: app-dev
-  endpoints:
-    - port: app-port
-      path: /staging/v1/metrics-text
-  namespaceSelector:
-    matchNames:
-      - app-dev
-  template:
-    spec:
-      containers:
-        - image: polinetwork/polifemo_backend_dev:d1d199a76a40bb812493006783d408a69ac1a22e
