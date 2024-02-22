@@ -28,8 +28,6 @@ spec:
             mountPath: /config
           - name: mat-persistent-storage
             mountPath: /Repos
-          - name: migration
-            mountPath: /migration
           resources:
             requests:
               cpu: "50m"
@@ -44,7 +42,4 @@ spec:
         - name: mat-persistent-storage
           persistentVolumeClaim:
             claimName: bot-pvc
-        - name: migration
-          persistentVolumeClaim:
-            claimName: migration
       
