@@ -1,91 +1,91 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: app-dev
-  labels:
-    app: app
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: app-dev
-  template:
-    metadata:
-      labels:
-        app: app-dev
-    spec:
-      securityContext:
-        runAsUser: 7999
-        runAsGroup: 7999
-        fsGroup: 7999
-        fsGroupChangePolicy: "OnRootMismatch"
-      containers:
-        - name: app-dev
-          image: polinetwork/polifemo_backend_dev:7a168f1e1b5ae47ff90577583e6a6e03f28dd2cc
-          imagePullPolicy: IfNotPresent
-          volumeMounts:
-            - name: config
-              mountPath: /config
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "300Mi"
-            limits:
-              cpu: "300m"
-              memory: "500Mi"
-          ports:
-            - containerPort: 5000
-          env:
-            - name: BASE_PATH
-              value: "/staging/v1/"
-          args:
-            - --base-path=/staging/v1/
-      volumes:
-        - name: config
-          secret:
-            secretName: app-secrets
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: app-dev-service
-  labels:
-    app: app-dev
-spec:
-  type: ClusterIP
-  ports:
-    - name: app-port
-      port: 8000
-      targetPort: 5000
-  selector:
-    app: app-dev
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: app-dev-ingress
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod-issuer"
-    nginx.ingress.kubernetes.io/use-regex: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /staging/v1/$2
-spec:
-  tls:
-    - hosts:
-        - api.polinetwork.org
-      secretName: app-dev-tls
-  rules:
-    - host: api.polinetwork.org
-      http:
-        paths:
-          - path: /staging/v1(/|$)(.*)
-            pathType: Prefix
-            backend:
-              service:
-                name: app-dev-service
-                port:
-                  number: 8000
----
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: app-dev
+#   labels:
+#     app: app
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: app-dev
+#   template:
+#     metadata:
+#       labels:
+#         app: app-dev
+#     spec:
+#       securityContext:
+#         runAsUser: 7999
+#         runAsGroup: 7999
+#         fsGroup: 7999
+#         fsGroupChangePolicy: "OnRootMismatch"
+#       containers:
+#         - name: app-dev
+#           image: polinetwork/polifemo_backend_dev:7a168f1e1b5ae47ff90577583e6a6e03f28dd2cc
+#           imagePullPolicy: IfNotPresent
+#           volumeMounts:
+#             - name: config
+#               mountPath: /config
+#           resources:
+#             requests:
+#               cpu: "100m"
+#               memory: "300Mi"
+#             limits:
+#               cpu: "300m"
+#               memory: "500Mi"
+#           ports:
+#             - containerPort: 5000
+#           env:
+#             - name: BASE_PATH
+#               value: "/staging/v1/"
+#           args:
+#             - --base-path=/staging/v1/
+#       volumes:
+#         - name: config
+#           secret:
+#             secretName: app-secrets
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: app-dev-service
+#   labels:
+#     app: app-dev
+# spec:
+#   type: ClusterIP
+#   ports:
+#     - name: app-port
+#       port: 8000
+#       targetPort: 5000
+#   selector:
+#     app: app-dev
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: app-dev-ingress
+#   annotations:
+#     kubernetes.io/ingress.class: "nginx"
+#     cert-manager.io/cluster-issuer: "letsencrypt-prod-issuer"
+#     nginx.ingress.kubernetes.io/use-regex: "true"
+#     nginx.ingress.kubernetes.io/rewrite-target: /staging/v1/$2
+# spec:
+#   tls:
+#     - hosts:
+#         - api.polinetwork.org
+#       secretName: app-dev-tls
+#   rules:
+#     - host: api.polinetwork.org
+#       http:
+#         paths:
+#           - path: /staging/v1(/|$)(.*)
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: app-dev-service
+#                 port:
+#                   number: 8000
+# ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
