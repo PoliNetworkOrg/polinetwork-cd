@@ -128,6 +128,7 @@ metadata:
   name: nginx-ingress
   annotations:
     kubernetes.io/ingress.class: "nginx"
+spec:
   rules:
     - host: api.polinetwork.org
       http:
