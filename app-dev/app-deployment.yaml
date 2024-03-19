@@ -89,54 +89,54 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx
-  labels:
-    app: app
+  name: aks-helloworld  
+  namespace: app-dev
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: nginx
+      app: aks-helloworld
   template:
     metadata:
       labels:
-        app: nginx
+        app: aks-helloworld
     spec:
       containers:
-        - name: nginx
-          image: nginx
-          imagePullPolicy: IfNotPresent
+      - name: aks-helloworld
+        image: mcr.microsoft.com/azuredocs/aks-helloworld:v1
+        ports:
+        - containerPort: 80
+        env:
+        - name: TITLE
+          value: "Welcome to Azure Kubernetes Service (AKS)"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-service
-  labels:
-    app: nginx
+  name: aks-helloworld
+  namespace: app-dev
 spec:
   type: ClusterIP
   ports:
-    - name: nginx
-      port: 8000
-      targetPort: 5000
+  - port: 80
   selector:
-    app: nginx
+    app: aks-helloworld
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: nginx-ingress
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
+  name: aks-helloworld
+  namespace: app-dev
 spec:
+  ingressClassName: webapprouting.kubernetes.azure.com
   rules:
-    - host: api.polinetwork.org
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: nginx
-                port:
-                  number: 8000
+  - host: api.polinetwork.org
+    http:
+      paths:
+      - backend:
+          service:
+            name: aks-helloworld
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
