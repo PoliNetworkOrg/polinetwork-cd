@@ -128,7 +128,7 @@ metadata:
   name: aks-helloworld
   namespace: app-dev
 spec:
-  ingressClassName: webapprouting.kubernetes.azure.com
+  ingressClassName: nginx
   rules:
   - host: api.polinetwork.org
     http:
