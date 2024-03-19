@@ -90,7 +90,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: aks-helloworld  
-  namespace: app-dev
 spec:
   replicas: 1
   selector:
@@ -114,7 +113,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: aks-helloworld
-  namespace: app-dev
 spec:
   type: ClusterIP
   ports:
@@ -126,7 +124,6 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: aks-helloworld
-  namespace: app-dev
 spec:
   ingressClassName: nginx
   rules:
