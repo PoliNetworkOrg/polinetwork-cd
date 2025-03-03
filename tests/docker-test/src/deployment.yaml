@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docker-test-deploy
+  namespace: docker-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docker-test
+  template:
+    metadata:
+      labels:
+        app: docker-test
+    spec:
+      containers:
+      - name: docker-test-pod
+        image: toto04/testcontainer@sha256:b5ec2efcc11e90c2fd955cd1c01f3fdf7c2f18c77c213360addcd37be7e8f2f3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docker-test-deploy-2
+  namespace: docker-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docker-test-2
+  template:
+    metadata:
+      labels:
+        app: docker-test-2
+    spec:
+      containers:
+      - name: docker-test-pod-2
+        image: httpd:2.4.63
+        ports:
+        - containerPort: 80
