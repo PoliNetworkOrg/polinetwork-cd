@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: disabled-test-deploy
+  namespace: disabled-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: disabled-test
+  template:
+    metadata:
+      labels:
+        app: disabled-test
+    spec:
+      containers:
+      - name: disabled-test-pod
+        image: nginx
+        ports:
+          - containerPort: 80
