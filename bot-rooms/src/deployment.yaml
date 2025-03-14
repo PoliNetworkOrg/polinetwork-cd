@@ -1,0 +1,150 @@
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: bot-rooms-spc
+  namespace: bot-rooms
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: "31ef9b42-b1c6-4bbc-bbce-3cf2faa1c8cb"
+    tenantId: "7f8cafc8-4314-4070-9744-fe02f91bcb21"
+    keyvaultName: "kv-polinetwork"
+    objects: |
+      array:
+        - |
+          objectName: dev-aule-bot-token            
+          objectType: secret
+        - |
+          objectName: dev-db-user
+          objectType: secret
+        - |
+          objectName: dev-db-password
+          objectType: secret
+  secretObjects:
+    - secretName: azure-kv
+      type: Opaque
+      data:
+        - objectName: dev-aule-bot-token
+          key: bot-token
+        - objectName: dev-db-user
+          key: db-user
+        - objectName: dev-db-password
+          key: db-pass
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bot-config
+data:
+  bots_info.json: |
+    {
+      "bots": [
+        {
+          "botTypeApi": 1,
+          "token": "$BOT_TOKEN",
+          "onMessages": "au",
+          "website": null,
+          "contactString": null,
+          "acceptedMessages": true,
+          "SessionUserId": null,
+          "userId": null,
+          "apiId": null,
+          "apiHash": null,
+          "NumberCountry": null,
+          "NumberNumber": null,
+          "passwordToAuthenticate": null,
+          "method": null
+        }
+      ]
+    }
+  dbconfig.json: |
+    {
+      "User": "$DB_USER",
+      "Password": "$DB_PASS",
+      "Database": "polinetwork_test",
+      "Host": "mariadb-service.mariadb.svc.cluster.local",
+      "Port": 3306
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-rooms
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bot-rooms
+  template:
+    metadata:
+      labels:
+        app: bot-rooms
+    spec:
+      securityContext:
+        runAsUser: 7999
+        runAsGroup: 7999
+        fsGroup: 7999
+        fsGroupChangePolicy: "OnRootMismatch"
+      initContainers:
+        - name: init-myservice
+          image: bhgedigital/envsubst:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - "envsubst < /configmap/bots_info_temp.json > /config/bots_info.json"
+          volumeMounts:
+            - name: config-map
+              mountPath: /configmap
+            - name: config
+              mountPath: /config
+          env:
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: bot-token
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-user
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-pass
+      containers:
+        - name: bot-prod
+          image: ghcr.io/polinetworkorg/botcsharp_dev@sha256:da4fe60a3189f93ca85cafbceddfa4e0c7e1b9873ef62c6bf023cce524f1a4be
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "100Mi"
+            limits:
+              cpu: "100m"
+              memory: "200Mi"
+      volumes:
+        - name: config
+          emptyDir: {}
+        - name: config-map
+          configMap:
+            name: bot-config
+            items:
+              - key: bots_info.json
+                path: bots_info_temp.json
+              - key: dbconfig.json
+                path: dbconfig_temp.json
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "bot-rooms-spc"
