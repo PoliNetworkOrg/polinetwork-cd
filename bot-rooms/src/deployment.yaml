@@ -93,7 +93,9 @@ spec:
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh", "-c"]
           args:
-            - "envsubst < /configmap/bots_info_temp.json > /config/bots_info.json"
+            - |
+              envsubst < /configmap/bots_info.json > /config/bots_info.json && \
+              envsubst < /configmap/dbconfig.json > /config/dbconfig.json
           volumeMounts:
             - name: config-map
               mountPath: /configmap
@@ -139,9 +141,9 @@ spec:
             name: bot-config
             items:
               - key: bots_info.json
-                path: bots_info_temp.json
+                path: bots_info.json
               - key: dbconfig.json
-                path: dbconfig_temp.json
+                path: dbconfig.json
         - name: secrets-store
           csi:
             driver: secrets-store.csi.k8s.io
