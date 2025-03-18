@@ -1,0 +1,177 @@
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: bot-mat-spc
+  namespace: bot-mat
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: "31ef9b42-b1c6-4bbc-bbce-3cf2faa1c8cb"
+    tenantId: "7f8cafc8-4314-4070-9744-fe02f91bcb21"
+    keyvaultName: "kv-polinetwork"
+    objects: |
+      array:
+        - |
+          objectName: prod-bot-mat-token            
+          objectType: secret
+        - |
+          objectName: prod-mat-db-user
+          objectType: secret
+        - |
+          objectName: prod-bot-mat-db-password
+          objectType: secret
+        - |
+          objectName: dev-mat-config-password
+          objectType: secret
+  secretObjects:
+    - secretName: azure-kv
+      type: Opaque
+      data:
+        - objectName: prod-bot-mat-token            
+          key: bot-token
+        - objectName: prod-mat-db-user
+          key: db-user
+        - objectName: prod-bot-mat-db-password
+          key: db-pass
+        - objectName: dev-mat-config-password
+          key: mat-pass
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bot-config
+data:
+  bots_info.json: |
+    {
+      "bots": [
+        {
+          "botTypeApi": 1,
+          "token": "$BOT_TOKEN",
+          "onMessages": "mat",
+          "website": null,
+          "contactString": null,
+          "acceptedMessages": true,
+          "SessionUserId": null,
+          "userId": null,
+          "apiId": null,
+          "apiHash": null,
+          "NumberCountry": null,
+          "NumberNumber": null,
+          "passwordToAuthenticate": null,
+          "method": null
+        }
+      ]
+    }
+  dbconfig.json: |
+    {
+      "User": "$DB_USER",
+      "Password": "$DB_PASS",
+      "Database": "polinetwork_materials",
+      "Host": "mariadb-service.mariadb.svc.cluster.local",
+      "Port": 3306
+    }
+  materialbotconfig.json: |
+    {
+      "Password": "$MAT_PASS",
+      "RootDir": "/Repos/"
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-mat
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bot-mat
+  template:
+    metadata:
+      labels:
+        app: bot-mat
+    spec:
+      securityContext:
+        runAsUser: 7999
+        runAsGroup: 7999
+        fsGroup: 7999
+        fsGroupChangePolicy: "OnRootMismatch"
+      initContainers:
+        - name: init-myservice
+          image: bhgedigital/envsubst:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              envsubst < /configmap/bots_info.json > /config/bots_info.json && \
+              envsubst < /configmap/dbconfig.json > /config/dbconfig.json && \
+              envsubst < /configmap/materialbotconfig.json > /config/materialbotconfig.json
+          volumeMounts:
+            - name: config-map
+              mountPath: /configmap
+            - name: config
+              mountPath: /config
+          env:
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: bot-token
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-user
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-pass
+            - name: MAT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: mat-pass
+      containers:
+        - name: bot-prod
+          image: ghcr.io/polinetworkorg/botcsharp_dev@sha256:da4fe60a3189f93ca85cafbceddfa4e0c7e1b9873ef62c6bf023cce524f1a4be
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+            - name: mat-persistent-storage
+              mountPath: /Repos
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "300Mi"
+            limits:
+              cpu: "150m"
+              memory: "500Mi"
+      volumes:
+        - name: config
+          emptyDir: {}
+        - name: config-map
+          configMap:
+            name: bot-config
+            items:
+              - key: bots_info.json
+                path: bots_info.json
+              - key: dbconfig.json
+                path: dbconfig.json
+              - key: materialbotconfig.json
+                path: materialbotconfig.json
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "bot-mat-spc"
+        - name: mat-persistent-storage
+          persistentVolumeClaim:
+            claimName: bot-pvc
