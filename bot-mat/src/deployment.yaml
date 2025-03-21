@@ -38,46 +38,6 @@ spec:
         - objectName: dev-mat-config-password
           key: mat-pass
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: bot-config
-data:
-  bots_info.json: |
-    {
-      "bots": [
-        {
-          "botTypeApi": 1,
-          "token": "$BOT_TOKEN",
-          "onMessages": "mat",
-          "website": null,
-          "contactString": null,
-          "acceptedMessages": true,
-          "SessionUserId": null,
-          "userId": null,
-          "apiId": null,
-          "apiHash": null,
-          "NumberCountry": null,
-          "NumberNumber": null,
-          "passwordToAuthenticate": null,
-          "method": null
-        }
-      ]
-    }
-  dbconfig.json: |
-    {
-      "User": "$DB_USER",
-      "Password": "$DB_PASS",
-      "Database": "polinetwork_materials",
-      "Host": "mariadb-service.mariadb.svc.cluster.local",
-      "Port": 3306
-    }
-  materialbotconfig.json: |
-    {
-      "Password": "$MAT_PASS",
-      "RootDir": "/Repos/"
-    }
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -100,37 +60,52 @@ spec:
         fsGroup: 7999
         fsGroupChangePolicy: "OnRootMismatch"
       initContainers:
-        - name: init-myservice
-          image: bhgedigital/envsubst:latest
+        - name: botcsharp-config
+          image: ghcr.io/polinetworkorg/botcsharp-config:709e08ac99ac674ac43181f29a1d3f1e16c315d47b3577b9af3133bca957e79f
           imagePullPolicy: IfNotPresent
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              envsubst < /configmap/bots_info.json > /config/bots_info.json && \
-              envsubst < /configmap/dbconfig.json > /config/dbconfig.json && \
-              envsubst < /configmap/materialbotconfig.json > /config/materialbotconfig.json
           volumeMounts:
-            - name: config-map
-              mountPath: /configmap
             - name: config
               mountPath: /config
+              readOnly: false
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
           env:
+            - name: OUT_DIR
+              value: "/config"
+            - name: CREATE_DB_CONFIG
+              value: "true"
+            - name: CREATE_MAT_CONFIG
+              value: "true"
+
             - name: BOT_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: azure-kv
                   key: bot-token
+            - name: BOT_ON_MESSAGES
+              value: "mat"
+
+            - name: DB_DATABASE
+              value: "polinetwork_materials"
+            - name: DB_HOST
+              value: "mariadb-service.mariadb.svc.cluster.local"
+            - name: DB_PORT
+              value: "3306"
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
                   name: azure-kv
                   key: db-user
-            - name: DB_PASS
+            - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: azure-kv
                   key: db-pass
-            - name: MAT_PASS
+
+            - name: MAT_ROOT_DIR
+              value: "/Repos"
+            - name: MAT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: azure-kv
@@ -142,8 +117,7 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
-            - name: secrets-store
-              mountPath: /mnt/secrets-store
+              readOnly: true
             - name: mat-persistent-storage
               mountPath: /Repos
           resources:
@@ -156,16 +130,6 @@ spec:
       volumes:
         - name: config
           emptyDir: {}
-        - name: config-map
-          configMap:
-            name: bot-config
-            items:
-              - key: bots_info.json
-                path: bots_info.json
-              - key: dbconfig.json
-                path: dbconfig.json
-              - key: materialbotconfig.json
-                path: materialbotconfig.json
         - name: secrets-store
           csi:
             driver: secrets-store.csi.k8s.io
