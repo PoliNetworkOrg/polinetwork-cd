@@ -61,7 +61,7 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
       initContainers:
         - name: botcsharp-config
-          image: ghcr.io/polinetworkorg/botcsharp-config@sha256:709e08ac99ac674ac43181f29a1d3f1e16c315d47b3577b9af3133bca957e79f
+          image: ghcr.io/polinetworkorg/botcsharp-config@sha256:d22b42706e9e94be6ac9ec0cc59482a5512c3386011ca75274e468bff55209ee
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: config
