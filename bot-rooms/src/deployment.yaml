@@ -95,7 +95,7 @@ spec:
                   key: db-pass
 
       containers:
-        - name: bot-prod
+        - name: bot-rooms
           image: ghcr.io/polinetworkorg/botcsharp_dev@sha256:da4fe60a3189f93ca85cafbceddfa4e0c7e1b9873ef62c6bf023cce524f1a4be
           imagePullPolicy: IfNotPresent
           volumeMounts:
