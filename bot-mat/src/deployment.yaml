@@ -1,8 +1,8 @@
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
-  name: bot-rooms-spc
-  namespace: bot-rooms
+  name: bot-mat-spc
+  namespace: bot-mat
 spec:
   provider: azure
   parameters:
@@ -14,24 +14,29 @@ spec:
     objects: |
       array:
         - |
-          objectName: dev-aule-bot-token            
+          objectName: prod-bot-mat-token            
           objectType: secret
         - |
-          objectName: dev-db-user
+          objectName: prod-mat-db-user
           objectType: secret
         - |
-          objectName: dev-db-password
+          objectName: prod-bot-mat-db-password
+          objectType: secret
+        - |
+          objectName: dev-mat-config-password
           objectType: secret
   secretObjects:
     - secretName: azure-kv
       type: Opaque
       data:
-        - objectName: dev-aule-bot-token
+        - objectName: prod-bot-mat-token            
           key: bot-token
-        - objectName: dev-db-user
+        - objectName: prod-mat-db-user
           key: db-user
-        - objectName: dev-db-password
+        - objectName: prod-bot-mat-db-password
           key: db-pass
+        - objectName: dev-mat-config-password
+          key: mat-pass
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -44,7 +49,7 @@ data:
         {
           "botTypeApi": 1,
           "token": "$BOT_TOKEN",
-          "onMessages": "au",
+          "onMessages": "mat",
           "website": null,
           "contactString": null,
           "acceptedMessages": true,
@@ -63,24 +68,31 @@ data:
     {
       "User": "$DB_USER",
       "Password": "$DB_PASS",
-      "Database": "polinetwork_test",
+      "Database": "polinetwork_materials",
       "Host": "mariadb-service.mariadb.svc.cluster.local",
       "Port": 3306
+    }
+  materialbotconfig.json: |
+    {
+      "Password": "$MAT_PASS",
+      "RootDir": "/Repos/"
     }
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: bot-rooms
+  name: bot-mat
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
-      app: bot-rooms
+      app: bot-mat
   template:
     metadata:
       labels:
-        app: bot-rooms
+        app: bot-mat
     spec:
       securityContext:
         runAsUser: 7999
@@ -95,7 +107,8 @@ spec:
           args:
             - |
               envsubst < /configmap/bots_info.json > /config/bots_info.json && \
-              envsubst < /configmap/dbconfig.json > /config/dbconfig.json
+              envsubst < /configmap/dbconfig.json > /config/dbconfig.json && \
+              envsubst < /configmap/materialbotconfig.json > /config/materialbotconfig.json
           volumeMounts:
             - name: config-map
               mountPath: /configmap
@@ -117,6 +130,11 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: db-pass
+            - name: MAT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: mat-pass
       containers:
         - name: bot-prod
           image: ghcr.io/polinetworkorg/botcsharp_dev@sha256:da4fe60a3189f93ca85cafbceddfa4e0c7e1b9873ef62c6bf023cce524f1a4be
@@ -126,13 +144,15 @@ spec:
               mountPath: /config
             - name: secrets-store
               mountPath: /mnt/secrets-store
+            - name: mat-persistent-storage
+              mountPath: /Repos
           resources:
             requests:
-              cpu: "10m"
-              memory: "100Mi"
+              cpu: "50m"
+              memory: "300Mi"
             limits:
-              cpu: "100m"
-              memory: "200Mi"
+              cpu: "150m"
+              memory: "500Mi"
       volumes:
         - name: config
           emptyDir: {}
@@ -144,9 +164,14 @@ spec:
                 path: bots_info.json
               - key: dbconfig.json
                 path: dbconfig.json
+              - key: materialbotconfig.json
+                path: materialbotconfig.json
         - name: secrets-store
           csi:
             driver: secrets-store.csi.k8s.io
             readOnly: true
             volumeAttributes:
-              secretProviderClass: "bot-rooms-spc"
+              secretProviderClass: "bot-mat-spc"
+        - name: mat-persistent-storage
+          persistentVolumeClaim:
+            claimName: bot-pvc
