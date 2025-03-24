@@ -1,4 +1,5 @@
 {
+  "disabled": true,
   "image": {
     "image_list": "toto04/testcontainer:latest",
     "update_strategy": "digest"
