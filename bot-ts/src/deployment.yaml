@@ -1,0 +1,69 @@
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: bot-ts-spc
+  namespace: bot-ts
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: "31ef9b42-b1c6-4bbc-bbce-3cf2faa1c8cb"
+    tenantId: "7f8cafc8-4314-4070-9744-fe02f91bcb21"
+    keyvaultName: "kv-polinetwork"
+    objects: |
+      array:
+        - |
+          objectName: bot-ts-token            
+          objectType: secret
+  secretObjects:
+    - secretName: azure-kv
+      type: Opaque
+      data:
+        - objectName: bot-ts-token
+          key: bot-token
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-ts
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bot-ts
+  template:
+    metadata:
+      labels:
+        app: bot-ts
+    spec:
+      containers:
+        - name: bot-ts
+          image: ghcr.io/polinetworkorg/telegram@sha256:aa7203181e578cbc48e9fe1c8a011dc89f49f7a21137be6124051f727bb814fb
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: bot-token
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "200Mi"
+            limits:
+              cpu: "250m"
+              memory: "400Mi"
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "bot-ts-spc"
