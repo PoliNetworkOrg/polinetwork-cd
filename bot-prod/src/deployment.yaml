@@ -1,0 +1,121 @@
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: bot-prod-spc
+  namespace: bot-prod
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: "31ef9b42-b1c6-4bbc-bbce-3cf2faa1c8cb"
+    tenantId: "7f8cafc8-4314-4070-9744-fe02f91bcb21"
+    keyvaultName: "kv-polinetwork"
+    objects: |
+      array:
+        - |
+          objectName: prod-mod-bot-token            
+          objectType: secret
+        - |
+          objectName: prod-mod-db-user
+          objectType: secret
+        - |
+          objectName: prod-db-password 
+          objectType: secret
+  secretObjects:
+    - secretName: azure-kv
+      type: Opaque
+      data:
+        - objectName: prod-mod-bot-token
+          key: bot-token
+        - objectName: prod-mod-db-user
+          key: db-user
+        - objectName: prod-db-password
+          key: db-pass
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-prod
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bot-prod
+  template:
+    metadata:
+      labels:
+        app: bot-prod
+    spec:
+      securityContext:
+        runAsUser: 7999
+        runAsGroup: 7999
+        fsGroup: 7999
+        fsGroupChangePolicy: "OnRootMismatch"
+      initContainers:
+        - name: botcsharp-config
+          image: ghcr.io/polinetworkorg/botcsharp-config@sha256:d22b42706e9e94be6ac9ec0cc59482a5512c3386011ca75274e468bff55209ee
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: false
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
+          env:
+            - name: OUT_DIR
+              value: "/config"
+            - name: CREATE_DB_CONFIG
+              value: "true"
+
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: bot-token
+            - name: BOT_ON_MESSAGES
+              value: "m"
+
+            - name: DB_DATABASE
+              value: "polinetwork"
+            - name: DB_HOST
+              value: "mariadb-service.mariadb.svc.cluster.local"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-pass
+      containers:
+        - name: bot-prod
+          image: polinetwork/botcsharp_prod:03c7434f06323ffdec301cb105d1d3b2c1ed4a95
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+          - name: config
+            mountPath: /config
+            readOnly: true
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "200Mi"
+            limits:
+              cpu: "250m"
+              memory: "400Mi"
+      volumes:
+        - name: config
+          emptyDir: {}
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "bot-prod-spc"
