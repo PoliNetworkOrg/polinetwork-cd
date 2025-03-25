@@ -1,3 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-ts-redis
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bot-ts-redis
+  template:
+    metadata:
+      labels:
+        app: bot-ts-redis
+    spec:
+      containers:
+        - name: bot-ts-redis
+          image: redis
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "200Mi"
+            limits:
+              cpu: "250m"
+              memory: "400Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bot-ts-redis-service
+spec:
+  selector:
+    app: bot-ts-redis  # Match the labels of your Redis deployment
+  ports:
+    - protocol: TCP
+      port: 6379  # The port the service exposes
+      targetPort: 6379 # The port Redis is listening on inside the container
+---
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
@@ -49,6 +91,10 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: bot-token
+            - name: REDIS_HOST
+              value: "bot-ts-redis-service.bot-ts.svc.cluster.local"
+            - name: REDIS_PORT
+              value: "6379"
           volumeMounts:
             - name: secrets-store
               mountPath: /mnt/secrets-store
