@@ -82,7 +82,7 @@ spec:
             - mountPath: /var/lib/postgresql/data
               name: postgresdata
             - name: secrets-store
-              mountPath: /mnt/secrets-store
+              mountPath: /var/run/secrets-store
               readOnly: true
       volumes:
         - name: postgresdata
