@@ -93,5 +93,5 @@ spec:
             driver: secrets-store.csi.k8s.io
             readOnly: true
             volumeAttributes:
-              secretProviderClass: "bot-prod-spc"
+              secretProviderClass: "postgres-spc"
 
