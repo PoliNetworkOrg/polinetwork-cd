@@ -65,6 +65,18 @@ spec:
         - objectName: bot-ts-token
           key: bot-token
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-static
+  resources:
+    requests:
+      storage: 500Mi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -99,6 +111,8 @@ spec:
             - name: secrets-store
               mountPath: /mnt/secrets-store
               readOnly: true
+            - name: redis-pvc
+              mountPath: /data
           resources:
             requests:
               cpu: "150m"
@@ -113,3 +127,6 @@ spec:
             readOnly: true
             volumeAttributes:
               secretProviderClass: "bot-ts-spc"
+        - name: redis-pvc
+          persistentVolumeClaim:
+            claimName: redis-pvc
