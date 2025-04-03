@@ -59,28 +59,29 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: 'postgres:17.4'
+          image: "postgres:17.4"
           imagePullPolicy: IfNotPresent
           restart: always
           ports:
             - containerPort: 5432
           env:
-          - name: POSTGRES_DB
-            value: default
-          - name: POSTGRES_USER
-            valueFrom:
-              secretKeyRef:
-                name: azure-kv
-                key: db-user
-          - name: POSTGRES_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: azure-kv
-                key: db-pass
-                optional: false
+            - name: POSTGRES_DB
+              value: default
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-pass
+                  optional: false
           volumeMounts:
             - mountPath: /var/lib/postgresql/data
               name: postgresdata
+              subPath: postgresdata
             - name: secrets-store
               mountPath: /var/run/secrets-store
               readOnly: true
@@ -94,4 +95,3 @@ spec:
             readOnly: true
             volumeAttributes:
               secretProviderClass: "postgres-spc"
-
