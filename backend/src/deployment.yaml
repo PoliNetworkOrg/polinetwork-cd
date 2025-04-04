@@ -28,6 +28,18 @@ spec:
         - objectName: postgres-root-user
           key: db-user
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  selector:
+    app: backend
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -48,6 +60,8 @@ spec:
         - name: backend
           image: ghcr.io/polinetworkorg/backend@sha256:9243dbab3bc0834a04ac1005b8c69f8797ef74e66531a0485c2188f24499f445
           imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
           volumeMounts:
             - name: secrets-store
               mountPath: /mnt/secrets-store
