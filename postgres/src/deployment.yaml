@@ -61,7 +61,6 @@ spec:
         - name: postgres
           image: "postgres:17.4"
           imagePullPolicy: IfNotPresent
-          restart: always
           ports:
             - containerPort: 5432
           env:
