@@ -35,8 +35,9 @@ metadata:
 spec:
   selector:
     app: backend
+  type: LoadBalancer
   ports:
-    - protocol: TCP
+    - name: backend
       port: 3000
       targetPort: 3000
 ---
