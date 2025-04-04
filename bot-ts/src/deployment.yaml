@@ -103,6 +103,8 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: bot-token
+            - name: BACKEND_URL
+              value: "backend-service.backend.svc.cluster.local:3000"
             - name: REDIS_HOST
               value: "bot-ts-redis-service.bot-ts.svc.cluster.local"
             - name: REDIS_PORT
