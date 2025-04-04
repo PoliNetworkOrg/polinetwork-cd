@@ -1,0 +1,78 @@
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: backend-spc
+  namespace: backend
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: "31ef9b42-b1c6-4bbc-bbce-3cf2faa1c8cb"
+    tenantId: "7f8cafc8-4314-4070-9744-fe02f91bcb21"
+    keyvaultName: "kv-polinetwork"
+    objects: |
+      array:
+        - |
+          objectName: postgres-root-user            
+          objectType: secret
+        - |
+          objectName: postgres-root-password
+          objectType: secret
+  secretObjects:
+    - secretName: azure-kv
+      type: Opaque
+      data:
+        - objectName: postgres-root-password
+          key: db-pass
+        - objectName: postgres-root-user
+          key: db-user
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/polinetworkorg/backend@sha256:9243dbab3bc0834a04ac1005b8c69f8797ef74e66531a0485c2188f24499f445
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
+          env:
+            - name: DB_NAME
+              value: "polinetwork_backend"
+            - name: DB_HOST
+              value: "postgres-service.postgres.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-user
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-pass
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "backend-spc"
