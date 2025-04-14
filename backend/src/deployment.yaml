@@ -83,6 +83,10 @@ spec:
               mountPath: /mnt/secrets-store
               readOnly: true
           env:
+            - name: PUBLIC_URL
+              value: "https://api.polinetwork.org"
+            - name: TRUSTED_ORIGINS
+              value: "https://polinetwork.org,https://admin.polinetwork.org,http://localhost:3001,http://localhost:3002"
             - name: DB_NAME
               value: "polinetwork_backend"
             - name: DB_HOST
