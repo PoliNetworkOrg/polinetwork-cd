@@ -14,6 +14,15 @@ spec:
     objects: |
       array:
         - |
+          objectName: backend-auth-secret            
+          objectType: secret
+        - |
+          objectName: backend-auth-github-id            
+          objectType: secret
+        - |
+          objectName: backend-auth-github-secret            
+          objectType: secret
+        - |
           objectName: postgres-root-user            
           objectType: secret
         - |
@@ -23,6 +32,12 @@ spec:
     - secretName: azure-kv
       type: Opaque
       data:
+        - objectName: backend-auth-github-secret
+          key: auth-github-id
+        - objectName: backend-auth-github-id
+          key: auth-github-secret
+        - objectName: backend-auth-secret
+          key: auth-secret
         - objectName: postgres-root-password
           key: db-pass
         - objectName: postgres-root-user
@@ -84,6 +99,21 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: db-pass
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: auth-secret
+            - name: GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: auth-github-id
+            - name: GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: auth-github-secret
       volumes:
         - name: secrets-store
           csi:
