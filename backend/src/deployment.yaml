@@ -17,6 +17,9 @@ spec:
           objectName: backend-auth-secret            
           objectType: secret
         - |
+          objectName: backend-encryption-key            
+          objectType: secret
+        - |
           objectName: backend-auth-github-id            
           objectType: secret
         - |
@@ -32,6 +35,8 @@ spec:
     - secretName: azure-kv
       type: Opaque
       data:
+        - objectName: backend-encryption-key
+          key: encryption-key
         - objectName: backend-auth-github-secret
           key: auth-github-id
         - objectName: backend-auth-github-id
@@ -103,6 +108,11 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: db-pass
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: encryption-key
             - name: BETTER_AUTH_SECRET
               valueFrom:
                 secretKeyRef:
