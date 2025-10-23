@@ -19,6 +19,12 @@ spec:
         - |
           objectName: postgres-root-password
           objectType: secret
+        - |
+          objectName: pgadmin-email
+          objectType: secret
+        - |
+          objectName: pgadmin-password
+          objectType: secret
   secretObjects:
     - secretName: azure-kv
       type: Opaque
@@ -27,6 +33,10 @@ spec:
           key: db-user
         - objectName: postgres-root-password
           key: db-pass
+        - objectName: pgadmin-email
+          key: pgadmin-email
+        - objectName: pgadmin-password
+          key: pgadmin-password
 ---
 apiVersion: v1
 kind: Service
@@ -42,6 +52,21 @@ spec:
       targetPort: 5432
   selector:
     app: postgres
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgadmin-service
+  labels:
+    app: pgadmin
+spec:
+  type: LoadBalancer
+  ports:
+    - name: pgadmin
+      port: 80
+      targetPort: 80
+  selector:
+    app: pgadmin
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -88,6 +113,57 @@ spec:
         - name: postgresdata
           persistentVolumeClaim:
             claimName: postgres-pvc
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "postgres-spc"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgadmin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgadmin
+  template:
+    metadata:
+      labels:
+        app: pgadmin
+    spec:
+      containers:
+        - name: pgadmin
+          image: "dpage/pgadmin4:8"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          env:
+            - name: PGADMIN_DEFAULT_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: pgadmin-email
+            - name: PGADMIN_DEFAULT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: pgadmin-password
+                  optional: false
+            - name: PGADMIN_CONFIG_SERVER_MODE
+              value: "False"
+          volumeMounts:
+            - mountPath: /var/lib/pgadmin
+              name: pgadmin-data
+            - name: secrets-store
+              mountPath: /var/run/secrets-store
+              readOnly: true
+      volumes:
+        - name: pgadmin-data
+          persistentVolumeClaim:
+            claimName: pgadmin-pvc
         - name: secrets-store
           csi:
             driver: secrets-store.csi.k8s.io
