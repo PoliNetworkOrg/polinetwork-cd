@@ -164,18 +164,11 @@ spec:
                   name: azure-kv
                   key: pgadmin-password
                   optional: false
-            - name: PGADMIN_CONFIG_SERVER_MODE
-              value: "False"
           volumeMounts:
-            - mountPath: /var/lib/pgadmin
-              name: pgadmin-data
             - name: secrets-store
               mountPath: /var/run/secrets-store
               readOnly: true
       volumes:
-        - name: pgadmin-data
-          persistentVolumeClaim:
-            claimName: pgadmin-pvc
         - name: secrets-store
           csi:
             driver: secrets-store.csi.k8s.io
