@@ -46,7 +46,6 @@ metadata:
   labels:
     app: uptime-kuma
 spec:
-  type: LoadBalancer
   ports:
     - name: uptime-kuma
       port: 3001

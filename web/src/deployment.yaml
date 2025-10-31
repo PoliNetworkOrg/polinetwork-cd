@@ -5,7 +5,6 @@ metadata:
 spec:
   selector:
     app: web
-  type: LoadBalancer
   ports:
     - name: web
       port: 3000

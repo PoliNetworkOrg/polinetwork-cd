@@ -5,7 +5,6 @@ metadata:
 spec:
   selector:
     app: admin
-  type: LoadBalancer
   ports:
     - name: admin
       port: 3001

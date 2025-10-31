@@ -72,7 +72,6 @@ metadata:
   labels:
     app: pgadmin
 spec:
-  type: LoadBalancer
   ports:
     - name: pgadmin
       port: 80
