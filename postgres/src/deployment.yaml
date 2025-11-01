@@ -39,18 +39,6 @@ spec:
           key: pgadmin-password
 ---
 apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: pgadmin-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: longhorn-static
-  resources:
-    requests:
-      storage: 300Mi
----
-apiVersion: v1
 kind: Service
 metadata:
   name: postgres-service
