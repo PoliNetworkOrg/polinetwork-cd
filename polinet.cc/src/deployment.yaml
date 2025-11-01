@@ -1,0 +1,88 @@
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: polinetcc-spc
+  namespace: polinetcc
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: "31ef9b42-b1c6-4bbc-bbce-3cf2faa1c8cb"
+    tenantId: "7f8cafc8-4314-4070-9744-fe02f91bcb21"
+    keyvaultName: "kv-polinetwork"
+    objects: |
+      array:
+        - |
+          objectName: postgres-polinetcc-user            
+          objectType: secret
+        - |
+          objectName: postgres-polinetcc-password
+          objectType: secret
+  secretObjects:
+    - secretName: azure-kv
+      type: Opaque
+      data:
+        - objectName: postgres-polinetcc-password
+          key: db-pass
+        - objectName: postgres-polinetcc-user
+          key: db-user
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: polinetcc-service
+spec:
+  selector:
+    app: polinetcc
+  ports:
+    - name: polinetcc
+      port: 6111
+      targetPort: 6111
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: polinetcc
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: polinetcc
+  template:
+    metadata:
+      labels:
+        app: polinetcc
+    spec:
+      containers:
+        - name: polinetcc
+          image: ghcr.io/polinetworkorg/polinet.cc@sha256:66d94c761ba17bdafbb14d05b891d459dfd0fe6a7a6bf824ddb3dd1b8044562d
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6111
+          env:
+            - name: DB_NAME
+              value: "url_shortner"
+            - name: DB_HOST
+              value: "postgres-service.postgres.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-user
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-pass
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "polinetcc-spc"
