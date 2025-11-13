@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
       - name: uptime-kuma-pod
-        image: louislam/uptime-kuma 
+        image: louislam/uptime-kuma@sha256:4c364ef96aaddac7ec4c85f5e5f31c3394d35f631381ccbbf93f18fd26ac7cba
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 3001
