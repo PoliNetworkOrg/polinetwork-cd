@@ -17,6 +17,15 @@ spec:
           objectName: backend-auth-secret            
           objectType: secret
         - |
+          objectName: backend-azure-client-id            
+          objectType: secret
+        - |
+          objectName: backend-azure-client-secret            
+          objectType: secret
+        - |
+          objectName: backend-azure-tenant-id            
+          objectType: secret
+        - |
           objectName: backend-encryption-key            
           objectType: secret
         - |
@@ -35,6 +44,12 @@ spec:
     - secretName: azure-kv
       type: Opaque
       data:
+        - objectName: backend-azure-client-id
+          key: azure-client-id
+        - objectName: backend-azure-client-secret
+          key: azure-client-secret
+        - objectName: backend-azure-tenant-id
+          key: azure-tenant-id
         - objectName: backend-encryption-key
           key: encryption-key
         - objectName: backend-auth-github-secret
@@ -127,6 +142,21 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: auth-github-secret
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: azure-client-id
+            - name: AZURE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: azure-client-secret
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: azure-tenant-id
       volumes:
         - name: secrets-store
           csi:
