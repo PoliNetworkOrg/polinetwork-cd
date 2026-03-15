@@ -36,6 +36,6 @@ spec:
             - name: PUBLIC_URL
               value: "https://admin.polinetwork.org"
             - name: BACKEND_URL
-              value: "https://api.polinetwork.org"
+              value: "http://backend-service.backend.svc.cluster.local:3000"
             - name: ADMIN_ORG_EMAIL
               value: "adminorg@polinetwork.org"
