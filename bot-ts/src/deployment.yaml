@@ -33,10 +33,10 @@ metadata:
   name: bot-ts-redis-service
 spec:
   selector:
-    app: bot-ts-redis  # Match the labels of your Redis deployment
+    app: bot-ts-redis # Match the labels of your Redis deployment
   ports:
     - protocol: TCP
-      port: 6379  # The port the service exposes
+      port: 6379 # The port the service exposes
       targetPort: 6379 # The port Redis is listening on inside the container
 ---
 apiVersion: secrets-store.csi.x-k8s.io/v1
@@ -57,12 +57,22 @@ spec:
         - |
           objectName: bot-ts-token            
           objectType: secret
+        - |
+          objectName: influxdb-token            
+          objectType: secret
+        - |
+          objectName: openai-api-key            
+          objectType: secret
   secretObjects:
     - secretName: azure-kv
       type: Opaque
       data:
         - objectName: bot-ts-token
           key: bot-token
+        - objectName: influxdb-token
+          key: influxdb-token
+        - objectName: openai-api-key
+          key: openai-api-key
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -108,6 +118,18 @@ spec:
               value: "bot-ts-redis-service.bot-ts.svc.cluster.local"
             - name: REDIS_PORT
               value: "6379"
+            - name: INFLUXDB_URL
+              value: "http://influxdb-service.influxdb.svc.cluster.local:8086"
+            - name: INFLUXDB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: influxdb-token
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: openai-api-key
           volumeMounts:
             - name: secrets-store
               mountPath: /mnt/secrets-store
