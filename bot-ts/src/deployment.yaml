@@ -107,6 +107,10 @@ spec:
           image: ghcr.io/polinetworkorg/telegram@sha256:aa7203181e578cbc48e9fe1c8a011dc89f49f7a21137be6124051f727bb814fb
           imagePullPolicy: IfNotPresent
           env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Europe/Rome"
             - name: BOT_TOKEN
               valueFrom:
                 secretKeyRef:
