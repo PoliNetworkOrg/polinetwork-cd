@@ -33,6 +33,10 @@ spec:
           ports:
             - containerPort: 3000
           env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Europe/Rome"
             - name: PUBLIC_URL
               value: "https://beta.polinetwork.org"
             - name: BACKEND_URL

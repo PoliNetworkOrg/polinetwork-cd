@@ -67,6 +67,10 @@ spec:
               mountPath: /mnt/secrets-store
               readOnly: true
           env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Europe/Rome"
             - name: DB_NAME
               value: "url_shortner"
             - name: DB_HOST

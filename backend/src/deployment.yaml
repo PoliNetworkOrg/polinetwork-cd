@@ -102,6 +102,10 @@ spec:
               mountPath: /mnt/secrets-store
               readOnly: true
           env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Europe/Rome"
             - name: PUBLIC_URL
               value: "https://api.polinetwork.org"
             - name: TRUSTED_ORIGINS
