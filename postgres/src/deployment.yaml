@@ -19,12 +19,6 @@ spec:
         - |
           objectName: postgres-root-password
           objectType: secret
-        - |
-          objectName: pgadmin-email
-          objectType: secret
-        - |
-          objectName: pgadmin-password
-          objectType: secret
   secretObjects:
     - secretName: azure-kv
       type: Opaque
@@ -33,10 +27,6 @@ spec:
           key: db-user
         - objectName: postgres-root-password
           key: db-pass
-        - objectName: pgadmin-email
-          key: pgadmin-email
-        - objectName: pgadmin-password
-          key: pgadmin-password
 ---
 apiVersion: v1
 kind: Service
@@ -52,20 +42,6 @@ spec:
       targetPort: 5432
   selector:
     app: postgres
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: pgadmin-service
-  labels:
-    app: pgadmin
-spec:
-  ports:
-    - name: pgadmin
-      port: 80
-      targetPort: 80
-  selector:
-    app: pgadmin
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -112,50 +88,6 @@ spec:
         - name: postgresdata
           persistentVolumeClaim:
             claimName: postgres-pvc
-        - name: secrets-store
-          csi:
-            driver: secrets-store.csi.k8s.io
-            readOnly: true
-            volumeAttributes:
-              secretProviderClass: "postgres-spc"
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: pgadmin
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: pgadmin
-  template:
-    metadata:
-      labels:
-        app: pgadmin
-    spec:
-      containers:
-        - name: pgadmin
-          image: "dpage/pgadmin4:9.14"
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 80
-          env:
-            - name: PGADMIN_DEFAULT_EMAIL
-              valueFrom:
-                secretKeyRef:
-                  name: azure-kv
-                  key: pgadmin-email
-            - name: PGADMIN_DEFAULT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: azure-kv
-                  key: pgadmin-password
-                  optional: false
-          volumeMounts:
-            - name: secrets-store
-              mountPath: /var/run/secrets-store
-              readOnly: true
-      volumes:
         - name: secrets-store
           csi:
             driver: secrets-store.csi.k8s.io
