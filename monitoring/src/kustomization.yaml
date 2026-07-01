@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - deployment-grafana.yaml
   - deployment-prometheus.yaml
+  - deployment-node-exporter.yaml
