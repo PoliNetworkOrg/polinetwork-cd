@@ -1,12 +1,11 @@
 ui = true
-disable_mlock = false
 log_level = "info"
 
 api_addr = "https://openbao.polinetwork.org"
 cluster_addr = "http://openbao:8201"
 
 storage "raft" {
-  path    = "/openbao/data"
+  path    = "/openbao/file/raft"
   node_id = "vm01"
 }
 

@@ -21,6 +21,13 @@ OpenBao on the ARM64 lab host.
 - OpenBao is pinned to `2.5.4`, uses integrated Raft storage below
   `/srv/polinetwork/state/openbao`, and is routed as
   `openbao.polinetwork.org`. It is never started in development mode.
+- OpenBao uses the image's default entrypoint and persistent `/openbao/file`
+  contract. The state directory is created initially by `pnadmin`; the
+  entrypoint assigns it to the image's `openbao` account before dropping root.
+  Compose retains only the capabilities required for that ownership repair and
+  privilege drop.
+- The `server` command also uses the image's default `/openbao/config`
+  discovery; no duplicate `-config` argument is supplied.
 - `secrets-api` is internal and reserved for OpenBao workload clients. Only
   OpenBao itself also joins `pn-edge` for the Access-protected UI/API route.
 - Initialization output, unseal shares and root tokens must never be committed

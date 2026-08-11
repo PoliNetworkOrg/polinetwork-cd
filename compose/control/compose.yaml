@@ -84,17 +84,16 @@ services:
   openbao:
     image: quay.io/openbao/openbao:2.5.4
     restart: unless-stopped
-    command: server -config=/openbao/config/openbao.hcl
+    command: [server]
     environment:
       BAO_ADDR: http://127.0.0.1:8200
     volumes:
       - ./openbao/openbao.hcl:/openbao/config/openbao.hcl:ro
-      - /srv/polinetwork/state/openbao/raft:/openbao/data
-      - /srv/polinetwork/state/openbao/backups:/openbao/backups
+      - /srv/polinetwork/state/openbao:/openbao/file
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
-    cap_add: [IPC_LOCK]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETGID, SETUID]
     mem_limit: 512m
     mem_swappiness: 0
     cpus: 0.50
