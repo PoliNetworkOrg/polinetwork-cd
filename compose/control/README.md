@@ -1,7 +1,7 @@
 # Control project
 
-The Wave 1 control project runs Komodo Core, Komodo Periphery and MongoDB on the
-ARM64 lab host.
+The Wave 1 control project runs Komodo Core, Komodo Periphery, MongoDB and
+OpenBao on the ARM64 lab host.
 
 - Core and Periphery are pinned to Komodo `2.2.0`.
 - MongoDB is pinned to the supported `8.0.28` LTS patch.
@@ -18,6 +18,13 @@ ARM64 lab host.
   `/srv/polinetwork/state/komodo/compose.env` with mode `0600`; the example file
   contains no usable secret.
 - Periphery terminal and container-exec features are disabled for the lab.
+- OpenBao is pinned to `2.5.4`, uses integrated Raft storage below
+  `/srv/polinetwork/state/openbao`, and is routed as
+  `openbao.polinetwork.org`. It is never started in development mode.
+- `secrets-api` is internal and reserved for OpenBao workload clients. Only
+  OpenBao itself also joins `pn-edge` for the Access-protected UI/API route.
+- Initialization output, unseal shares and root tokens must never be committed
+  or retained unencrypted on the VM.
 
 Deploy only with the external environment file:
 
