@@ -41,11 +41,13 @@ docker network create \
   pn-db
 ```
 
-`pn-edge` is not a host or Internet exposure. It only allows cloudflared,
-Traefik and explicitly labelled HTTP applications to communicate. `pn-app`
-allows application-to-application communication and outbound access without
-putting non-HTTP services on the edge network. `pn-db` has no external gateway
-and is reserved for databases and their clients.
+`pn-edge` is not a host or Internet exposure. The reviewed Compose definitions
+control its membership: only cloudflared, Traefik and explicitly exposed HTTP
+applications join it. Network labels are metadata and do not enforce access.
+`pn-app` allows application-to-application communication and outbound access
+without putting non-HTTP services on the edge network. `pn-db` has no external
+routing because it is created with `--internal`; it is reserved for databases
+and their clients.
 
 No production service in this repository may publish a host `ports:` mapping.
 The Wave 1 canaries use `.invalid` hostnames and cannot be resolved publicly.
