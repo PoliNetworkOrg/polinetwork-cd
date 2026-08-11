@@ -8,7 +8,7 @@ kept in the single `applications` project.
 | --- | --- |
 | `applications` | PoliNetwork applications, bots, workers and student projects |
 | `data` | PostgreSQL, temporary MariaDB, Redis and InfluxDB |
-| `edge` | Docker socket proxy, Traefik and later cloudflared |
+| `edge` | cloudflared, Docker socket proxy and Traefik |
 | `observability` | Prometheus, Grafana, exporters and Uptime Kuma |
 | `control` | Komodo and OpenBao |
 

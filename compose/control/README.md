@@ -6,7 +6,8 @@ ARM64 lab host.
 - Core and Periphery are pinned to Komodo `2.2.0`.
 - MongoDB is pinned to the supported `8.0.28` LTS patch.
 - No service publishes a host port.
-- Core joins `pn-edge` only for Traefik routing through `komodo.invalid`.
+- Core joins `pn-edge` only for Traefik routing through
+  `komodo.polinetwork.org`.
 - MongoDB and Periphery communicate with Core on the internal `control-api`
   network.
 - MongoDB data, Komodo communication keys and backups use bind mounts under
@@ -25,5 +26,6 @@ docker compose \
   up -d --pull always --wait --wait-timeout 120
 ```
 
-The `.invalid` hostname is intentionally non-public. A production admin route
-requires the separately reviewed Cloudflare Access/MFA configuration.
+The route requires a dedicated VM Cloudflare Tunnel and a Cloudflare Access
+policy with MFA restricted to tech administrators. Do not reuse the AKS tunnel
+token: keeping separate connectors preserves deterministic origin rollback.
