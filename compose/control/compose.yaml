@@ -1,0 +1,89 @@
+name: control
+
+services:
+  mongo:
+    image: mongo:8.0.28
+    command: --quiet --wiredTigerCacheSizeGB 0.25
+    restart: unless-stopped
+    labels:
+      komodo.skip: "true"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DATABASE_USERNAME:?set in env file}
+      MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DATABASE_PASSWORD:?set in env file}
+    volumes:
+      - /srv/polinetwork/state/komodo/mongo-data:/data/db
+      - /srv/polinetwork/state/komodo/mongo-config:/data/configdb
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet
+          --username "$${MONGO_INITDB_ROOT_USERNAME}"
+          --password "$${MONGO_INITDB_ROOT_PASSWORD}"
+          --authenticationDatabase admin
+          --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)'
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 1g
+    cpus: 0.75
+    pids_limit: 256
+    networks: [control-api]
+
+  core:
+    image: ghcr.io/moghtech/komodo-core:2.2.0
+    init: true
+    restart: unless-stopped
+    labels:
+      komodo.skip: "true"
+      traefik.enable: "true"
+      traefik.docker.network: pn-edge
+      traefik.http.routers.komodo-lab.rule: Host(`komodo.invalid`)
+      traefik.http.services.komodo-lab.loadbalancer.server.port: "9120"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    env_file:
+      - /srv/polinetwork/state/komodo/compose.env
+    environment:
+      KOMODO_DATABASE_ADDRESS: mongo:27017
+    volumes:
+      - /srv/polinetwork/state/komodo/keys:/config/keys
+      - /srv/polinetwork/state/komodo/backups:/backups
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    cpus: 0.75
+    pids_limit: 256
+    networks: [control-api, pn-edge]
+
+  periphery:
+    image: ghcr.io/moghtech/komodo-periphery:2.2.0
+    init: true
+    restart: unless-stopped
+    labels:
+      komodo.skip: "true"
+    depends_on: [core]
+    env_file:
+      - /srv/polinetwork/state/komodo/compose.env
+    volumes:
+      - /srv/polinetwork/state/komodo/keys:/config/keys
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/proc:ro
+      - /srv/polinetwork/compose:/srv/polinetwork/compose
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 0.50
+    pids_limit: 256
+    networks: [control-api]
+
+networks:
+  control-api:
+    internal: true
+  pn-edge:
+    external: true
+    name: pn-edge
