@@ -41,8 +41,8 @@ services:
       komodo.skip: "true"
       traefik.enable: "true"
       traefik.docker.network: pn-edge
-      traefik.http.routers.komodo-lab.rule: Host(`komodo.invalid`)
-      traefik.http.services.komodo-lab.loadbalancer.server.port: "9120"
+      traefik.http.routers.komodo.rule: Host(`komodo.polinetwork.org`)
+      traefik.http.services.komodo.loadbalancer.server.port: "9120"
     depends_on:
       mongo:
         condition: service_healthy
