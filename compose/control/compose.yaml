@@ -85,12 +85,16 @@ services:
     image: quay.io/openbao/openbao:2.5.4
     restart: unless-stopped
     command: [server]
+    env_file:
+      - /srv/polinetwork/state/openbao/compose.env
     environment:
-      BAO_ADDR: http://127.0.0.1:8200
+      BAO_ADDR: https://127.0.0.1:8200
+      BAO_CACERT: /openbao/tls/ca.crt
       BAO_LOCAL_CONFIG: >-
-        {"ui":true,"log_level":"info","api_addr":"https://openbao.polinetwork.org","cluster_addr":"http://openbao:8201","storage":{"raft":{"path":"/openbao/file/raft","node_id":"vm01"}},"listener":{"tcp":{"address":"0.0.0.0:8200","cluster_address":"0.0.0.0:8201","tls_disable":true}},"telemetry":{"disable_hostname":true}}
+        {"ui":true,"log_level":"info","api_addr":"https://openbao.polinetwork.org","cluster_addr":"https://openbao:8201","seal":{"azurekeyvault":{"vault_name":"kv-polinetwork","key_name":"openbao-unseal"}},"storage":{"raft":{"path":"/openbao/file/raft","node_id":"vm01"}},"listener":{"tcp":{"address":"0.0.0.0:8200","cluster_address":"0.0.0.0:8201","tls_cert_file":"/openbao/tls/tls.crt","tls_key_file":"/openbao/tls/tls.key","tls_min_version":"tls12"}},"telemetry":{"disable_hostname":true}}
     volumes:
       - /srv/polinetwork/state/openbao:/openbao/file
+      - /srv/polinetwork/state/openbao/tls:/openbao/tls:ro
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
@@ -115,6 +119,8 @@ services:
       traefik.docker.network: pn-edge
       traefik.http.routers.openbao.rule: Host(`openbao.polinetwork.org`)
       traefik.http.services.openbao.loadbalancer.server.port: "8200"
+      traefik.http.services.openbao.loadbalancer.server.scheme: https
+      traefik.http.services.openbao.loadbalancer.serverstransport: openbao-tls@file
     networks: [secrets-api, pn-edge]
 
 networks:

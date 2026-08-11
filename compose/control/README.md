@@ -21,6 +21,14 @@ OpenBao on the ARM64 lab host.
 - OpenBao is pinned to `2.5.4`, uses integrated Raft storage below
   `/srv/polinetwork/state/openbao`, and is routed as
   `openbao.polinetwork.org`. It is never started in development mode.
+- Its listener uses TLS 1.2 or newer. The server certificate/key and public CA
+  are mounted read-only from `/srv/polinetwork/state/openbao/tls`; Traefik uses
+  the CA to verify the internal `openbao` server name.
+- Auto Unseal uses the built-in OpenBao 2.5.4 Azure Key Vault seal, key
+  `openbao-unseal` in `kv-polinetwork`, and the VM's dedicated user-assigned
+  managed identity. `/srv/polinetwork/state/openbao/compose.env` contains only
+  the non-secret `AZURE_CLIENT_ID` selector and has mode `0600`.
+  `openbao.env.example` documents the required shape without a usable ID.
 - OpenBao uses the image's default entrypoint and persistent `/openbao/file`
   contract. The state directory is created initially by `pnadmin`; the
   entrypoint assigns it to the image's `openbao` account before dropping root.

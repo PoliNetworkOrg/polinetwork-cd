@@ -1,0 +1,6 @@
+http:
+  serversTransports:
+    openbao-tls:
+      serverName: openbao
+      rootCAs:
+        - /etc/traefik/certs/openbao-ca.crt
