@@ -27,7 +27,9 @@ OpenBao on the ARM64 lab host.
   Compose retains only the capabilities required for that ownership repair and
   privilege drop.
 - The `server` command also uses the image's default `/openbao/config`
-  discovery; no duplicate `-config` argument is supplied.
+  discovery; no duplicate `-config` argument is supplied. Its non-secret server
+  configuration is supplied through the image-supported `BAO_LOCAL_CONFIG`
+  mechanism, avoiding host-checkout permission dependencies.
 - `secrets-api` is internal and reserved for OpenBao workload clients. Only
   OpenBao itself also joins `pn-edge` for the Access-protected UI/API route.
 - Initialization output, unseal shares and root tokens must never be committed
