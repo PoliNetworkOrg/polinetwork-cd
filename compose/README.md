@@ -18,13 +18,34 @@ Shared network lifecycle is deliberately outside every Compose project. Create
 them once on a disposable ARM64 lab host before deploying any project:
 
 ```sh
-docker network create pn-edge
-docker network create --internal pn-db
+docker network create \
+  --driver bridge \
+  --subnet 172.30.0.0/24 \
+  --gateway 172.30.0.1 \
+  --label com.polinetwork.role=edge \
+  pn-edge
+
+docker network create \
+  --driver bridge \
+  --subnet 172.30.1.0/24 \
+  --gateway 172.30.1.1 \
+  --label com.polinetwork.role=applications \
+  pn-app
+
+docker network create \
+  --driver bridge \
+  --internal \
+  --subnet 172.30.2.0/24 \
+  --gateway 172.30.2.1 \
+  --label com.polinetwork.role=database \
+  pn-db
 ```
 
 `pn-edge` is not a host or Internet exposure. It only allows cloudflared,
-Traefik and explicitly labelled HTTP applications to communicate. `pn-db` has
-no external gateway and is reserved for databases and their clients.
+Traefik and explicitly labelled HTTP applications to communicate. `pn-app`
+allows application-to-application communication and outbound access without
+putting non-HTTP services on the edge network. `pn-db` has no external gateway
+and is reserved for databases and their clients.
 
 No production service in this repository may publish a host `ports:` mapping.
 The Wave 1 canaries use `.invalid` hostnames and cannot be resolved publicly.

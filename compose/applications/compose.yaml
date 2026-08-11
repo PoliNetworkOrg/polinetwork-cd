@@ -23,7 +23,7 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
-    networks: [pn-edge]
+    networks: [pn-edge, pn-app]
     labels:
       traefik.enable: "true"
       traefik.docker.network: pn-edge
@@ -52,7 +52,7 @@ services:
       timeout: 3s
       retries: 3
       start_period: 5s
-    networks: [pn-edge]
+    networks: [pn-edge, pn-app]
     labels:
       traefik.enable: "true"
       traefik.docker.network: pn-edge
@@ -63,3 +63,6 @@ networks:
   pn-edge:
     external: true
     name: pn-edge
+  pn-app:
+    external: true
+    name: pn-app
