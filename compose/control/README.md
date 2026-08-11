@@ -9,6 +9,8 @@ ARM64 lab host.
 - Core joins `pn-edge` only for Traefik routing through
   `komodo.polinetwork.org`.
 - MongoDB and Periphery communicate with Core on the internal `control-api`
+  network. Periphery also joins its own `control-egress` bridge so it can clone
+  Git repositories and inspect registries without sharing an application
   network.
 - MongoDB data, Komodo communication keys and backups use bind mounts under
   `/srv/polinetwork/state/komodo` on `disk-core`.

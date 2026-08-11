@@ -79,11 +79,12 @@ services:
     mem_limit: 256m
     cpus: 0.50
     pids_limit: 256
-    networks: [control-api]
+    networks: [control-api, control-egress]
 
 networks:
   control-api:
     internal: true
+  control-egress:
   pn-edge:
     external: true
     name: pn-edge
