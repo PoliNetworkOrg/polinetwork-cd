@@ -87,6 +87,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+    networks: [pn-secrets]
 
 secrets:
   github_webhook_secret:
