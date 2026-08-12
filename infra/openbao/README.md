@@ -11,11 +11,17 @@ Audit events go to container stdout and are bounded by Docker's tracked
 audit file below the state disk. The health check requires this single-node
 cluster to be active; a responsive standby with no leader is unhealthy.
 
-Start or converge it from this directory after the shared networks exist:
+Converge an already initialized or restored instance after the shared networks
+exist:
 
 ```sh
 docker compose up -d --pull always --wait --wait-timeout 120
 ```
+
+On an empty state disk, start without `--wait`: the active-only health check
+must remain unhealthy until OpenBao has been initialized or a snapshot has been
+restored. After that operation and the required restart, use the command above
+to enforce the normal health gate.
 
 The TLS initialization container is idempotent: it generates all three files
 only when none exists, validates a complete set, and refuses partial state.
