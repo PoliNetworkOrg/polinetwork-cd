@@ -9,10 +9,12 @@ point. The normal clean-host sequence is:
    needed, the script asks for the administrator password before emitting any
    phase logs. All Azure-held recovery values are fetched by the VM identity.
 
-The default UI prints short colored progress and result lines for each phase,
-plus the useful final state. Command output is captured in a root-only log under
-`/var/log/polinetwork`; a failed phase prints its last 80 lines. Use
-`--verbose` to mirror phase output or `NO_COLOR=1` to disable color.
+On an interactive terminal, each phase starts as one blue progress line and is
+replaced in place by its green result, so start/result pairs do not duplicate
+the log. Successful internal Compose checks stay hidden. Redirected output
+contains one plain result line per phase. Command output is captured in a
+root-only log under `/var/log/polinetwork`; a failed phase prints its last 80
+lines. Use `--verbose` to mirror phase output or `NO_COLOR=1` to disable color.
 If the Key Vault webhook secret changes, bootstrap detects the change without
 printing either value and recreates doco.cd so the in-memory verifier cannot
 continue using stale key material.

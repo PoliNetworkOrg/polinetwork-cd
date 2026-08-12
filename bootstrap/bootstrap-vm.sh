@@ -28,6 +28,8 @@ doco_secret_changed=false
 runtime_secrets_staged=false
 verbose="${PN_BOOTSTRAP_VERBOSE:-false}"
 log_file=
+phase_active=false
+phase_label=
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
   blue='\033[1;34m'
@@ -35,12 +37,14 @@ if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
   red='\033[1;31m'
   bold='\033[1m'
   reset='\033[0m'
+  interactive_output=true
 else
   blue=
   green=
   red=
   bold=
   reset=
+  interactive_output=false
 fi
 
 usage() {
@@ -82,6 +86,36 @@ ok() {
   ui "$green" '✓' "$*"
 }
 
+phase_begin() {
+  phase_label="$*"
+  phase_active=true
+  if [ "$interactive_output" = true ]; then
+    printf '%b…%b %s' "$blue" "$reset" "$phase_label"
+  fi
+}
+
+phase_done() {
+  result_label="${1:-$phase_label}"
+  if [ "$interactive_output" = true ]; then
+    printf '\r\033[2K%b✓%b %s\n' "$green" "$reset" "$result_label"
+  else
+    ok "$result_label"
+  fi
+  phase_active=false
+  phase_label=
+}
+
+phase_error() {
+  result_label="$1"
+  if [ "$interactive_output" = true ]; then
+    printf '\r\033[2K%b✗%b %s\n' "$red" "$reset" "$result_label" >&2
+  else
+    ui "$red" '✗' "$result_label" >&2
+  fi
+  phase_active=false
+  phase_label=
+}
+
 log_event() {
   event="$1"
   shift
@@ -90,6 +124,9 @@ log_event() {
 }
 
 fail() {
+  if [ "$phase_active" = true ]; then
+    phase_error "$phase_label"
+  fi
   ui "$red" '✗' "$*" >&2
   if [ -n "$log_file" ]; then
     printf '  Detailed log: %s\n' "$log_file" >&2
@@ -126,7 +163,7 @@ run_step() {
   shift
   current_step_file="$(mktemp /run/polinetwork-bootstrap-step.XXXXXX)"
   chmod 0600 "$current_step_file"
-  info "$label"
+  phase_begin "$label"
   log_event START "$label"
 
   if "$@" > "$current_step_file" 2>&1; then
@@ -137,7 +174,65 @@ run_step() {
     fi
     rm -f -- "$current_step_file"
     current_step_file=
-    ok "$label"
+    phase_done "$label"
+    return 0
+  else
+    status=$?
+  fi
+
+  cat "$current_step_file" >> "$log_file"
+  log_event FAIL "$label (exit $status)"
+  phase_error "$label failed (exit $status)"
+  printf '%s\n' '  Last output:' >&2
+  tail -n 80 "$current_step_file" | sed 's/^/    /' >&2
+  rm -f -- "$current_step_file"
+  current_step_file=
+  fail 'Bootstrap stopped at the failed phase.'
+}
+
+run_capture_step() {
+  label="$1"
+  capture_file="$2"
+  shift 2
+  phase_begin "$label"
+  log_event START "$label"
+
+  if "$@" > "$capture_file" 2>&1; then
+    cat "$capture_file" >> "$log_file"
+    log_event OK "$label"
+    if [ "$verbose" = true ]; then
+      cat "$capture_file"
+    fi
+    phase_done "$label"
+    return 0
+  else
+    status=$?
+  fi
+
+  cat "$capture_file" >> "$log_file"
+  log_event FAIL "$label (exit $status)"
+  phase_error "$label failed (exit $status)"
+  tail -n 80 "$capture_file" | sed 's/^/    /' >&2
+  fail 'Bootstrap stopped at the failed phase.'
+}
+
+run_check() {
+  label="$1"
+  shift
+  current_step_file="$(mktemp /run/polinetwork-bootstrap-step.XXXXXX)"
+  chmod 0600 "$current_step_file"
+  log_event START "$label"
+
+  if "$@" > "$current_step_file" 2>&1; then
+    cat "$current_step_file" >> "$log_file"
+    log_event OK "$label"
+    if [ "$verbose" = true ]; then
+      info "$label"
+      cat "$current_step_file"
+      ok "$label"
+    fi
+    rm -f -- "$current_step_file"
+    current_step_file=
     return 0
   else
     status=$?
@@ -150,33 +245,7 @@ run_step() {
   tail -n 80 "$current_step_file" | sed 's/^/    /' >&2
   rm -f -- "$current_step_file"
   current_step_file=
-  fail 'Bootstrap stopped at the failed phase.'
-}
-
-run_capture_step() {
-  label="$1"
-  capture_file="$2"
-  shift 2
-  info "$label"
-  log_event START "$label"
-
-  if "$@" > "$capture_file" 2>&1; then
-    cat "$capture_file" >> "$log_file"
-    log_event OK "$label"
-    if [ "$verbose" = true ]; then
-      cat "$capture_file"
-    fi
-    ok "$label"
-    return 0
-  else
-    status=$?
-  fi
-
-  cat "$capture_file" >> "$log_file"
-  log_event FAIL "$label (exit $status)"
-  ui "$red" '✗' "$label failed (exit $status)" >&2
-  tail -n 80 "$capture_file" | sed 's/^/    /' >&2
-  fail 'Bootstrap stopped at the failed phase.'
+  fail 'Bootstrap stopped at the failed check.'
 }
 
 openbao_compose() {
@@ -308,7 +377,7 @@ log_file="/var/log/polinetwork/bootstrap-$(date -u +%Y%m%dT%H%M%SZ)-$$.log"
 install -o root -g root -m 0600 /dev/null "$log_file"
 
 printf '%bPoliNetwork VM bootstrap%b\n' "$bold" "$reset"
-printf 'Quiet mode is active. Detailed output is retained at %s.\n\n' "$log_file"
+printf 'Detailed log: %s\n\n' "$log_file"
 log_event START 'PoliNetwork VM bootstrap'
 
 if [ ! -s "$state_root/openbao/raft/vault.db" ]; then
@@ -337,10 +406,8 @@ else
   ok 'No operator input is required for this convergence run.'
 fi
 
-run_step 'Validate and configure the Debian/Docker host' \
+run_step 'Configure the host and install or verify Docker tools' \
   "$script_dir/bootstrap-host.sh"
-docker_summary="$(docker --version | sed 's/,.*//') / $(docker compose version --short)"
-ok "$docker_summary is ready on the applications disk."
 
 webhook_secret_before=missing
 if [ -s "$doco_webhook_secret" ]; then
@@ -376,12 +443,12 @@ if [ "$recovery_required" = true ]; then
   restic_secret_staged=true
 fi
 
-run_step 'Validate the OpenBao Compose model' openbao_compose config --quiet
+run_check 'Validate the OpenBao Compose model' openbao_compose config --quiet
 run_step 'Start OpenBao and its internal TLS initializer' \
   openbao_compose up -d --pull always
-info 'Waiting for the OpenBao API.'
+phase_begin 'Wait for the OpenBao API'
 wait_for_openbao_api
-ok 'OpenBao API is reachable over internal TLS.'
+phase_done 'OpenBao API reachable over internal TLS'
 
 if ! openbao_initialized; then
   [ -n "$admin_password" ] || \
@@ -417,9 +484,9 @@ if ! openbao_initialized; then
     openbao_compose up -d --wait --wait-timeout 120
   ok 'OpenBao is initialized, auto-unsealed, active, and healthy.'
 else
-  info 'OpenBao is initialized; waiting for active health.'
+  phase_begin 'Wait for OpenBao health'
   wait_for_health "$openbao_container" 60
-  ok 'OpenBao is initialized, auto-unsealed, active, and healthy.'
+  phase_done 'OpenBao initialized, auto-unsealed, active, and healthy'
 fi
 
 if [ ! -e "$state_root/zerobyte/data/data/zerobyte.db" ]; then
@@ -452,7 +519,7 @@ if [ "$need_admin" = true ]; then
     docker cp "$secret_root/azure-storage-account-key" \
     "$openbao_container:/tmp/bootstrap-zerobyte-account-key"
 
-  info 'Converging OpenBao runtime values and least-privilege AppRoles.'
+  phase_begin 'Converge OpenBao runtime values and least-privilege AppRoles'
   log_event START 'Converge OpenBao runtime values and least-privilege AppRoles'
   current_step_file="$(mktemp /run/polinetwork-bootstrap-step.XXXXXX)"
   chmod 0600 "$current_step_file"
@@ -526,12 +593,12 @@ if [ "$need_admin" = true ]; then
     [ "$verbose" = false ] || cat "$current_step_file"
     rm -f -- "$current_step_file"
     current_step_file=
-    ok 'OpenBao runtime values and doco.cd AppRole are converged.'
+    phase_done 'OpenBao runtime values and doco.cd AppRole converged'
   else
     status=$?
     cat "$current_step_file" >> "$log_file"
     log_event FAIL "Converge OpenBao runtime values and least-privilege AppRoles (exit $status)"
-    ui "$red" '✗' "OpenBao provisioning failed (exit $status)" >&2
+    phase_error "OpenBao provisioning failed (exit $status)"
     tail -n 80 "$current_step_file" | sed 's/^/    /' >&2
     fail 'Bootstrap stopped while provisioning OpenBao.'
   fi
@@ -542,23 +609,21 @@ else
   ok 'Existing doco.cd and snapshot AppRole credentials are present.'
 fi
 
-run_step 'Validate the doco.cd Compose model' doco_compose config --quiet
+run_check 'Validate the doco.cd Compose model' doco_compose config --quiet
 if [ "$doco_secret_changed" = true ]; then
-  run_step 'Start doco.cd with the current HMAC secret and reconcile once' \
+  run_step 'Start doco.cd, reconcile once, and enable the signed webhook' \
     doco_compose up -d --pull always --force-recreate \
     --wait --wait-timeout 180 doco-cd
 else
-  run_step 'Converge doco.cd and its one-time initial reconciliation' \
+  run_step 'Converge doco.cd, reconcile once, and enable the signed webhook' \
     doco_compose up -d --pull always --wait --wait-timeout 180
 fi
-ok 'doco.cd is healthy; future vm-branch pushes use the authenticated webhook.'
 
-info 'Waiting for Zerobyte reconciliation and health.'
+phase_begin 'Wait for Zerobyte reconciliation and health'
 wait_for_health "$zerobyte_container" 90
-ok 'Zerobyte is running and healthy.'
+phase_done 'Zerobyte running and healthy'
 
 run_step 'Install, exercise, and enable platform snapshot timers' install_timers
-ok 'OpenBao and Zerobyte snapshot producers passed; both timers are active.'
 
 if [ "$recovered" = true ]; then
   case "$restore_target" in
@@ -581,4 +646,3 @@ printf '\n'
 ok 'VM bootstrap passed.'
 log_event OK 'PoliNetwork VM bootstrap'
 printf '  OpenBao, doco.cd, Zerobyte, and both snapshot timers are converged.\n'
-printf '  Detailed log: %s\n' "$log_file"
