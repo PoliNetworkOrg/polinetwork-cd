@@ -1,0 +1,11 @@
+[Unit]
+Description=Create hourly Zerobyte SQLite snapshots
+
+[Timer]
+OnCalendar=*-*-* *:08:00
+RandomizedDelaySec=1m
+Persistent=true
+Unit=zerobyte-database-snapshot.service
+
+[Install]
+WantedBy=timers.target

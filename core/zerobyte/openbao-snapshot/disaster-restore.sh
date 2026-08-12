@@ -4,7 +4,7 @@ set -eu
 image='ghcr.io/nicotsx/zerobyte:v0.41@sha256:647706f3e44365e6ba8d8e9094efe57bcd36682a1bab4aa23a132d800bd9ad38'
 repository='azure:zerobyte:/'
 snapshot_host="${RESTIC_SNAPSHOT_HOST:-pn-vm01}"
-snapshot_path="${RESTIC_SNAPSHOT_PATH:-/data/openbao}"
+snapshot_path="${RESTIC_SNAPSHOT_PATH:-/data}"
 secret_root="${ZEROBYTE_SECRET_ROOT:-/srv/polinetwork/state/zerobyte/secrets}"
 restore_root="${ZEROBYTE_RESTORE_ROOT:-/srv/polinetwork/state/zerobyte/restore-tests}"
 account_key="$secret_root/azure-storage-account-key"
@@ -63,9 +63,16 @@ docker run --rm \
 
 restored_snapshot="$(find "$target" -type f -name 'openbao-*.snap' -print | sort | tail -n 1)"
 [ -n "$restored_snapshot" ] || fail "no openbao-*.snap was restored below $target"
+restored_database="$(find "$target" -type f -name 'zerobyte-*.db' -print | sort | tail -n 1)"
+[ -n "$restored_database" ] || fail "no zerobyte-*.db was restored below $target"
 
 chmod 0400 "$restored_snapshot"
 chown root:root "$restored_snapshot"
+chmod 0400 "$restored_database"
+chown root:root "$restored_database"
 sha256sum "$restored_snapshot"
-printf 'OpenBao snapshot restored directly from Azure without Zerobyte state: %s\n' "$restored_snapshot"
+sha256sum "$restored_database"
+printf 'Platform recovery snapshots restored directly from Azure without Zerobyte state:\n'
+printf 'OpenBao: %s\n' "$restored_snapshot"
+printf 'Zerobyte: %s\n' "$restored_database"
 printf 'Run restore-rehearsal.sh with REQUIRE_PRODUCTION_OPENBAO=false to validate it on a clean host.\n'

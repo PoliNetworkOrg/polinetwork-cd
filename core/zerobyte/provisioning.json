@@ -21,12 +21,12 @@
     {
       "id": "openbao-snapshots",
       "organizationId": "019ff6aa-484a-7000-a4c1-7d2ed01b6ad2",
-      "name": "OpenBao snapshots",
+      "name": "Platform recovery staging",
       "backend": "directory",
       "autoRemount": true,
       "config": {
         "backend": "directory",
-        "path": "/data/openbao"
+        "path": "/data"
       }
     }
   ]

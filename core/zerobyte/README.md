@@ -32,9 +32,14 @@ snapshot producer, hourly systemd unit and isolated restore rehearsal. Run its
 `bootstrap.sh` once after OpenBao restore to create the narrow snapshot
 AppRole, then install the unit and timer as documented in that folder.
 
-Zerobyte backs up only the resulting files below
-`/srv/polinetwork/state/backup-staging/openbao`. It must never copy the live
-Raft directory.
+[`database-snapshot/`](database-snapshot/) creates a consistent, integrity-
+checked copy of Zerobyte's SQLite database. Its hourly systemd timer stages the
+copy before the off-host schedule, preserving the organization, administrator
+and UI-managed backup schedule needed after total VM loss.
+
+The single managed recovery volume backs up the resulting files below
+`/srv/polinetwork/state/backup-staging`. It must never copy the live Raft or
+live SQLite database.
 
 ## Clean-host recovery
 
