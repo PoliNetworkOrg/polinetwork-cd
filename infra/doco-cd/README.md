@@ -30,7 +30,7 @@ Enable AppRole once if `approle/` is not already listed by `bao auth list`,
 then create the narrow policy and renewable role:
 
 ```sh
-docker exec -e BAO_TOKEN infra-openbao-openbao-1 sh -ec '
+docker exec --user 0:0 -e BAO_TOKEN infra-openbao-openbao-1 sh -ec '
   bao auth list -format=json | grep -q '"'"'approle/'"'"' || bao auth enable approle
 '
 
@@ -50,16 +50,19 @@ Write the regenerable credentials directly into the OpenBao state mount; no
 value is printed or committed:
 
 ```sh
-docker exec -e BAO_TOKEN infra-openbao-openbao-1 sh -ec '
-  install -d -o 100 -g 1000 -m 0750 /openbao/file/approle/doco-cd
+docker exec --user 0:0 -e BAO_TOKEN infra-openbao-openbao-1 sh -ec '
+  mkdir -p /openbao/file/approle/doco-cd
+  chown 0:0 /openbao/file/approle/doco-cd
+  chmod 0750 /openbao/file/approle/doco-cd
+  chown 100:1000 /openbao/file/approle/doco-cd
   umask 077
   bao read -field=role_id auth/approle/role/doco-cd/role-id \
     > /openbao/file/approle/doco-cd/role-id
   bao write -field=secret_id -f auth/approle/role/doco-cd/secret-id \
     > /openbao/file/approle/doco-cd/secret-id
-  chown 100:1000 /openbao/file/approle/doco-cd/role-id \
-    /openbao/file/approle/doco-cd/secret-id
   chmod 0400 /openbao/file/approle/doco-cd/role-id \
+    /openbao/file/approle/doco-cd/secret-id
+  chown 100:1000 /openbao/file/approle/doco-cd/role-id \
     /openbao/file/approle/doco-cd/secret-id
 '
 unset BAO_TOKEN
