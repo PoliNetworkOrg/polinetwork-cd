@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-openbao_container="${OPENBAO_CONTAINER:-openbao-openbao-1}"
+openbao_container="${OPENBAO_CONTAINER:-core-openbao-1}"
 staging_dir="${OPENBAO_SNAPSHOT_STAGING_DIR:-/srv/polinetwork/state/backup-staging/openbao}"
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 snapshot_name="openbao-$timestamp.snap"

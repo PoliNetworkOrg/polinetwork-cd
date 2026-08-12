@@ -1,0 +1,61 @@
+# Seed one Git-backed Resource Sync with this directory. It then keeps itself
+# and the VM stacks declarative. Deployment is deliberately manual until the
+# legacy Compose projects have completed their reviewed cutover.
+
+[[resource_sync]]
+name = "polinetwork-vm"
+description = "Git-backed Komodo resources for vm01"
+tags = ["vm-managed"]
+
+[resource_sync.config]
+git_provider = "github.com"
+repo = "PoliNetworkOrg/polinetwork-cd"
+branch = "vm"
+resource_path = ["core/komodo/resources"]
+delete = false
+include_resources = true
+include_variables = false
+include_user_groups = false
+
+[[stack]]
+name = "core"
+description = "Shared VM services managed by Komodo; Komodo itself is excluded"
+tags = ["vm-managed", "core"]
+
+[stack.config]
+server = "vm01"
+project_name = "core"
+git_provider = "github.com"
+repo = "PoliNetworkOrg/polinetwork-cd"
+branch = "vm"
+run_directory = "core"
+file_paths = ["compose.yaml"]
+auto_pull = true
+webhook_enabled = true
+config_files = [
+  { path = "traefik/compose.yaml", requires = "Redeploy" },
+  { path = "traefik/dynamic/openbao-tls.yaml", requires = "Redeploy" },
+  { path = "cloudflared/compose.yaml", requires = "Redeploy" },
+  { path = "openbao/compose.yaml", requires = "Redeploy" },
+  { path = "zerobyte/compose.yaml", requires = "Redeploy" },
+  { path = "zerobyte/provisioning.json", requires = "Redeploy" },
+]
+
+[[stack]]
+name = "applications"
+description = "PoliNetwork Docker applications"
+tags = ["vm-managed", "applications"]
+
+[stack.config]
+server = "vm01"
+project_name = "applications"
+git_provider = "github.com"
+repo = "PoliNetworkOrg/polinetwork-cd"
+branch = "vm"
+run_directory = "apps"
+file_paths = ["compose.yaml"]
+auto_pull = true
+webhook_enabled = true
+environment = """
+COMPOSE_PROFILES = lab
+"""

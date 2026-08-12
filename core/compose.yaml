@@ -1,0 +1,8 @@
+name: core
+
+# Komodo is bootstrapped separately so it never has to deploy or replace itself.
+include:
+  - path: ./traefik/compose.yaml
+  - path: ./cloudflared/compose.yaml
+  - path: ./openbao/compose.yaml
+  - path: ./zerobyte/compose.yaml

@@ -7,18 +7,19 @@ secret. The target is a repeatable recovery flow:
 2. An operator checks out this public repository.
 3. `bootstrap-host.sh` installs and configures the pinned container runtime and
    creates the shared Docker networks.
-4. Each service runs its own preparation, beginning with
-   `core/openbao/prepare.sh` for the managed-identity selector and internal TLS.
-5. Bootstrap secrets are streamed from their off-host stores into protected
+4. Bootstrap secrets are streamed from their off-host stores into protected
    files. Secret values are never command arguments or Git content.
-6. Retained data disks are reused, or off-host backups are restored to clean
+5. Retained data disks are reused, or off-host backups are restored to clean
    storage before workloads start.
-7. Compose projects are validated and started in dependency order.
+6. `core/openbao/prepare.sh` prepares the managed-identity selector and
+   internal TLS before the core services start.
+7. `core/komodo/start.sh` starts Komodo first; its Git-backed Resource Sync then
+   manages the `core` and `applications` Stacks.
 
-Steps 4 through 6 will be added to the top-level orchestration only as each
-application gets an accepted backup and clean-host restore procedure. Until
-then, this is the reproducible host layer, not a claim that every application
-can already be recovered.
+Secret restoration and state recovery will be added to the top-level
+orchestration only as each application gets an accepted clean-host restore
+procedure. Until then, this is the reproducible host and control-plane layer,
+not a claim that every application can already be recovered.
 
 ## Run the host layer
 
@@ -36,6 +37,7 @@ From the repository root on the VM:
 sudo bootstrap/bootstrap-host.sh
 sudo PN_OPENBAO_CLIENT_ID=REPLACE_WITH_TERRAFORM_OUTPUT \
   core/openbao/prepare.sh
+core/komodo/start.sh
 ```
 
 The script refuses unsupported OS/architecture combinations. If containers

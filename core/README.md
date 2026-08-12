@@ -1,7 +1,7 @@
 # Core services
 
-Each child directory owns one independently operated VM service: its Compose
-file, non-secret configuration, helper scripts and local runbook.
+Each child directory owns one VM service: its Compose file, non-secret
+configuration, helper scripts and local runbook.
 
 | Service | Included dependency |
 | --- | --- |
@@ -11,12 +11,15 @@ file, non-secret configuration, helper scripts and local runbook.
 | [`openbao/`](openbao/) | — |
 | [`zerobyte/`](zerobyte/) | OpenBao snapshot and restore tooling |
 
+[`compose.yaml`](compose.yaml) includes every service except Komodo as the
+single `core` Stack. Docker Compose resolves each included file relative to its
+own service directory, so folder-local dynamic files remain owned by that
+service. Komodo is started first from [`komodo/`](komodo/) and then manages the
+`core` and `applications` Stacks declared in
+[`komodo/resources/stacks.toml`](komodo/resources/stacks.toml).
+
 Shared Docker networks are created by
 [`../bootstrap/bootstrap-host.sh`](../bootstrap/bootstrap-host.sh). No service
 publishes a host port; routed HTTP services join `pn-edge` and declare an
-explicit Traefik route.
-
-Start services in dependency order: `traefik`, `cloudflared`, `komodo`,
-`openbao`, and `zerobyte`, followed by [`../apps/`](../apps/). New databases or
-observability components receive their own directory when introduced; they are
-not grouped under generic category folders.
+explicit Traefik route. New databases or observability components receive
+their own directory and are added to the aggregate file.

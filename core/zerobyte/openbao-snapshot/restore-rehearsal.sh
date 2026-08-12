@@ -2,7 +2,7 @@
 set -eu
 
 image='quay.io/openbao/openbao:2.5.4'
-production_container="${OPENBAO_CONTAINER:-openbao-openbao-1}"
+production_container="${OPENBAO_CONTAINER:-core-openbao-1}"
 require_production="${REQUIRE_PRODUCTION_OPENBAO:-true}"
 openbao_env="${OPENBAO_ENV_FILE:-/srv/polinetwork/state/openbao/compose.env}"
 restore_root="${ZEROBYTE_RESTORE_ROOT:-/srv/polinetwork/state/zerobyte/restore-tests}"
