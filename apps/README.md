@@ -24,12 +24,12 @@ placing the administrator password in an argument:
 
 ```sh
 printf '%s\n' "$PN_OPENBAO_ADMIN_PASSWORD" |
-  core/openbao/provision-app-role.sh x
+  core/openbao/provision-service-role.sh apps x
 unset PN_OPENBAO_ADMIN_PASSWORD
 ```
 
 The resulting credentials are available only at
-`/srv/polinetwork/state/openbao/approle/x`. Mount that directory into the
+`/srv/polinetwork/state/openbao/approle/apps-x`. Mount that directory into the
 folder's Agent, following `openbao-canary/compose.yaml`.
 
 Render and validate the same catalog Komodo deploys:

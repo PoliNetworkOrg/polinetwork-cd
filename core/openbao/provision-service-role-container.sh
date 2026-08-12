@@ -1,18 +1,21 @@
 #!/bin/sh
 set -eu
 
-app_name="$1"
-credential_dir="/openbao/file/approle/$app_name"
-policy_name="apps-$app_name"
+service_scope="$1"
+service_name="$2"
+identity_name="$service_scope-$service_name"
+credential_dir="/openbao/file/approle/$identity_name"
+policy_name="$identity_name"
+secret_path="$service_scope/$service_name"
 
 IFS= read -r pnadmin_password
 BAO_TOKEN="$(bao write -field=token auth/userpass/login/pnadmin password="$pnadmin_password")"
 unset pnadmin_password
 export BAO_TOKEN
 
-bao kv get -mount=secret "apps/$app_name" >/dev/null
+bao kv get -mount=secret "$secret_path" >/dev/null
 
-printf 'path "secret/data/apps/%s" {\n  capabilities = ["read"]\n}\n' "$app_name" |
+printf 'path "secret/data/%s" {\n  capabilities = ["read"]\n}\n' "$secret_path" |
   bao policy write "$policy_name" - >/dev/null
 
 if ! bao auth list -format=json | grep -q '"approle/'; then
@@ -52,9 +55,9 @@ esac
 
 role_id="$(cat "$credential_dir/role-id")"
 secret_id="$(cat "$credential_dir/secret-id")"
-app_token="$(bao write -field=token auth/approle/login \
+service_token="$(bao write -field=token auth/approle/login \
   role_id="$role_id" secret_id="$secret_id")"
-BAO_TOKEN="$app_token" bao kv get -mount=secret "apps/$app_name" >/dev/null
-test "$(BAO_TOKEN="$app_token" bao token capabilities secret/data/apps/not-$app_name)" = deny
+BAO_TOKEN="$service_token" bao kv get -mount=secret "$secret_path" >/dev/null
+test "$(BAO_TOKEN="$service_token" bao token capabilities "secret/data/$service_scope/not-$service_name")" = deny
 
-unset role_id secret_id app_token BAO_TOKEN
+unset role_id secret_id service_token BAO_TOKEN
