@@ -1,0 +1,2 @@
+external_secrets:
+  DISCORD_WEBHOOK: kv:secret:core/doco-cd:discord-webhook
