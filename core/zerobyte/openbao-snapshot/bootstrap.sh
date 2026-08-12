@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-openbao_container="${OPENBAO_CONTAINER:-control-openbao-1}"
+openbao_container="${OPENBAO_CONTAINER:-openbao-openbao-1}"
 script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 container_script=/tmp/polinetwork-openbao-snapshot-bootstrap.sh
 

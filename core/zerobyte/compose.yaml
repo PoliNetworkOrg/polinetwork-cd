@@ -1,4 +1,4 @@
-name: backup
+name: zerobyte
 
 services:
   zerobyte:

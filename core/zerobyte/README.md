@@ -89,7 +89,7 @@ Deploy only after Cloudflare Access is active:
 
 ```sh
 ssh pn-vm01 '
-  cd /srv/polinetwork/compose/polinetwork-cd/core/backup &&
+  cd /srv/polinetwork/compose/polinetwork-cd/core/zerobyte &&
   docker compose pull &&
   docker compose up -d --wait &&
   docker compose ps
@@ -210,7 +210,7 @@ op read 'REPLACE_WITH_APPROVED_1PASSWORD_REFERENCE' |
 Then run:
 
 ```sh
-sudo core/backup/openbao-snapshot/disaster-restore.sh
+sudo core/zerobyte/openbao-snapshot/disaster-restore.sh
 ```
 
 The script:
@@ -230,7 +230,7 @@ store and explicitly disable only the production-health assertion:
 ```sh
 printf '%s\n' "$PN_OPENBAO_ADMIN_PASSWORD" |
   sudo REQUIRE_PRODUCTION_OPENBAO=false \
-  core/backup/openbao-snapshot/restore-rehearsal.sh \
+  core/zerobyte/openbao-snapshot/restore-rehearsal.sh \
   /srv/polinetwork/state/zerobyte/restore-tests/openbao-disaster-REPLACE/openbao-REPLACE.snap
 unset PN_OPENBAO_ADMIN_PASSWORD
 ```

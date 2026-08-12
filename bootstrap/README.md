@@ -7,8 +7,8 @@ secret. The target is a repeatable recovery flow:
 2. An operator checks out this public repository.
 3. `bootstrap-host.sh` installs and configures the pinned container runtime and
    creates the shared Docker networks.
-4. `prepare-openbao.sh` renders the non-secret managed-identity selector and
-   generates new host-local internal TLS.
+4. Each service runs its own preparation, beginning with
+   `core/openbao/prepare.sh` for the managed-identity selector and internal TLS.
 5. Bootstrap secrets are streamed from their off-host stores into protected
    files. Secret values are never command arguments or Git content.
 6. Retained data disks are reused, or off-host backups are restored to clean
@@ -35,7 +35,7 @@ From the repository root on the VM:
 ```sh
 sudo bootstrap/bootstrap-host.sh
 sudo PN_OPENBAO_CLIENT_ID=REPLACE_WITH_TERRAFORM_OUTPUT \
-  bootstrap/prepare-openbao.sh
+  core/openbao/prepare.sh
 ```
 
 The script refuses unsupported OS/architecture combinations. If containers
@@ -55,8 +55,8 @@ version is no longer available; it never silently substitutes `latest`.
 | Compose files, OpenBao policy/templates and backup scripts | This repository | Public Git checkout |
 | Shared Docker network definitions | `bootstrap-host.sh` | Created idempotently and verified exactly |
 | Terraform/cloud-init and disk preparation | `PoliNetworkOrg/terraform` | Applied before this script |
-| OpenBao managed-identity client ID | Terraform output; non-secret | Rendered by `prepare-openbao.sh` |
-| Internal OpenBao TLS | `prepare-openbao.sh` | New private key and CA per rebuilt host |
+| OpenBao managed-identity client ID | Terraform output; non-secret | Rendered by `core/openbao/prepare.sh` |
+| Internal OpenBao TLS | `core/openbao/prepare.sh` | New private key and CA per rebuilt host |
 | Zerobyte APP secret and Azure account key | `kv-polinetwork` | Streamed to root-owned mode-`0600` files |
 | Zerobyte organization recovery key | Approved break-glass store | Opens repositories independently of the UI account |
 | OpenBao recovery key and `pnadmin` password | Approved break-glass store | Used only for privileged recovery/verification |
@@ -71,7 +71,7 @@ database.
 
 The current OpenBao backup has passed native Raft snapshot creation, encrypted
 off-host storage, byte-integrity restore and isolated clean-volume recovery.
-`../core/backup/openbao-snapshot/disaster-restore.sh` additionally provides the
+`../core/zerobyte/openbao-snapshot/disaster-restore.sh` additionally provides the
 clean-host entry point that opens Azure Blob directly with Restic, without a
 running Zerobyte instance or its local database.
 

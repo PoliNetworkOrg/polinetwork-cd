@@ -1,0 +1,27 @@
+name: cloudflared
+
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2026.7.2
+    restart: unless-stopped
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --metrics
+      - 0.0.0.0:2000
+      - run
+    env_file:
+      - /srv/polinetwork/state/cloudflare/compose.env
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 128m
+    cpus: 0.50
+    pids_limit: 128
+    networks: [pn-edge]
+
+networks:
+  pn-edge:
+    external: true
+    name: pn-edge
