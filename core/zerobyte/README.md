@@ -17,8 +17,9 @@ open the OpenBao backup cannot live only in OpenBao.
 - `/srv/polinetwork/state/backup-staging` is read-only input. Producers place
   consistent snapshots there; never expose live database or Raft files.
 - `/srv/polinetwork/state/zerobyte/restore-tests` is the only restore target.
-- `provisioning.json` declares the existing Azure repository and OpenBao
-  snapshot volume. Backup schedules are configured in the UI.
+- `provisioning.json` declares the Azure repository and OpenBao snapshot
+  volume. Zerobyte initializes the repository when its container is empty;
+  backup schedules are configured in the UI.
 - The exact `restic.pass` file downloaded for the active Zerobyte organization
   is the Restic password and remains in the approved break-glass store outside
   the VM. Do not substitute the account password, APP secret, or a recovery
