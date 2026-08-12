@@ -19,7 +19,9 @@ helper script.
 `bootstrap-host.sh` supports Debian 13 ARM64 and verifies an already-running
 host without restarting containers. Pinned package versions are the non-secret
 defaults at the top of the file. Shared Docker networks and runtime config are
-validated exactly; drift fails for operator review.
+validated exactly; drift fails for operator review. Before the daemons start,
+the script also initializes the containerd content-store skeleton required by
+the custom applications-disk root.
 
 ## Recovery boundary
 

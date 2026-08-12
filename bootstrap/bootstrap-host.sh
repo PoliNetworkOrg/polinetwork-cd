@@ -140,6 +140,9 @@ apt-get install --yes --no-install-recommends \
 install -d -o root -g root -m 0711 \
   /srv/polinetwork/applications/docker \
   /srv/polinetwork/applications/containerd
+install -d -o root -g root -m 0755 \
+  /srv/polinetwork/applications/containerd/io.containerd.content.v1.content/blobs/sha256 \
+  /srv/polinetwork/applications/containerd/io.containerd.content.v1.content/ingest
 
 install_tracked_file "$files_dir/etc/docker/daemon.json" \
   /etc/docker/daemon.json 0644
