@@ -6,17 +6,40 @@ the Compose project named `applications`. Applications are moved here from
 health checks, resource limits, backup/restore and rollback behavior pass the
 migration gates.
 
-`compose.yaml` currently contains the Wave 1 deployment canaries and the
-OpenBao Agent secret-delivery canary. Production application containers use
-`pn-app`; only routed HTTP services also join `pn-edge`. Applications consume
-secret files rendered by dedicated OpenBao Agents and never receive an
-OpenBao token or direct OpenBao network access.
+Every immediate child folder containing `compose.yaml` is deployed
+automatically. Adding `apps/x/compose.yaml` is enough; do not edit the root
+Compose file or Komodo resources. Add `.komodo-ignore` to a folder only when it
+must remain outside the aggregate project.
 
-Validate the project from this directory:
+Production application containers use `pn-app`; only routed HTTP services also
+join `pn-edge`. Applications consume secret files rendered into tmpfs by a
+dedicated OpenBao Agent in the same folder. The application never receives an
+OpenBao token or direct OpenBao network access. The
+[`openbao-canary/`](openbao-canary/) folder is the reference pattern: add the
+value below `secret/apps/x`, grant an app-specific AppRole only that path, and
+reference its keys from the folder's Agent template.
+
+After adding `secret/apps/x` in OpenBao, provision the folder identity without
+placing the administrator password in an argument:
 
 ```sh
-docker compose --profile lab --profile secrets-canary config --quiet
+printf '%s\n' "$PN_OPENBAO_ADMIN_PASSWORD" |
+  core/openbao/provision-app-role.sh x
+unset PN_OPENBAO_ADMIN_PASSWORD
 ```
 
-Komodo must use repository branch `vm`, Compose file `apps/compose.yaml` and
-project name `applications` for this stack.
+The resulting credentials are available only at
+`/srv/polinetwork/state/openbao/approle/x`. Mount that directory into the
+folder's Agent, following `openbao-canary/compose.yaml`.
+
+Render and validate the same catalog Komodo deploys:
+
+```sh
+../bootstrap/render-compose-catalog.sh .
+docker compose -f .komodo.compose.yaml config --quiet
+docker compose -f .komodo.compose.yaml --profile secrets-canary config --quiet
+```
+
+The generated `.komodo.compose.yaml` is intentionally ignored by Git. Komodo
+uses a fresh disposable clone, generates `compose.yaml` there, and deploys
+project `applications`.

@@ -1,8 +1,4 @@
 name: core
 
-# Komodo is bootstrapped separately so it never has to deploy or replace itself.
-include:
-  - path: ./traefik/compose.yaml
-  - path: ./cloudflared/compose.yaml
-  - path: ./openbao/compose.yaml
-  - path: ./zerobyte/compose.yaml
+# Komodo replaces this placeholder in its disposable clone before deployment.
+services: {}

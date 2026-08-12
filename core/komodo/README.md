@@ -30,9 +30,9 @@ PN_KOMODO_BOOTSTRAP_ACCESS=true core/komodo/start.sh
 Create one Git-backed Resource Sync named
 `polinetwork-vm` for public repository `PoliNetworkOrg/polinetwork-cd`, branch
 `vm`, resource path `core/komodo/resources`. Applying it creates or updates the
-`core` and `applications` Stacks and then keeps the Resource Sync itself in Git.
-The declaration does not auto-deploy either Stack, which prevents a new `core`
-project from starting beside the legacy stateful projects during migration.
+`core` and `applications` Stacks plus one ordered deployment procedure. Create
+the procedure's branch-`vm` Git webhook once. Future pushes sync the declaration
+and deploy both folder catalogs without adding per-service Komodo resources.
 
 After the `core` Stack is healthy, rerun `core/komodo/start.sh` without the
 temporary variable. Compose recreates Core without the loopback binding;

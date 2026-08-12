@@ -16,6 +16,12 @@ secret. The target is a repeatable recovery flow:
 7. `core/komodo/start.sh` starts Komodo first; its Git-backed Resource Sync then
    manages the `core` and `applications` Stacks.
 
+`render-compose-catalog.sh` is the common pre-deploy hook for those two Stacks.
+It deterministically discovers immediate child folders with `compose.yaml`.
+Komodo renders the deployment file inside a fresh clone; local checks use the
+ignored `.komodo.compose.yaml`. A `.komodo-ignore` marker opts out exceptional
+folders such as Komodo itself.
+
 Secret restoration and state recovery will be added to the top-level
 orchestration only as each application gets an accepted clean-host restore
 procedure. Until then, this is the reproducible host and control-plane layer,

@@ -1,0 +1,71 @@
+services:
+  openbao-agent-canary:
+    profiles: [secrets-canary]
+    image: quay.io/openbao/openbao:2.5.4
+    restart: unless-stopped
+    command: [agent, -config=/openbao/agent/config.hcl]
+    volumes:
+      - ./agent.hcl:/openbao/agent/config.hcl:ro
+      - ./canary.env.ctmpl:/openbao/templates/canary.env.ctmpl:ro
+      - /srv/polinetwork/state/openbao/tls/ca.crt:/openbao/tls/ca.crt:ro
+      - /srv/polinetwork/state/openbao/approle/canary:/openbao/auth:ro
+      - openbao-canary-secrets:/run/secrets
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETGID, SETUID]
+    mem_limit: 128m
+    cpus: 0.25
+    pids_limit: 64
+    healthcheck:
+      test: [CMD-SHELL, "grep -qx 'CANARY_MESSAGE=openbao-agent-ok' /run/secrets/canary.env"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    networks: [pn-secrets]
+
+  openbao-canary:
+    profiles: [secrets-canary]
+    image: alpine:3.22.1
+    restart: unless-stopped
+    user: "100:1000"
+    command:
+      - sh
+      - -ec
+      - >-
+        until grep -qx 'CANARY_MESSAGE=openbao-agent-ok' /run/secrets/canary.env;
+        do sleep 1; done;
+        while :; do sleep 3600; done
+    depends_on:
+      openbao-agent-canary:
+        condition: service_healthy
+    read_only: true
+    volumes:
+      - openbao-canary-secrets:/run/secrets:ro
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 16m
+    cpus: 0.10
+    pids_limit: 16
+    healthcheck:
+      test: [CMD-SHELL, "grep -qx 'CANARY_MESSAGE=openbao-agent-ok' /run/secrets/canary.env"]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+    network_mode: none
+
+networks:
+  pn-secrets:
+    external: true
+    name: pn-secrets
+
+volumes:
+  openbao-canary-secrets:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: uid=100,gid=1000,mode=0770,size=1m

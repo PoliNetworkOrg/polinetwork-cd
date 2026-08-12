@@ -11,10 +11,10 @@ configuration, helper scripts and local runbook.
 | [`openbao/`](openbao/) | — |
 | [`zerobyte/`](zerobyte/) | OpenBao snapshot and restore tooling |
 
-[`compose.yaml`](compose.yaml) includes every service except Komodo as the
-single `core` Stack. Docker Compose resolves each included file relative to its
-own service directory, so folder-local dynamic files remain owned by that
-service. Komodo is started first from [`komodo/`](komodo/) and then manages the
+Every immediate child folder containing `compose.yaml` joins the `core` Stack
+automatically. Adding `core/x/compose.yaml` requires no root Compose or Komodo
+edit. A `.komodo-ignore` marker excludes the bootstrapped
+[`komodo/`](komodo/) folder. Komodo is started first and then manages the
 `core` and `applications` Stacks declared in
 [`komodo/resources/stacks.toml`](komodo/resources/stacks.toml).
 
@@ -22,4 +22,7 @@ Shared Docker networks are created by
 [`../bootstrap/bootstrap-host.sh`](../bootstrap/bootstrap-host.sh). No service
 publishes a host port; routed HTTP services join `pn-edge` and declare an
 explicit Traefik route. New databases or observability components receive
-their own directory and are added to the aggregate file.
+their own directory. For local validation, run
+`../bootstrap/render-compose-catalog.sh .` and pass
+`-f .komodo.compose.yaml` to Compose. Komodo renders the catalog automatically
+inside a fresh deployment clone.

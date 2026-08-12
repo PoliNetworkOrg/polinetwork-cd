@@ -19,4 +19,6 @@ tracked directly in Compose, so Docker commands need no env file.
 
 After host and secret recovery, Komodo starts directly from `core/komodo`; its
 Git-backed Resource Sync manages the aggregate `core` Stack and the separate
-`applications` Stack.
+`applications` Stack. Adding `core/x/compose.yaml` or `apps/x/compose.yaml`
+automatically adds that folder to the corresponding deployment; no central
+service list is maintained.

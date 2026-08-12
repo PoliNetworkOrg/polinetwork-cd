@@ -28,18 +28,13 @@ project_name = "core"
 git_provider = "github.com"
 repo = "PoliNetworkOrg/polinetwork-cd"
 branch = "vm"
+reclone = true
 run_directory = "core"
 file_paths = ["compose.yaml"]
 auto_pull = true
-webhook_enabled = true
-config_files = [
-  { path = "traefik/compose.yaml", requires = "Redeploy" },
-  { path = "traefik/dynamic/openbao-tls.yaml", requires = "Redeploy" },
-  { path = "cloudflared/compose.yaml", requires = "Redeploy" },
-  { path = "openbao/compose.yaml", requires = "Redeploy" },
-  { path = "zerobyte/compose.yaml", requires = "Redeploy" },
-  { path = "zerobyte/provisioning.json", requires = "Redeploy" },
-]
+webhook_enabled = false
+pre_deploy = { path = ".", command = "../bootstrap/render-compose-catalog.sh . compose.yaml" }
+extra_args = ["--remove-orphans"]
 
 [[stack]]
 name = "applications"
@@ -52,10 +47,33 @@ project_name = "applications"
 git_provider = "github.com"
 repo = "PoliNetworkOrg/polinetwork-cd"
 branch = "vm"
+reclone = true
 run_directory = "apps"
 file_paths = ["compose.yaml"]
 auto_pull = true
-webhook_enabled = true
-environment = """
-COMPOSE_PROFILES = lab
-"""
+webhook_enabled = false
+pre_deploy = { path = ".", command = "../bootstrap/render-compose-catalog.sh . compose.yaml" }
+extra_args = ["--remove-orphans"]
+
+[[procedure]]
+name = "deploy-polinetwork-vm"
+description = "Sync Git declarations, then deploy discovered core and application folders"
+tags = ["vm-managed"]
+
+[[procedure.config.stage]]
+name = "Sync declarations"
+executions = [
+  { execution.type = "RunSync", execution.params.sync = "polinetwork-vm" },
+]
+
+[[procedure.config.stage]]
+name = "Deploy core"
+executions = [
+  { execution.type = "DeployStack", execution.params.stack = "core" },
+]
+
+[[procedure.config.stage]]
+name = "Deploy applications"
+executions = [
+  { execution.type = "DeployStack", execution.params.stack = "applications" },
+]

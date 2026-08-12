@@ -18,3 +18,9 @@ docker compose up -d --pull always --wait --wait-timeout 120
 
 Native Raft snapshot production and clean-host recovery tooling live with the
 backup service in [`../zerobyte/openbao-snapshot/`](../zerobyte/openbao-snapshot/).
+
+For a secret-bearing application, first add values below `secret/apps/x`, then
+pipe the `pnadmin` password to `provision-app-role.sh x`. It creates or verifies
+an AppRole restricted to that exact path and stores its Agent credentials below
+the protected OpenBao state tree. Existing complete credentials are preserved;
+partial state fails closed.
