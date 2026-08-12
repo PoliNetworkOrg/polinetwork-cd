@@ -1,0 +1,63 @@
+name: backup
+
+services:
+  zerobyte:
+    image: ghcr.io/nicotsx/zerobyte:v0.41@sha256:647706f3e44365e6ba8d8e9094efe57bcd36682a1bab4aa23a132d800bd9ad38
+    restart: unless-stopped
+    environment:
+      APP_SECRET_FILE: /run/secrets/app_secret
+      BASE_URL: https://backups.polinetwork.org
+      GOMAXPROCS: "1"
+      LOG_LEVEL: info
+      PORT: "4096"
+      PROVISIONING_PATH: /etc/zerobyte/provisioning.json
+      RESTIC_HOSTNAME: pn-vm01
+      TRUST_PROXY: "true"
+      TZ: Europe/Rome
+    secrets:
+      - app_secret
+      - azure_storage_account_key
+      - restic_repository_password
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./provisioning.json:/etc/zerobyte/provisioning.json:ro
+      - /srv/polinetwork/state/zerobyte/data:/var/lib/zerobyte
+      - /srv/polinetwork/state/backup-staging:/data:ro
+      - /srv/polinetwork/state/zerobyte/restore-tests:/restore-tests
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    mem_limit: 512m
+    mem_swappiness: 0
+    cpus: 0.75
+    pids_limit: 256
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bun -e "fetch('http://127.0.0.1:4096')
+          .then(r => process.exit(r.status < 500 ? 0 : 1))
+          .catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: pn-edge
+      traefik.http.routers.zerobyte.rule: Host(`backups.polinetwork.org`)
+      traefik.http.services.zerobyte.loadbalancer.server.port: "4096"
+    networks: [pn-edge]
+
+networks:
+  pn-edge:
+    external: true
+    name: pn-edge
+
+secrets:
+  app_secret:
+    file: /srv/polinetwork/state/zerobyte/secrets/app-secret
+  azure_storage_account_key:
+    file: /srv/polinetwork/state/zerobyte/secrets/azure-storage-account-key
+  restic_repository_password:
+    file: /srv/polinetwork/state/zerobyte/secrets/restic-repository-password

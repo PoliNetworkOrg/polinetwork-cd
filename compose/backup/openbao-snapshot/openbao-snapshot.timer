@@ -1,0 +1,11 @@
+[Unit]
+Description=Create an hourly OpenBao Raft snapshot for Zerobyte
+
+[Timer]
+OnCalendar=*-*-* *:05:00
+RandomizedDelaySec=2m
+Persistent=true
+Unit=openbao-snapshot.service
+
+[Install]
+WantedBy=timers.target

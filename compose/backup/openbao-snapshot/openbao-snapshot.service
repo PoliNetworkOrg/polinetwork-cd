@@ -1,0 +1,16 @@
+[Unit]
+Description=Create a consistent OpenBao Raft snapshot for Zerobyte
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/srv/polinetwork/compose/polinetwork-cd/compose/backup/openbao-snapshot/snapshot.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/polinetwork/state/backup-staging/openbao

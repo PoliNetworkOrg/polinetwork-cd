@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "repositories": [
+    {
+      "id": "azure-primary",
+      "organizationId": "019ff37d-9fbf-7000-8479-39d166d43ab2",
+      "name": "Azure primary",
+      "backend": "azure",
+      "compressionMode": "auto",
+      "config": {
+        "backend": "azure",
+        "container": "zerobyte",
+        "accountName": "polinetworkbackups",
+        "accountKey": "file://azure_storage_account_key",
+        "endpointSuffix": "core.windows.net",
+        "isExistingRepository": false,
+        "customPassword": "file://restic_repository_password"
+      }
+    }
+  ],
+  "volumes": [
+    {
+      "id": "openbao-snapshots",
+      "organizationId": "019ff37d-9fbf-7000-8479-39d166d43ab2",
+      "name": "OpenBao snapshots",
+      "backend": "directory",
+      "autoRemount": true,
+      "config": {
+        "backend": "directory",
+        "path": "/data/openbao"
+      }
+    }
+  ]
+}
