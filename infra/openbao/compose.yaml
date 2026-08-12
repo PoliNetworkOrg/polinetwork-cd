@@ -32,8 +32,9 @@ services:
             openssl verify -CAfile /tmp/ca.crt /tmp/tls.crt
             openssl x509 -in /tmp/tls.crt -noout -checkhost openbao
             install -o 0 -g 0 -m 0644 /tmp/ca.crt /tls/ca.crt
-            install -o 100 -g 1000 -m 0644 /tmp/tls.crt /tls/tls.crt
-            install -o 100 -g 1000 -m 0600 /tmp/tls.key /tls/tls.key
+            install -o 0 -g 0 -m 0644 /tmp/tls.crt /tls/tls.crt
+            install -o 0 -g 0 -m 0600 /tmp/tls.key /tls/tls.key
+            chown 100:1000 /tls/tls.crt /tls/tls.key
             ;;
           3)
             openssl verify -CAfile /tls/ca.crt /tls/tls.crt
