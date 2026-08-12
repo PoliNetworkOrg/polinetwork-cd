@@ -14,6 +14,11 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 IFS= read -r pnadmin_password
+
+mkdir -p /openbao/file/backups
+chown 0:0 /openbao/file/backups
+chmod 0700 /openbao/file/backups
+
 BAO_TOKEN="$(bao write -field=token auth/userpass/login/pnadmin password="$pnadmin_password")"
 unset pnadmin_password
 export BAO_TOKEN
