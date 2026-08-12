@@ -85,3 +85,6 @@ docker compose up -d --pull always --wait --wait-timeout 120
 
 The service has no published HTTP port or webhook. It does mount the Docker
 socket, which is the trust boundary required for direct Compose deployment.
+Its root process retains only `DAC_OVERRIDE` after dropping capabilities so it
+can read the Agent-owned token and the host Docker socket without hard-coding
+host-specific group IDs or making the token world-readable.

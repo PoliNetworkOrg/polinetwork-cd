@@ -49,6 +49,7 @@ services:
       - openbao-token:/run/openbao:ro
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
+    cap_add: [DAC_OVERRIDE]
     mem_limit: 256m
     cpus: 0.50
     pids_limit: 128
