@@ -61,13 +61,11 @@ docker run --rm \
       --target /restore "latest:$3"
   ' restore "$repository" "$snapshot_host" "$snapshot_path"
 
-set -- "$target"/openbao-*.snap
-if [ ! -f "$1" ] || [ "$#" -ne 1 ]; then
-  fail "expected exactly one openbao-*.snap in $target"
-fi
+restored_snapshot="$(find "$target" -type f -name 'openbao-*.snap' -print | sort | tail -n 1)"
+[ -n "$restored_snapshot" ] || fail "no openbao-*.snap was restored below $target"
 
-chmod 0400 "$1"
-chown root:root "$1"
-sha256sum "$1"
-printf 'OpenBao snapshot restored directly from Azure without Zerobyte state: %s\n' "$1"
+chmod 0400 "$restored_snapshot"
+chown root:root "$restored_snapshot"
+sha256sum "$restored_snapshot"
+printf 'OpenBao snapshot restored directly from Azure without Zerobyte state: %s\n' "$restored_snapshot"
 printf 'Run restore-rehearsal.sh with REQUIRE_PRODUCTION_OPENBAO=false to validate it on a clean host.\n'

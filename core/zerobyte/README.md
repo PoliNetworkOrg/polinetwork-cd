@@ -54,9 +54,9 @@ sudo core/zerobyte/openbao-snapshot/disaster-restore.sh
 ```
 
 The script uses the pinned Zerobyte image's Restic binary directly, verifies
-the repository, restores only the latest `pn-vm01` OpenBao snapshot into a new
-root-only directory, and prints its SHA-256. It never starts Zerobyte or writes
-to live OpenBao storage.
+the repository, restores the latest `pn-vm01` OpenBao backup into a new
+root-only directory, selects the newest contained native Raft snapshot, and
+prints its SHA-256. It never starts Zerobyte or writes to live OpenBao storage.
 
 Validate the restored snapshot in an isolated container before promotion:
 
