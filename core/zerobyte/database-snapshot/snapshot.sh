@@ -16,7 +16,19 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
-test "$(docker inspect -f '{{.State.Health.Status}}' "$zerobyte_container")" = healthy
+attempt=0
+while :; do
+  health="$(docker inspect -f '{{.State.Health.Status}}' "$zerobyte_container" 2>/dev/null || true)"
+  [ "$health" = healthy ] && break
+  attempt=$((attempt + 1))
+  if [ "$attempt" -ge 90 ]; then
+    printf 'Zerobyte did not become healthy within 180 seconds; last health: %s\n' \
+      "${health:-unavailable}" >&2
+    exit 1
+  fi
+  sleep 2
+done
+
 install -d -o root -g root -m 0700 "$staging_dir"
 
 docker exec --user 0:0 \
