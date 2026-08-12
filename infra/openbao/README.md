@@ -6,6 +6,11 @@ certificate, then starts OpenBao with Raft storage and Azure Key Vault Auto
 Unseal. The Terraform-managed identity client ID is non-secret and tracked in
 Compose.
 
+Audit events go to container stdout and are bounded by Docker's tracked
+`local` logging policy (`20m`, five files). Do not restore the former unbounded
+audit file below the state disk. The health check requires this single-node
+cluster to be active; a responsive standby with no leader is unhealthy.
+
 Start or converge it from this directory after the shared networks exist:
 
 ```sh
