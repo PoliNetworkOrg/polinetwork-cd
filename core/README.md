@@ -15,6 +15,10 @@ references and consume them as environment-backed Compose secrets. Use a
 unique folder name across both `core/` and `apps/`; a nested config can set an
 explicit `name` when that is not possible.
 
+Environment-backed Compose secrets are copied into the container and are
+therefore incompatible with `read_only: true`. Keep the other service
+hardening, or use `read_only` only when the secret has an actual `file:` source.
+
 Shared networks come from [`../bootstrap/bootstrap-host.sh`](../bootstrap/bootstrap-host.sh).
 Routed services join `pn-edge`; internal services should use the narrowest
 appropriate network and publish no host ports.

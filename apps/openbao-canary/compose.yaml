@@ -10,7 +10,6 @@ services:
       - >-
         grep -qx 'openbao-agent-ok' /run/secrets/canary_message;
         while :; do sleep 3600; done
-    read_only: true
     secrets: [canary_message]
     security_opt:
       - no-new-privileges:true

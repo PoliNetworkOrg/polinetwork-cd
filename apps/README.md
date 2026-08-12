@@ -10,6 +10,10 @@ it. Runtime secrets live under an application-owned OpenBao path. Reference
 them in `apps/x/.doco-cd.yaml`, then expose them to only the required service
 with an environment-backed Compose secret. The
 [`openbao-canary/`](openbao-canary/) folder is the smallest complete example.
+Docker Compose must copy this kind of secret into the container, so a consuming
+service cannot also set `read_only: true`; retain the remaining service
+hardening and use `read_only` only where secrets come from actual `file:`
+sources.
 
 Applications normally join `pn-app`; only routed HTTP services also join
 `pn-edge`. Use a unique folder name across `apps/` and `core/`, or set an
