@@ -1,12 +1,19 @@
 name: infra-openbao
 
 services:
-  tls-init:
+  state-init:
     image: alpine/openssl:3.5.4
     restart: "no"
     entrypoint: [/bin/sh, -ec]
     command:
       - |
+        mkdir -p /state/raft
+        if [ "$$(stat -c '%u:%g:%a' /state/raft)" != 100:1000:700 ]; then
+          chown 0:0 /state/raft
+          chmod 0700 /state/raft
+          chown 100:1000 /state/raft
+        fi
+
         count=0
         for file in ca.crt tls.crt tls.key; do
           [ ! -e "/tls/$$file" ] || count=$$((count + 1))
@@ -48,6 +55,7 @@ services:
     read_only: true
     tmpfs: ["/tmp:size=16m,mode=0700"]
     volumes:
+      - /srv/polinetwork/state/openbao:/state
       - /srv/polinetwork/state/openbao/tls:/tls
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
@@ -61,7 +69,7 @@ services:
     restart: unless-stopped
     command: [server]
     depends_on:
-      tls-init:
+      state-init:
         condition: service_completed_successfully
     environment:
       AZURE_CLIENT_ID: d76681da-d260-4ee9-a1e9-42526cca0cb4

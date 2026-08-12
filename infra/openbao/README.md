@@ -1,10 +1,10 @@
 # OpenBao infrastructure
 
 OpenBao is bootstrapped outside doco.cd because doco.cd reads deployment
-secrets from it. The Compose project generates or validates the internal TLS
-certificate, then starts OpenBao with Raft storage and Azure Key Vault Auto
-Unseal. The Terraform-managed identity client ID is non-secret and tracked in
-Compose.
+secrets from it. The Compose project prepares the Raft directory, generates or
+validates the internal TLS certificate, then starts OpenBao with Raft storage
+and Azure Key Vault Auto Unseal. The Terraform-managed identity client ID is
+non-secret and tracked in Compose.
 
 Audit events go to container stdout and are bounded by Docker's tracked
 `local` logging policy (`20m`, five files). Do not restore the former unbounded
@@ -23,8 +23,9 @@ must remain unhealthy until OpenBao has been initialized or a snapshot has been
 restored. After that operation and the required restart, use the command above
 to enforce the normal health gate.
 
-The TLS initialization container is idempotent: it generates all three files
-only when none exists, validates a complete set, and refuses partial state.
+The state initialization container is idempotent: it enforces the Raft
+directory ownership and mode, generates all three TLS files only when none
+exists, validates a complete set, and refuses partial TLS state.
 OpenBao initialization, snapshot restoration and recovery-key custody remain
 operator-controlled steps. Native Raft backup and clean-host recovery tooling
 live in [`../../core/zerobyte/openbao-snapshot/`](../../core/zerobyte/openbao-snapshot/).
