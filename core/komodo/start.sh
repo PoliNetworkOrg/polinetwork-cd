@@ -2,8 +2,8 @@
 set -eu
 
 script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-env_file="${PN_KOMODO_ENV_FILE:-/srv/polinetwork/state/komodo/compose.env}"
 bootstrap_access="${PN_KOMODO_BOOTSTRAP_ACCESS:-false}"
+secrets_dir="/srv/polinetwork/state/komodo/secrets"
 
 fail() {
   printf 'start-komodo: %s\n' "$*" >&2
@@ -12,39 +12,35 @@ fail() {
 
 komodo_compose() {
   if [ "$bootstrap_access" = true ]; then
-    docker compose --env-file "$env_file" \
-      -f "$script_dir/compose.yaml" \
+    docker compose -f "$script_dir/compose.yaml" \
       -f "$script_dir/bootstrap-access.compose.yaml" "$@"
   else
-    docker compose --env-file "$env_file" -f "$script_dir/compose.yaml" "$@"
+    docker compose -f "$script_dir/compose.yaml" "$@"
   fi
 }
 
 command -v docker >/dev/null 2>&1 || fail 'docker is not installed'
 docker info >/dev/null 2>&1 || fail 'docker is not available to this user'
-[ -f "$env_file" ] || fail "protected environment file is missing: $env_file"
-
 case "$bootstrap_access" in
   true|false) ;;
   *) fail 'PN_KOMODO_BOOTSTRAP_ACCESS must be true or false' ;;
 esac
 
-mode="$(stat -c '%a' "$env_file")"
-case "$mode" in
-  400|600) ;;
-  *) fail "protected environment file mode must be 0400 or 0600, found $mode" ;;
-esac
-
-for variable in \
-  KOMODO_DATABASE_USERNAME \
-  KOMODO_DATABASE_PASSWORD \
-  KOMODO_INIT_ADMIN_USERNAME \
-  KOMODO_INIT_ADMIN_PASSWORD \
-  KOMODO_WEBHOOK_SECRET \
-  KOMODO_JWT_SECRET
+for secret_file in \
+  database-username \
+  database-password \
+  init-admin-username \
+  init-admin-password \
+  webhook-secret \
+  jwt-secret
 do
-  count="$(awk -F= -v key="$variable" '$1 == key && length($0) > length(key) + 1 { count++ } END { print count + 0 }' "$env_file")"
-  [ "$count" -eq 1 ] || fail "$variable must occur exactly once with a non-empty value"
+  path="$secrets_dir/$secret_file"
+  [ -s "$path" ] || fail "protected secret is missing or empty: $path"
+  mode="$(stat -c '%a' "$path")"
+  case "$mode" in
+    400|600) ;;
+    *) fail "protected secret mode must be 0400 or 0600: $path is $mode" ;;
+  esac
 done
 
 for legacy_service in mongo core periphery; do

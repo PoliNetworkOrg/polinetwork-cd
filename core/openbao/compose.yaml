@@ -5,9 +5,8 @@ services:
     image: quay.io/openbao/openbao:2.5.4
     restart: unless-stopped
     command: [server]
-    env_file:
-      - /srv/polinetwork/state/openbao/compose.env
     environment:
+      AZURE_CLIENT_ID: d76681da-d260-4ee9-a1e9-42526cca0cb4
       BAO_ADDR: https://127.0.0.1:8200
       BAO_CACERT: /openbao/tls/ca.crt
       BAO_LOCAL_CONFIG: >-

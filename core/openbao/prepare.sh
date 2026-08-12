@@ -2,7 +2,6 @@
 set -eu
 
 state_root="${OPENBAO_STATE_ROOT:-/srv/polinetwork/state/openbao}"
-client_id="${PN_OPENBAO_CLIENT_ID:-}"
 tls_dir="$state_root/tls"
 tmp_dir=
 
@@ -27,10 +26,6 @@ trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 
 [ "$(id -u)" -eq 0 ] || fail 'run as root through sudo'
-printf '%s\n' "$client_id" | grep -Eq \
-  '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' || \
-  fail 'PN_OPENBAO_CLIENT_ID must be the Terraform-managed identity UUID'
-
 install -d -o pnadmin -g pnadmin -m 0710 "$state_root"
 install -d -o root -g root -m 0755 "$tls_dir"
 
@@ -85,7 +80,4 @@ case "$tls_file_count" in
     ;;
 esac
 
-printf 'AZURE_CLIENT_ID=%s\n' "$client_id" |
-  install -o pnadmin -g pnadmin -m 0600 /dev/stdin "$state_root/compose.env"
-
-printf 'OpenBao non-secret environment and internal TLS are ready below %s.\n' "$state_root"
+printf 'OpenBao internal TLS is ready below %s.\n' "$state_root"

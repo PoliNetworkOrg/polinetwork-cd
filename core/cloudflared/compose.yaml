@@ -10,8 +10,10 @@ services:
       - --metrics
       - 0.0.0.0:2000
       - run
-    env_file:
-      - /srv/polinetwork/state/cloudflare/compose.env
+    environment:
+      TUNNEL_TOKEN_FILE: /run/secrets/tunnel_token
+    secrets:
+      - tunnel_token
     read_only: true
     security_opt:
       - no-new-privileges:true
@@ -25,3 +27,7 @@ networks:
   pn-edge:
     external: true
     name: pn-edge
+
+secrets:
+  tunnel_token:
+    file: /srv/polinetwork/state/cloudflare/secrets/tunnel-token

@@ -4,7 +4,7 @@ set -eu
 image='quay.io/openbao/openbao:2.5.4'
 production_container="${OPENBAO_CONTAINER:-core-openbao-1}"
 require_production="${REQUIRE_PRODUCTION_OPENBAO:-true}"
-openbao_env="${OPENBAO_ENV_FILE:-/srv/polinetwork/state/openbao/compose.env}"
+azure_client_id='d76681da-d260-4ee9-a1e9-42526cca0cb4'
 restore_root="${ZEROBYTE_RESTORE_ROOT:-/srv/polinetwork/state/zerobyte/restore-tests}"
 run_id="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 container="openbao-restore-rehearsal-$run_id"
@@ -50,8 +50,6 @@ case "$require_production" in
     exit 2
     ;;
 esac
-test -r "$openbao_env"
-
 if [ "$#" -eq 1 ]; then
   restored_snapshot="$1"
   case "$restored_snapshot" in
@@ -94,7 +92,7 @@ docker run --detach \
   --name "$container" \
   --hostname openbao \
   --network "$network" \
-  --env-file "$openbao_env" \
+  --env AZURE_CLIENT_ID="$azure_client_id" \
   --env BAO_ADDR=http://127.0.0.1:8200 \
   --env BAO_LOCAL_CONFIG='{"ui":false,"api_addr":"http://127.0.0.1:8200","cluster_addr":"https://openbao:8201","seal":{"azurekeyvault":{"vault_name":"kv-polinetwork","key_name":"openbao-unseal"}},"storage":{"raft":{"path":"/openbao/file/raft","node_id":"vm01"}},"listener":{"tcp":{"address":"127.0.0.1:8200","cluster_address":"0.0.0.0:8201","tls_disable":true}}}' \
   --volume "$volume:/openbao/file" \

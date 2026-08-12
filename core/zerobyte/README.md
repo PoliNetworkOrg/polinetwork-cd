@@ -67,7 +67,10 @@ ssh pn-vm01 'sudo install -d -o root -g root -m 0700 \
   /srv/polinetwork/state/backup-staging/openbao'
 ```
 
-Copy each secret directly from Key Vault to its mode `0600` VM file:
+On the VM, `sudo bootstrap/prepare-secrets.sh runtime` silently asks for any
+missing Key Vault values and writes the mode-`0600` files. The following
+workstation streaming flow remains available when interactive paste is not
+appropriate:
 
 ```sh
 for mapping in \

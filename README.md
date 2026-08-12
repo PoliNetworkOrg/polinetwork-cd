@@ -13,8 +13,9 @@ Development of the VM platform happens on the `vm` branch.
 
 Terraform remains in the separate `PoliNetworkOrg/terraform` repository. It
 creates the Azure infrastructure; this repository configures and runs the
-services on the resulting host. Runtime secrets stay outside Git and are
-restored from the documented Key Vault and break-glass sources.
+services on the resulting host. `bootstrap/prepare-secrets.sh` restores runtime
+secrets as service-scoped Compose secrets. Non-secret environment settings are
+tracked directly in Compose, so Docker commands need no env file.
 
 After host and secret recovery, Komodo starts directly from `core/komodo`; its
 Git-backed Resource Sync manages the aggregate `core` Stack and the separate

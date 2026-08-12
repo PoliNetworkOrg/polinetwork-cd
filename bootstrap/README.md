@@ -7,12 +7,12 @@ secret. The target is a repeatable recovery flow:
 2. An operator checks out this public repository.
 3. `bootstrap-host.sh` installs and configures the pinned container runtime and
    creates the shared Docker networks.
-4. Bootstrap secrets are streamed from their off-host stores into protected
-   files. Secret values are never command arguments or Git content.
+4. `prepare-secrets.sh` preserves or migrates protected files and silently
+   asks for any missing value from its documented off-host source. Secret
+   values are never command arguments or Git content.
 5. Retained data disks are reused, or off-host backups are restored to clean
    storage before workloads start.
-6. `core/openbao/prepare.sh` prepares the managed-identity selector and
-   internal TLS before the core services start.
+6. `core/openbao/prepare.sh` prepares internal TLS before core services start.
 7. `core/komodo/start.sh` starts Komodo first; its Git-backed Resource Sync then
    manages the `core` and `applications` Stacks.
 
@@ -35,8 +35,8 @@ From the repository root on the VM:
 
 ```sh
 sudo bootstrap/bootstrap-host.sh
-sudo PN_OPENBAO_CLIENT_ID=REPLACE_WITH_TERRAFORM_OUTPUT \
-  core/openbao/prepare.sh
+sudo bootstrap/prepare-secrets.sh runtime
+sudo core/openbao/prepare.sh
 core/komodo/start.sh
 ```
 
@@ -57,17 +57,24 @@ version is no longer available; it never silently substitutes `latest`.
 | Compose files, OpenBao policy/templates and backup scripts | This repository | Public Git checkout |
 | Shared Docker network definitions | `bootstrap-host.sh` | Created idempotently and verified exactly |
 | Terraform/cloud-init and disk preparation | `PoliNetworkOrg/terraform` | Applied before this script |
-| OpenBao managed-identity client ID | Terraform output; non-secret | Rendered by `core/openbao/prepare.sh` |
+| OpenBao managed-identity client ID | Terraform output; non-secret | Tracked directly in `core/openbao/compose.yaml` |
 | Internal OpenBao TLS | `core/openbao/prepare.sh` | New private key and CA per rebuilt host |
 | Zerobyte APP secret and Azure account key | `kv-polinetwork` | Streamed to root-owned mode-`0600` files |
 | Zerobyte organization recovery key | Approved break-glass store | Opens repositories independently of the UI account |
 | OpenBao recovery key and `pnadmin` password | Approved break-glass store | Used only for privileged recovery/verification |
-| Cloudflare Tunnel token | Off-host secret store | Streamed to the edge env file |
+| Cloudflare Tunnel token | Off-host secret store | Mounted as a service-scoped Compose secret |
 | Application runtime secrets | Restored OpenBao data | Rendered by per-application Agents after OpenBao recovery |
 
 No secret required to recover OpenBao may exist only inside OpenBao. No
 configuration required to locate a backup may exist only in Zerobyte's local
 database.
+
+`prepare-secrets.sh runtime` is idempotent: existing non-empty files are kept,
+and legacy Komodo/Cloudflare `compose.env` files are parsed without sourcing
+them and split into service-scoped files. It does not delete the legacy files.
+Use `prepare-secrets.sh recovery` only during disaster recovery to stage the
+Zerobyte organization recovery key; `all` performs both modes. See
+[`SECRETS.md`](SECRETS.md) for exact custody and consumer mappings.
 
 ## Accepted and pending recovery scopes
 

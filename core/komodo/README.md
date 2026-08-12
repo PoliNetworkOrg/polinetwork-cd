@@ -4,16 +4,17 @@ This Compose project runs Komodo Core and Periphery with the MongoDB instance
 they require. MongoDB is part of this directory because it is private to
 Komodo, not a shared database service.
 
-Persistent data, generated communication keys and the protected environment
-file live below `/srv/polinetwork/state/komodo`. Core is routed through Traefik
+Persistent data, generated communication keys and six protected secret files
+live below `/srv/polinetwork/state/komodo`. Core is routed through Traefik
 on `pn-edge`; MongoDB and Periphery use the project-private `komodo-api`
 network, while Periphery also has outbound access for Git and registries.
 Terminal and container-exec features remain disabled.
 
 Komodo is the only service started directly during bootstrap. It is
 intentionally excluded from the `core` Stack so a failed Stack deployment
-cannot replace its own control plane. After restoring the protected environment
-file, run:
+cannot replace its own control plane. After
+`bootstrap/prepare-secrets.sh runtime` has restored or migrated the protected
+files, run:
 
 ```sh
 core/komodo/start.sh
@@ -38,3 +39,9 @@ temporary variable. Compose recreates Core without the loopback binding;
 normal access then uses the Access-protected Traefik/Cloudflare route. A
 restored Komodo database already contains the Resource Sync and does not need
 this first-run step.
+
+Non-secret Komodo and Periphery settings are explicit in `compose.yaml`.
+Compose grants each secret file only to MongoDB or Core as needed; Periphery
+receives no runtime secret. MongoDB's tracked entrypoint translates its two
+secret files to the official image's initialization variables inside the
+container. No Komodo command needs `--env-file`.
