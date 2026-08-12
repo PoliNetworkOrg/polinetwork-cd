@@ -2,22 +2,6 @@
   "version": 1,
   "repositories": [
     {
-      "id": "azure-primary",
-      "organizationId": "019ff6aa-484a-7000-a4c1-7d2ed01b6ad2",
-      "name": "Azure primary",
-      "backend": "azure",
-      "compressionMode": "auto",
-      "delete": true,
-      "config": {
-        "backend": "azure",
-        "container": "zerobyte",
-        "accountName": "polinetworkbackups",
-        "accountKey": "file://azure_storage_account_key",
-        "endpointSuffix": "core.windows.net",
-        "isExistingRepository": false
-      }
-    },
-    {
       "id": "azure-primary-v2",
       "organizationId": "019ff6aa-484a-7000-a4c1-7d2ed01b6ad2",
       "name": "Azure primary",
