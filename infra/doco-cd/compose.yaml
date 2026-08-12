@@ -30,6 +30,8 @@ services:
     depends_on:
       openbao-agent:
         condition: service_healthy
+      apprise:
+        condition: service_healthy
     environment:
       TZ: Europe/Rome
       DATA_HOST_PATH: /srv/polinetwork/state/doco-cd
@@ -39,6 +41,8 @@ services:
       SECRET_PROVIDER_ACCESS_TOKEN_FILE: /run/openbao/token
       BAO_CACERT: /openbao/tls/ca.crt
       WEBHOOK_SECRET_FILE: /run/secrets/github_webhook_secret
+      APPRISE_API_URL: http://apprise:8000/notify
+      APPRISE_NOTIFY_LEVEL: success
       APPRISE_NOTIFY_URLS: discord://${DISCORD_WEBHOOK}
       POLL_CONFIG: |
         - url: https://github.com/PoliNetworkOrg/polinetwork-cd.git
