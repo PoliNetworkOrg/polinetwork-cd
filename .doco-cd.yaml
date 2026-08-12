@@ -1,6 +1,7 @@
 working_dir: core
 compose_files: [compose.yaml]
 prune_images: false
+webhook_filter: ^refs/heads/vm$
 auto_discovery:
   enabled: true
   depth: 1
@@ -11,6 +12,7 @@ auto_discovery:
 working_dir: apps
 compose_files: [compose.yaml]
 prune_images: false
+webhook_filter: ^refs/heads/vm$
 auto_discovery:
   enabled: true
   depth: 1

@@ -65,6 +65,11 @@ if command -v docker >/dev/null 2>&1 && \
   systemctl is-active --quiet docker.socket && \
   systemctl is-active --quiet docker.service && \
   [ -n "$(docker ps -aq 2>/dev/null)" ]; then
+  if ! command -v jq >/dev/null 2>&1; then
+    apt-get update
+    apt-get install --yes --no-install-recommends jq
+  fi
+
   for package_version in \
     "docker-ce:$docker_version" \
     "docker-ce-cli:$docker_version" \
@@ -101,7 +106,7 @@ if command -v docker >/dev/null 2>&1 && \
 fi
 
 apt-get update
-apt-get install --yes ca-certificates curl
+apt-get install --yes --no-install-recommends ca-certificates curl jq
 install -d -m 0755 /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
 chmod 0644 /etc/apt/keyrings/docker.asc

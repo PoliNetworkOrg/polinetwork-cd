@@ -1,26 +1,37 @@
 # Bootstrap secret custody
 
-Normal application secrets live in OpenBao and are resolved by doco.cd. Only
-secrets needed before OpenBao is available remain outside that loop.
+Normal application secrets live in OpenBao and are resolved by doco.cd. A
+secret needed to recover OpenBao cannot live only in OpenBao, so the small
+bootstrap set below remains in Azure Key Vault `kv-polinetwork`.
 
-| Secret | Canonical custody | Clean-host use |
+| Secret | Azure Key Vault name | Clean-host use |
 | --- | --- | --- |
-| OpenBao Azure Auto Unseal key | Azure Key Vault `kv-polinetwork`; VM managed identity | OpenBao startup |
-| OpenBao recovery key and admin password | Approved break-glass store | Privileged verification; the recovery key remains emergency custody only because Azure Auto Unseal handles normal restore |
-| Dedicated VM Cloudflare tunnel token | Azure Key Vault secret `cloudflared-vm-tunnel-token` | Seed `secret/core/cloudflared` after OpenBao restore |
-| doco.cd AppRole credentials | Regenerated from restored OpenBao | Written once to `/srv/polinetwork/state/openbao/approle/doco-cd` |
-| Zerobyte Azure account key | Azure Key Vault | Direct Restic recovery and `secret/core/zerobyte` |
-| Zerobyte active-organization `restic.pass` file | Approved break-glass store | Direct Restic recovery of both OpenBao and Zerobyte state |
+| Dedicated VM Cloudflare token | `cloudflared-vm-tunnel-token` | Re-seed `secret/core/cloudflared` after restore |
+| doco.cd GitHub HMAC secret | `doco-cd-github-webhook-secret` | Authenticate `/v1/webhook` before OpenBao-dependent reconciliation |
+| Zerobyte runtime APP secret | `zerobyte-app-secret` | Re-seed `secret/core/zerobyte` |
+| Zerobyte Azure storage account key | `zerobyte-azure-storage-account-key` | Open the Azure Restic repository and re-seed OpenBao |
+| Active Zerobyte organization Restic password | `zerobyte-restic-recovery-key` | Recover the OpenBao and Zerobyte snapshots |
 
-The Cloudflare token, Zerobyte runtime APP secret and migrated application
-secrets are stored in OpenBao. The Cloudflare token also remains in Azure Key
-Vault because the OpenBao snapshot may predate a token rotation or secret-path
-migration. doco.cd resolves runtime values during reconciliation and passes
-them to Compose without an env file. For direct disaster recovery, the Azure
-account key and Restic recovery key are streamed into the root-owned mode-`0600`
-files documented by `core/zerobyte`; they must never be committed.
+The VM backup/bootstrap user-assigned managed identity receives only Key Vault
+secret `Get`. The bootstrap fetch helper also enforces the exact name allowlist
+above and writes values atomically as `root:root`, mode `0600`. It uses the
+Azure Instance Metadata Service directly, so the VM does not need Azure CLI or
+operator credentials.
 
-Those two files are the only secret-file prerequisites for
-`sudo bootstrap/bootstrap-vm.sh`. The script obtains the OpenBao administrator
-password through `systemd-ask-password`, never through an argument, and deletes
-the temporary VM recovery files only after successful convergence.
+The exact active `restic.pass` bytes must be seeded once as
+`zerobyte-restic-recovery-key`; do not reuse an older Key Vault value or a key
+from another Zerobyte organization. Keep the approved off-host copy as an
+independent break-glass artifact even after it is copied to Key Vault. Use
+`bootstrap/seed-restic-recovery-key.sh /protected/path/restic.pass` so the
+value travels as a file and is never placed in a command argument or output.
+
+The OpenBao Azure Auto Unseal key remains in Key Vault under its Terraform-
+managed custody. The OpenBao recovery key and administrator password remain in
+the approved human break-glass store. AppRole credentials are regenerated from
+restored OpenBao and written only to protected host state.
+
+`sudo bootstrap/bootstrap-vm.sh` fetches all Azure-held values itself. It asks
+for the OpenBao administrator password at startup only when recovery,
+credential regeneration, or `--with-admin` requires it; it never accepts that
+password as an argument or writes it to the log. Temporary recovery copies are
+removed after successful convergence and by the exit trap.

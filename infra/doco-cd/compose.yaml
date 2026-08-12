@@ -38,15 +38,23 @@ services:
       SECRET_PROVIDER_SITE_URL: https://openbao:8200
       SECRET_PROVIDER_ACCESS_TOKEN_FILE: /run/openbao/token
       BAO_CACERT: /openbao/tls/ca.crt
+      WEBHOOK_SECRET_FILE: /run/secrets/github_webhook_secret
       POLL_CONFIG: |
         - url: https://github.com/PoliNetworkOrg/polinetwork-cd.git
           reference: refs/heads/vm
-          interval: 60s
+          run_once: true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /srv/polinetwork/state/doco-cd:/data
       - /srv/polinetwork/state/openbao/tls/ca.crt:/openbao/tls/ca.crt:ro
       - openbao-token:/run/openbao:ro
+    secrets:
+      - github_webhook_secret
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: pn-edge
+      traefik.http.routers.doco-cd-webhook.rule: Host(`doco-cd.polinetwork.org`) && Path(`/v1/webhook`)
+      traefik.http.services.doco-cd-webhook.loadbalancer.server.port: "80"
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     cap_add: [DAC_OVERRIDE]
@@ -59,7 +67,11 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-    networks: [pn-secrets, egress]
+    networks: [pn-secrets, pn-edge, egress]
+
+secrets:
+  github_webhook_secret:
+    file: /srv/polinetwork/state/doco-cd/secrets/github-webhook-secret
 
 volumes:
   openbao-token:
@@ -73,4 +85,7 @@ networks:
   pn-secrets:
     external: true
     name: pn-secrets
+  pn-edge:
+    external: true
+    name: pn-edge
   egress:

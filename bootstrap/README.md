@@ -5,14 +5,21 @@ point. The normal clean-host sequence is:
 
 1. Terraform creates `vm01`, its managed identity and data disks.
 2. Check out the `vm` branch of this repository.
-3. Stream the Azure storage key and active organization `restic.pass` into the
-   protected paths in [`SECRETS.md`](SECRETS.md).
-4. Run `sudo bootstrap/bootstrap-vm.sh` and answer its single protected
-   OpenBao administrator-password prompt.
+3. Run `sudo bootstrap/bootstrap-vm.sh`. When privileged OpenBao access is
+   needed, the script asks for the administrator password before emitting any
+   phase logs. All Azure-held recovery values are fetched by the VM identity.
 
-From that point doco.cd polls Git and reconciles all projects under `core/` and
-`apps/`. There is no generated Compose catalog, env-file flag or deployment
-helper script.
+The default UI prints short colored progress and result lines for each phase,
+plus the useful final state. Command output is captured in a root-only log under
+`/var/log/polinetwork`; a failed phase prints its last 80 lines. Use
+`--verbose` to mirror phase output or `NO_COLOR=1` to disable color.
+If the Key Vault webhook secret changes, bootstrap detects the change without
+printing either value and recreates doco.cd so the in-memory verifier cannot
+continue using stale key material.
+
+From that point doco.cd performs one initial reconciliation and GitHub push
+webhooks reconcile all projects under `core/` and `apps/`. There is no
+generated Compose catalog, env-file flag or deployment helper script.
 
 `bootstrap-vm.sh` is guarded and idempotent. It calls `bootstrap-host.sh`,
 restores OpenBao and Zerobyte only when their live state is absent, regenerates
@@ -41,3 +48,27 @@ No value needed to recover OpenBao may exist only in OpenBao. The external
 inputs and their custody are listed in [`SECRETS.md`](SECRETS.md). Stateful
 applications added later still require their own consistent producers and
 tested restores before cutover.
+
+## One-time webhook setup
+
+From an authenticated operator workstation, run:
+
+```sh
+bootstrap/seed-restic-recovery-key.sh /protected/path/restic.pass
+bootstrap/configure-doco-webhook.sh
+```
+
+The first helper copies and byte-verifies the exact active Zerobyte organization
+password without printing it, and refuses to replace an existing value unless
+`--replace` is explicit. Keep the source file in the approved off-host break-glass store. The
+second helper creates the HMAC secret in Azure Key Vault when absent and creates
+or updates the push-only GitHub webhook without printing the secret. Retain the
+Argo CD webhook while AKS is the rollback target. A legacy Komodo webhook is
+reported but deliberately left unchanged; disable it only after a signed
+doco.cd delivery has been accepted on the VM.
+
+The existing remotely managed `*.polinetwork.org` VM tunnel route already
+carries `doco-cd.polinetwork.org` to `http://traefik:80`; no additional tunnel
+mapping is needed. Do not protect this hostname with Cloudflare Access: GitHub
+must reach it directly, while doco.cd authenticates each delivery with the
+HMAC secret.

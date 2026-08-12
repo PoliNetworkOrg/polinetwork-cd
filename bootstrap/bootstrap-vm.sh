@@ -8,6 +8,8 @@ doco_dir="$repo_root/infra/doco-cd"
 state_root=/srv/polinetwork/state
 secret_root="$state_root/zerobyte/secrets"
 restore_root="$state_root/zerobyte/restore-tests"
+runtime_secret_root=/run/polinetwork-bootstrap-secrets
+doco_webhook_secret="$state_root/doco-cd/secrets/github-webhook-secret"
 openbao_container=infra-openbao-openbao-1
 zerobyte_container=zerobyte-zerobyte-1
 restored_openbao=
@@ -15,20 +17,167 @@ restored_zerobyte=
 restore_target=
 admin_password=
 output_file=
+current_step_file=
 recovered=false
+recovery_required=false
+need_admin=false
+force_admin=false
+azure_secret_staged=false
+restic_secret_staged=false
+doco_secret_changed=false
+runtime_secrets_staged=false
+verbose="${PN_BOOTSTRAP_VERBOSE:-false}"
+log_file=
+
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
+  blue='\033[1;34m'
+  green='\033[1;32m'
+  red='\033[1;31m'
+  bold='\033[1m'
+  reset='\033[0m'
+else
+  blue=
+  green=
+  red=
+  bold=
+  reset=
+fi
+
+usage() {
+  printf '%s\n' \
+    'Usage: sudo bootstrap/bootstrap-vm.sh [--verbose] [--with-admin]' \
+    '' \
+    '  --verbose     Print captured command output after each phase.' \
+    '  --with-admin  Ask for the OpenBao administrator password up front.' \
+    '  --help        Show this help.'
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --verbose) verbose=true ;;
+    --with-admin) force_admin=true ;;
+    --help|-h) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+  esac
+  shift
+done
+case "$verbose" in
+  true|1|yes) verbose=true ;;
+  false|0|no|'') verbose=false ;;
+  *) printf 'PN_BOOTSTRAP_VERBOSE must be true or false.\n' >&2; exit 2 ;;
+esac
+
+ui() {
+  color="$1"
+  marker="$2"
+  shift 2
+  printf '%b%s%b %s\n' "$color" "$marker" "$reset" "$*"
+}
+
+info() {
+  ui "$blue" '›' "$*"
+}
+
+ok() {
+  ui "$green" '✓' "$*"
+}
+
+log_event() {
+  event="$1"
+  shift
+  printf '[%s] %-5s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$event" "$*" \
+    >> "$log_file"
+}
 
 fail() {
-  printf 'bootstrap-vm: %s\n' "$*" >&2
+  ui "$red" '✗' "$*" >&2
+  if [ -n "$log_file" ]; then
+    printf '  Detailed log: %s\n' "$log_file" >&2
+  fi
   exit 1
 }
 
 cleanup() {
   if [ -n "$output_file" ]; then
-    rm -f "$output_file"
+    rm -f -- "$output_file"
   fi
+  if [ -n "$current_step_file" ]; then
+    rm -f -- "$current_step_file"
+  fi
+  if [ "$runtime_secrets_staged" = true ] && [ -d "$runtime_secret_root" ]; then
+    rm -rf -- "$runtime_secret_root"
+  fi
+  if [ "$azure_secret_staged" = true ]; then
+    rm -f -- "$secret_root/azure-storage-account-key"
+  fi
+  if [ "$restic_secret_staged" = true ]; then
+    rm -f -- "$secret_root/restic-recovery-key"
+  fi
+  docker exec --user 0:0 "$openbao_container" sh -c \
+    'rm -f /tmp/bootstrap-cloudflare-token /tmp/bootstrap-zerobyte-app-secret /tmp/bootstrap-zerobyte-account-key' \
+    >/dev/null 2>&1 || true
   unset admin_password
 }
-trap cleanup EXIT HUP INT TERM
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+
+run_step() {
+  label="$1"
+  shift
+  current_step_file="$(mktemp /run/polinetwork-bootstrap-step.XXXXXX)"
+  chmod 0600 "$current_step_file"
+  info "$label"
+  log_event START "$label"
+
+  if "$@" > "$current_step_file" 2>&1; then
+    cat "$current_step_file" >> "$log_file"
+    log_event OK "$label"
+    if [ "$verbose" = true ]; then
+      cat "$current_step_file"
+    fi
+    rm -f -- "$current_step_file"
+    current_step_file=
+    ok "$label"
+    return 0
+  else
+    status=$?
+  fi
+
+  cat "$current_step_file" >> "$log_file"
+  log_event FAIL "$label (exit $status)"
+  ui "$red" '✗' "$label failed (exit $status)" >&2
+  printf '%s\n' '  Last output:' >&2
+  tail -n 80 "$current_step_file" | sed 's/^/    /' >&2
+  rm -f -- "$current_step_file"
+  current_step_file=
+  fail 'Bootstrap stopped at the failed phase.'
+}
+
+run_capture_step() {
+  label="$1"
+  capture_file="$2"
+  shift 2
+  info "$label"
+  log_event START "$label"
+
+  if "$@" > "$capture_file" 2>&1; then
+    cat "$capture_file" >> "$log_file"
+    log_event OK "$label"
+    if [ "$verbose" = true ]; then
+      cat "$capture_file"
+    fi
+    ok "$label"
+    return 0
+  else
+    status=$?
+  fi
+
+  cat "$capture_file" >> "$log_file"
+  log_event FAIL "$label (exit $status)"
+  ui "$red" '✗' "$label failed (exit $status)" >&2
+  tail -n 80 "$capture_file" | sed 's/^/    /' >&2
+  fail 'Bootstrap stopped at the failed phase.'
+}
 
 openbao_compose() {
   docker compose \
@@ -55,7 +204,7 @@ wait_for_openbao_api() {
       return
     fi
     attempt=$((attempt + 1))
-    [ "$attempt" -lt 60 ] || fail 'OpenBao API did not become ready within 120 seconds'
+    [ "$attempt" -lt 60 ] || fail 'OpenBao API did not become ready within 120 seconds.'
     sleep 2
   done
 }
@@ -79,52 +228,174 @@ openbao_initialized() {
   printf '%s\n' "$status" | grep -q '"initialized":[[:space:]]*true'
 }
 
-need_admin=false
+fetch_secret() {
+  secret_name="$1"
+  destination="$2"
+  "$script_dir/fetch-keyvault-secret.sh" "$secret_name" "$destination"
+}
 
-[ "$(id -u)" -eq 0 ] || fail 'run as root through sudo'
-[ "$repo_root" = /srv/polinetwork/compose/polinetwork-cd ] || \
-  fail 'checkout must be /srv/polinetwork/compose/polinetwork-cd because tracked systemd units use that path'
+run_snapshot_bootstrap() {
+  printf '%s\n' "$admin_password" | \
+    "$repo_root/core/zerobyte/openbao-snapshot/bootstrap.sh"
+}
 
-"$script_dir/bootstrap-host.sh"
+install_timers() {
+  install -o root -g root -m 0644 \
+    "$repo_root/core/zerobyte/openbao-snapshot/openbao-snapshot.service" \
+    /etc/systemd/system/openbao-snapshot.service &&
+  install -o root -g root -m 0644 \
+    "$repo_root/core/zerobyte/openbao-snapshot/openbao-snapshot.timer" \
+    /etc/systemd/system/openbao-snapshot.timer &&
+  install -o root -g root -m 0644 \
+    "$repo_root/core/zerobyte/database-snapshot/zerobyte-database-snapshot.service" \
+    /etc/systemd/system/zerobyte-database-snapshot.service &&
+  install -o root -g root -m 0644 \
+    "$repo_root/core/zerobyte/database-snapshot/zerobyte-database-snapshot.timer" \
+    /etc/systemd/system/zerobyte-database-snapshot.timer &&
+  systemctl daemon-reload &&
+  systemctl start openbao-snapshot.service &&
+  systemctl start zerobyte-database-snapshot.service &&
+  systemctl enable --now \
+    openbao-snapshot.timer \
+    zerobyte-database-snapshot.timer
+}
 
-openbao_compose config --quiet
-openbao_compose up -d --pull always
-wait_for_openbao_api
-
-if ! openbao_initialized; then
-  output_file="$(mktemp)"
+recover_backup_artifacts() {
+  output_file="$(mktemp /run/polinetwork-recovery-output.XXXXXX)"
   chmod 0600 "$output_file"
-  if ! "$repo_root/core/zerobyte/openbao-snapshot/disaster-restore.sh" \
-    > "$output_file"; then
-    cat "$output_file"
-    fail 'direct Azure recovery failed'
-  fi
-  cat "$output_file"
+  run_capture_step 'Retrieve and verify the latest OpenBao and Zerobyte backup from Azure' \
+    "$output_file" \
+    "$repo_root/core/zerobyte/openbao-snapshot/disaster-restore.sh"
 
   restored_openbao="$(sed -n 's/^OpenBao: //p' "$output_file" | tail -n 1)"
   restored_zerobyte="$(sed -n 's/^Zerobyte: //p' "$output_file" | tail -n 1)"
-  rm -f "$output_file"
+  rm -f -- "$output_file"
   output_file=
-  [ -s "$restored_openbao" ] || fail 'recovery did not return an OpenBao snapshot'
-  [ -s "$restored_zerobyte" ] || fail 'recovery did not return a Zerobyte database'
+  [ -s "$restored_openbao" ] || fail 'Recovery did not return an OpenBao snapshot.'
+  [ -s "$restored_zerobyte" ] || fail 'Recovery did not return a Zerobyte database.'
 
   case "$restored_openbao" in
     "$restore_root"/openbao-disaster-*/openbao/openbao-*.snap) ;;
-    *) fail 'recovered OpenBao path is outside the guarded restore layout' ;;
+    *) fail 'Recovered OpenBao path is outside the guarded restore layout.' ;;
   esac
   case "$restored_zerobyte" in
     "$restore_root"/openbao-disaster-*/zerobyte/zerobyte-*.db) ;;
-    *) fail 'recovered Zerobyte path is outside the guarded restore layout' ;;
+    *) fail 'Recovered Zerobyte path is outside the guarded restore layout.' ;;
   esac
 
   restore_target="$(dirname "$(dirname "$restored_openbao")")"
   [ "$(dirname "$(dirname "$restored_zerobyte")")" = "$restore_target" ] || \
-    fail 'OpenBao and Zerobyte artifacts did not come from the same restore'
+    fail 'OpenBao and Zerobyte artifacts did not come from the same restore.'
+  recovered=true
+}
 
-  openbao_compose cp \
+[ "$(id -u)" -eq 0 ] || fail 'Run this entry point through sudo.'
+[ "$repo_root" = /srv/polinetwork/compose/polinetwork-cd ] || \
+  fail 'Checkout must be /srv/polinetwork/compose/polinetwork-cd because tracked systemd units use that path.'
+command -v flock >/dev/null 2>&1 || fail 'flock is required for single-run protection.'
+systemctl is-active --quiet prepare-data-disks.service || \
+  fail 'prepare-data-disks.service is not active; fix the data-disk mount before bootstrap.'
+for mount_point in "$state_root" /srv/polinetwork/applications; do
+  mountpoint -q "$mount_point" || \
+    fail "$mount_point is not mounted; refusing to inspect or create state on the OS disk."
+done
+umask 077
+exec 9>/run/polinetwork-bootstrap.lock
+flock --nonblock 9 || fail 'Another VM bootstrap is already running.'
+
+install -d -o root -g root -m 0700 /var/log/polinetwork
+log_file="/var/log/polinetwork/bootstrap-$(date -u +%Y%m%dT%H%M%SZ)-$$.log"
+install -o root -g root -m 0600 /dev/null "$log_file"
+
+printf '%bPoliNetwork VM bootstrap%b\n' "$bold" "$reset"
+printf 'Quiet mode is active. Detailed output is retained at %s.\n\n' "$log_file"
+log_event START 'PoliNetwork VM bootstrap'
+
+if [ ! -s "$state_root/openbao/raft/vault.db" ]; then
+  recovery_required=true
+  need_admin=true
+fi
+if [ ! -s "$state_root/zerobyte/data/data/zerobyte.db" ]; then
+  recovery_required=true
+fi
+for credential in \
+  "$state_root/openbao/approle/doco-cd/role-id" \
+  "$state_root/openbao/approle/doco-cd/secret-id" \
+  "$state_root/openbao/approle/backup/role-id" \
+  "$state_root/openbao/approle/backup/secret-id"
+do
+  [ -s "$credential" ] || need_admin=true
+done
+[ "$force_admin" = false ] || need_admin=true
+
+if [ "$need_admin" = true ]; then
+  info 'One protected input is required before bootstrap begins.'
+  admin_password="$(systemd-ask-password 'OpenBao pnadmin password')"
+  [ -n "$admin_password" ] || fail 'OpenBao administrator password is empty.'
+  ok 'OpenBao administrator password collected; it will not be logged.'
+else
+  ok 'No operator input is required for this convergence run.'
+fi
+
+run_step 'Validate and configure the Debian/Docker host' \
+  "$script_dir/bootstrap-host.sh"
+docker_summary="$(docker --version | sed 's/,.*//') / $(docker compose version --short)"
+ok "$docker_summary is ready on the applications disk."
+
+webhook_secret_before=missing
+if [ -s "$doco_webhook_secret" ]; then
+  webhook_secret_before="$(sha256sum "$doco_webhook_secret" | awk '{print $1}')"
+fi
+run_step 'Retrieve the doco.cd webhook secret from Azure Key Vault' \
+  fetch_secret doco-cd-github-webhook-secret "$doco_webhook_secret"
+webhook_secret_after="$(sha256sum "$doco_webhook_secret" | awk '{print $1}')"
+[ "$webhook_secret_before" = "$webhook_secret_after" ] || doco_secret_changed=true
+
+if [ "$need_admin" = true ]; then
+  install -d -o root -g root -m 0700 "$runtime_secret_root"
+  runtime_secrets_staged=true
+  run_step 'Retrieve the Cloudflare tunnel token from Azure Key Vault' \
+    fetch_secret cloudflared-vm-tunnel-token \
+    "$runtime_secret_root/cloudflared-vm-tunnel-token"
+  run_step 'Retrieve the Zerobyte application secret from Azure Key Vault' \
+    fetch_secret zerobyte-app-secret \
+    "$runtime_secret_root/zerobyte-app-secret"
+fi
+
+if [ "$need_admin" = true ] || [ "$recovery_required" = true ]; then
+  run_step 'Retrieve the Azure backup account key from Azure Key Vault' \
+    fetch_secret zerobyte-azure-storage-account-key \
+    "$secret_root/azure-storage-account-key"
+  azure_secret_staged=true
+fi
+
+if [ "$recovery_required" = true ]; then
+  run_step 'Retrieve the active Restic recovery key from Azure Key Vault' \
+    fetch_secret zerobyte-restic-recovery-key \
+    "$secret_root/restic-recovery-key"
+  restic_secret_staged=true
+fi
+
+run_step 'Validate the OpenBao Compose model' openbao_compose config --quiet
+run_step 'Start OpenBao and its internal TLS initializer' \
+  openbao_compose up -d --pull always
+info 'Waiting for the OpenBao API.'
+wait_for_openbao_api
+ok 'OpenBao API is reachable over internal TLS.'
+
+if ! openbao_initialized; then
+  [ -n "$admin_password" ] || \
+    fail 'OpenBao is uninitialized. Rerun with --with-admin so input is collected up front.'
+  [ -s "$secret_root/restic-recovery-key" ] || \
+    fail 'OpenBao needs recovery but the Restic recovery key was not staged.'
+  recover_backup_artifacts
+
+  run_step 'Stage the verified Raft snapshot for production restoration' \
+    openbao_compose cp \
     "$restored_openbao" openbao:/tmp/openbao-production-restore.snap
 
-  openbao_compose exec -T --user 0:0 \
+  run_step 'Restore the production OpenBao Raft state' \
+    openbao_compose exec -T --user 0:0 \
     openbao sh -ec '
       umask 077
       init_file=/tmp/openbao-production-init.json
@@ -141,62 +412,79 @@ if ! openbao_initialized; then
       rm -f "$init_file" /tmp/openbao-production-restore.snap
     '
 
-  openbao_compose restart openbao
-  openbao_compose up -d \
-    --wait --wait-timeout 120
-  recovered=true
-  need_admin=true
+  run_step 'Restart restored OpenBao' openbao_compose restart openbao
+  run_step 'Converge and health-check restored OpenBao' \
+    openbao_compose up -d --wait --wait-timeout 120
+  ok 'OpenBao is initialized, auto-unsealed, active, and healthy.'
 else
+  info 'OpenBao is initialized; waiting for active health.'
   wait_for_health "$openbao_container" 60
+  ok 'OpenBao is initialized, auto-unsealed, active, and healthy.'
 fi
 
 if [ ! -e "$state_root/zerobyte/data/data/zerobyte.db" ]; then
   if [ -z "$restored_zerobyte" ]; then
     set -- "$restore_root"/openbao-disaster-*/zerobyte/zerobyte-*.db
-    [ "$#" -eq 1 ] && [ -s "$1" ] || \
-      fail 'Zerobyte database is absent and exactly one recovered database was not found'
-    restored_zerobyte="$1"
+    if [ "$#" -eq 1 ] && [ -s "$1" ]; then
+      restored_zerobyte="$1"
+    else
+      recover_backup_artifacts
+    fi
   fi
   if docker inspect "$zerobyte_container" >/dev/null 2>&1 && \
     [ "$(docker inspect -f '{{.State.Running}}' "$zerobyte_container")" = true ]; then
-    fail 'Zerobyte is running without its database; refusing automatic replacement'
+    fail 'Zerobyte is running without its database; refusing automatic replacement.'
   fi
-  "$repo_root/core/zerobyte/database-snapshot/restore.sh" "$restored_zerobyte"
+  run_step 'Restore the consistent Zerobyte database snapshot' \
+    "$repo_root/core/zerobyte/database-snapshot/restore.sh" "$restored_zerobyte"
+else
+  ok 'Existing Zerobyte database is present; no restore is needed.'
 fi
 
-for credential in \
-  "$state_root/openbao/approle/doco-cd/role-id" \
-  "$state_root/openbao/approle/doco-cd/secret-id"
-do
-  [ -s "$credential" ] || need_admin=true
-done
-
-for credential in \
-  "$state_root/openbao/approle/backup/role-id" \
-  "$state_root/openbao/approle/backup/secret-id"
-do
-  [ -s "$credential" ] || need_admin=true
-done
-
 if [ "$need_admin" = true ]; then
-  admin_password="$(systemd-ask-password 'OpenBao pnadmin password')"
-  [ -n "$admin_password" ] || fail 'OpenBao administrator password is empty'
+  run_step 'Stage the Cloudflare value inside OpenBao for protected import' \
+    docker cp "$runtime_secret_root/cloudflared-vm-tunnel-token" \
+    "$openbao_container:/tmp/bootstrap-cloudflare-token"
+  run_step 'Stage the Zerobyte application value inside OpenBao' \
+    docker cp "$runtime_secret_root/zerobyte-app-secret" \
+    "$openbao_container:/tmp/bootstrap-zerobyte-app-secret"
+  run_step 'Stage the Zerobyte storage value inside OpenBao' \
+    docker cp "$secret_root/azure-storage-account-key" \
+    "$openbao_container:/tmp/bootstrap-zerobyte-account-key"
 
-  printf '%s\n' "$admin_password" | \
+  info 'Converging OpenBao runtime values and least-privilege AppRoles.'
+  log_event START 'Converge OpenBao runtime values and least-privilege AppRoles'
+  current_step_file="$(mktemp /run/polinetwork-bootstrap-step.XXXXXX)"
+  chmod 0600 "$current_step_file"
+  if printf '%s' "$admin_password" | \
     docker exec --user 0:0 -i "$openbao_container" sh -ec '
-      IFS= read -r admin_password
-      token="$(printf "%s\n" "$admin_password" | \
+      cleanup() {
+        rm -f \
+          /tmp/bootstrap-cloudflare-token \
+          /tmp/bootstrap-zerobyte-app-secret \
+          /tmp/bootstrap-zerobyte-account-key
+      }
+      trap cleanup EXIT HUP INT TERM
+      admin_password=
+      IFS= read -r admin_password || test -n "$admin_password"
+      token="$(printf "%s" "$admin_password" | \
         bao write -field=token auth/userpass/login/pnadmin password=-)"
       unset admin_password
       test -n "$token"
       export BAO_TOKEN="$token"
 
+      chmod 0400 \
+        /tmp/bootstrap-cloudflare-token \
+        /tmp/bootstrap-zerobyte-app-secret \
+        /tmp/bootstrap-zerobyte-account-key
+      bao kv put -mount=secret core/cloudflared \
+        tunnel_token=@/tmp/bootstrap-cloudflare-token >/dev/null
+      bao kv put -mount=secret core/zerobyte \
+        app_secret=@/tmp/bootstrap-zerobyte-app-secret \
+        azure_storage_account_key=@/tmp/bootstrap-zerobyte-account-key \
+        >/dev/null
       bao kv get -field=message -mount=secret apps/canary | \
         grep -qx openbao-agent-ok
-      bao kv get -field=tunnel_token -mount=secret core/cloudflared >/dev/null
-      bao kv get -field=app_secret -mount=secret core/zerobyte >/dev/null
-      bao kv get -field=azure_storage_account_key \
-        -mount=secret core/zerobyte >/dev/null
 
       bao auth list -format=json | grep -q '"'"'approle/'"'"' || \
         bao auth enable approle >/dev/null
@@ -231,52 +519,66 @@ if [ "$need_admin" = true ]; then
 
       bao token revoke -self >/dev/null
       unset BAO_TOKEN token
-    '
+    ' > "$current_step_file" 2>&1
+  then
+    cat "$current_step_file" >> "$log_file"
+    log_event OK 'Converge OpenBao runtime values and least-privilege AppRoles'
+    [ "$verbose" = false ] || cat "$current_step_file"
+    rm -f -- "$current_step_file"
+    current_step_file=
+    ok 'OpenBao runtime values and doco.cd AppRole are converged.'
+  else
+    status=$?
+    cat "$current_step_file" >> "$log_file"
+    log_event FAIL "Converge OpenBao runtime values and least-privilege AppRoles (exit $status)"
+    ui "$red" '✗' "OpenBao provisioning failed (exit $status)" >&2
+    tail -n 80 "$current_step_file" | sed 's/^/    /' >&2
+    fail 'Bootstrap stopped while provisioning OpenBao.'
+  fi
 
-  printf '%s\n' "$admin_password" | \
-    "$repo_root/core/zerobyte/openbao-snapshot/bootstrap.sh"
+  run_step 'Regenerate and verify the snapshot AppRole' run_snapshot_bootstrap
   unset admin_password
+else
+  ok 'Existing doco.cd and snapshot AppRole credentials are present.'
 fi
 
-doco_compose config --quiet
-doco_compose up -d --pull always \
-  --wait --wait-timeout 180
+run_step 'Validate the doco.cd Compose model' doco_compose config --quiet
+if [ "$doco_secret_changed" = true ]; then
+  run_step 'Start doco.cd with the current HMAC secret and reconcile once' \
+    doco_compose up -d --pull always --force-recreate \
+    --wait --wait-timeout 180 doco-cd
+else
+  run_step 'Converge doco.cd and its one-time initial reconciliation' \
+    doco_compose up -d --pull always --wait --wait-timeout 180
+fi
+ok 'doco.cd is healthy; future vm-branch pushes use the authenticated webhook.'
 
+info 'Waiting for Zerobyte reconciliation and health.'
 wait_for_health "$zerobyte_container" 90
+ok 'Zerobyte is running and healthy.'
 
-install -o root -g root -m 0644 \
-  "$repo_root/core/zerobyte/openbao-snapshot/openbao-snapshot.service" \
-  /etc/systemd/system/openbao-snapshot.service
-install -o root -g root -m 0644 \
-  "$repo_root/core/zerobyte/openbao-snapshot/openbao-snapshot.timer" \
-  /etc/systemd/system/openbao-snapshot.timer
-install -o root -g root -m 0644 \
-  "$repo_root/core/zerobyte/database-snapshot/zerobyte-database-snapshot.service" \
-  /etc/systemd/system/zerobyte-database-snapshot.service
-install -o root -g root -m 0644 \
-  "$repo_root/core/zerobyte/database-snapshot/zerobyte-database-snapshot.timer" \
-  /etc/systemd/system/zerobyte-database-snapshot.timer
-
-systemctl daemon-reload
-systemctl start openbao-snapshot.service
-systemctl start zerobyte-database-snapshot.service
-systemctl enable --now \
-  openbao-snapshot.timer \
-  zerobyte-database-snapshot.timer
+run_step 'Install, exercise, and enable platform snapshot timers' install_timers
+ok 'OpenBao and Zerobyte snapshot producers passed; both timers are active.'
 
 if [ "$recovered" = true ]; then
   case "$restore_target" in
     "$restore_root"/openbao-disaster-*) rm -r -- "$restore_target" ;;
-    *) fail 'refusing unexpected restore cleanup target' ;;
+    *) fail 'Refusing unexpected restore cleanup target.' ;;
   esac
-  rm -f -- \
-    "$secret_root/azure-storage-account-key" \
-    "$secret_root/restic-recovery-key"
 fi
+rm -f -- \
+  "$secret_root/azure-storage-account-key" \
+  "$secret_root/restic-recovery-key"
 
-docker inspect "$openbao_container" "$zerobyte_container" \
-  --format '{{.Name}}={{.State.Status}} health={{.State.Health.Status}}'
-systemctl is-active \
-  openbao-snapshot.timer \
-  zerobyte-database-snapshot.timer
-printf 'VM bootstrap passed; OpenBao, Zerobyte, doco.cd and snapshot timers are converged.\n'
+openbao_health="$(docker inspect -f '{{.State.Health.Status}}' "$openbao_container")"
+zerobyte_health="$(docker inspect -f '{{.State.Health.Status}}' "$zerobyte_container")"
+[ "$openbao_health" = healthy ] || fail "OpenBao final health is $openbao_health."
+[ "$zerobyte_health" = healthy ] || fail "Zerobyte final health is $zerobyte_health."
+systemctl is-active --quiet openbao-snapshot.timer zerobyte-database-snapshot.timer || \
+  fail 'One or more snapshot timers are inactive.'
+
+printf '\n'
+ok 'VM bootstrap passed.'
+log_event OK 'PoliNetwork VM bootstrap'
+printf '  OpenBao, doco.cd, Zerobyte, and both snapshot timers are converged.\n'
+printf '  Detailed log: %s\n' "$log_file"

@@ -21,9 +21,10 @@ open the OpenBao backup cannot live only in OpenBao.
   volume. Zerobyte initializes the repository when its container is empty;
   backup schedules are configured in the UI.
 - The exact `restic.pass` file downloaded for the active Zerobyte organization
-  is the Restic password and remains in the approved break-glass store outside
-  the VM. Do not substitute the account password, APP secret, or a recovery
-  key downloaded for another organization.
+  is the Restic password. Its exact bytes are stored as the Key Vault secret
+  `zerobyte-restic-recovery-key`, while an approved off-host copy remains an
+  independent break-glass artifact. Do not substitute the account password,
+  APP secret, an older Key Vault value, or a key from another organization.
 
 ## OpenBao snapshots
 
@@ -44,16 +45,18 @@ live SQLite database.
 ## Clean-host recovery
 
 Loss of the VM also loses Zerobyte's local database, so recovery deliberately
-bypasses the UI. Stream the Azure account key from Key Vault and the exact
-downloaded `restic.pass` file for the active organization from the break-glass
-store into:
+bypasses the UI. Normal `bootstrap/bootstrap-vm.sh` recovery retrieves the
+Azure account key and exact active Restic password through the VM managed
+identity and stages them temporarily at:
 
 ```text
 /srv/polinetwork/state/zerobyte/secrets/azure-storage-account-key
 /srv/polinetwork/state/zerobyte/secrets/restic-recovery-key
 ```
 
-Both files must be `root:root`, mode `0600`. Then run:
+Both files are `root:root`, mode `0600`, and are removed after convergence.
+When invoking the disaster-restore helper directly, an operator must still
+stage those two files explicitly before running:
 
 ```sh
 sudo core/zerobyte/openbao-snapshot/disaster-restore.sh
