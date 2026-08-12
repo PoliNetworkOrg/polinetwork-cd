@@ -9,7 +9,7 @@ secrets needed before OpenBao is available remain outside that loop.
 | OpenBao recovery key and admin password | Approved break-glass store | Restore and privileged verification |
 | doco.cd AppRole credentials | Regenerated from restored OpenBao | Written once to `/srv/polinetwork/state/openbao/approle/doco-cd` |
 | Zerobyte Azure account key | Azure Key Vault | Direct Restic recovery and `secret/core/zerobyte` |
-| Zerobyte organization recovery key | Approved break-glass store | Direct Restic recovery only |
+| Zerobyte active-organization `restic.pass` file | Approved break-glass store | Direct Restic recovery only |
 
 The Cloudflare token, Zerobyte runtime APP secret and migrated application
 secrets are stored in OpenBao. doco.cd resolves them during reconciliation and

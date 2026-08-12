@@ -19,8 +19,10 @@ open the OpenBao backup cannot live only in OpenBao.
 - `/srv/polinetwork/state/zerobyte/restore-tests` is the only restore target.
 - `provisioning.json` declares the existing Azure repository and OpenBao
   snapshot volume. Backup schedules are configured in the UI.
-- The Zerobyte organization recovery key is the Restic password and remains in
-  the approved break-glass store outside the VM.
+- The exact `restic.pass` file downloaded for the active Zerobyte organization
+  is the Restic password and remains in the approved break-glass store outside
+  the VM. Do not substitute the account password, APP secret, or a recovery
+  key downloaded for another organization.
 
 ## OpenBao snapshots
 
@@ -36,8 +38,9 @@ Raft directory.
 ## Clean-host recovery
 
 Loss of the VM also loses Zerobyte's local database, so recovery deliberately
-bypasses the UI. Stream the Azure account key from Key Vault and the Restic
-organization recovery key from the break-glass store into:
+bypasses the UI. Stream the Azure account key from Key Vault and the exact
+downloaded `restic.pass` file for the active organization from the break-glass
+store into:
 
 ```text
 /srv/polinetwork/state/zerobyte/secrets/azure-storage-account-key
