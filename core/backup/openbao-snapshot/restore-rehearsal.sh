@@ -3,6 +3,7 @@ set -eu
 
 image='quay.io/openbao/openbao:2.5.4'
 production_container="${OPENBAO_CONTAINER:-control-openbao-1}"
+require_production="${REQUIRE_PRODUCTION_OPENBAO:-true}"
 openbao_env="${OPENBAO_ENV_FILE:-/srv/polinetwork/state/openbao/compose.env}"
 restore_root="${ZEROBYTE_RESTORE_ROOT:-/srv/polinetwork/state/zerobyte/restore-tests}"
 run_id="$(date -u +%Y%m%dT%H%M%SZ)-$$"
@@ -39,15 +40,25 @@ else
   exit 2
 fi
 
-test "$(docker inspect -f '{{.State.Health.Status}}' "$production_container")" = healthy
+case "$require_production" in
+  true)
+    test "$(docker inspect -f '{{.State.Health.Status}}' "$production_container")" = healthy
+    ;;
+  false) ;;
+  *)
+    printf 'REQUIRE_PRODUCTION_OPENBAO must be true or false.\n' >&2
+    exit 2
+    ;;
+esac
 test -r "$openbao_env"
 
 if [ "$#" -eq 1 ]; then
   restored_snapshot="$1"
   case "$restored_snapshot" in
-    "$restore_root"/openbao-*.snap) ;;
+    "$restore_root"/openbao-*.snap | \
+    "$restore_root"/openbao-disaster-*/openbao-*.snap) ;;
     *)
-      printf 'The restored snapshot must be an openbao-*.snap file directly below %s.\n' "$restore_root" >&2
+      printf 'The restored snapshot must be an approved openbao-*.snap path below %s.\n' "$restore_root" >&2
       exit 1
       ;;
   esac
@@ -158,5 +169,7 @@ printf '%s\n' "$pnadmin_password" | docker exec -i "$container" sh -ec '
 '
 unset pnadmin_password
 
-test "$(docker inspect -f '{{.State.Health.Status}}' "$production_container")" = healthy
+if [ "$require_production" = true ]; then
+  test "$(docker inspect -f '{{.State.Health.Status}}' "$production_container")" = healthy
+fi
 printf 'OpenBao isolated restore rehearsal passed; pnadmin login and canary secret read succeeded.\n'

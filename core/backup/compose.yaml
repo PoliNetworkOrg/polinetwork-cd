@@ -17,7 +17,6 @@ services:
     secrets:
       - app_secret
       - azure_storage_account_key
-      - restic_repository_password
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ./provisioning.json:/etc/zerobyte/provisioning.json:ro
@@ -59,5 +58,3 @@ secrets:
     file: /srv/polinetwork/state/zerobyte/secrets/app-secret
   azure_storage_account_key:
     file: /srv/polinetwork/state/zerobyte/secrets/azure-storage-account-key
-  restic_repository_password:
-    file: /srv/polinetwork/state/zerobyte/secrets/restic-repository-password

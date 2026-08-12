@@ -13,8 +13,7 @@
         "accountName": "polinetworkbackups",
         "accountKey": "file://azure_storage_account_key",
         "endpointSuffix": "core.windows.net",
-        "isExistingRepository": false,
-        "customPassword": "file://restic_repository_password"
+        "isExistingRepository": true
       }
     }
   ],

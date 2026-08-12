@@ -1,0 +1,3 @@
+version = 4
+root = "/srv/polinetwork/applications/containerd"
+state = "/run/containerd"
