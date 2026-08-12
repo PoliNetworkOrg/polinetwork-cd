@@ -1,24 +1,22 @@
-# PoliNetwork deployment configuration
+# PoliNetwork deployments
 
-This repository contains both the current Kubernetes definitions and the
-Docker Compose platform that is replacing AKS on the ARM64 `vm01` host.
-Development of the VM platform happens on the `vm` branch.
+This repository is the Git source of truth for the ARM64 `vm01` host. VM work
+happens on the `vm` branch; AKS remains the rollback target during migration.
 
 | Directory | Purpose |
 | --- | --- |
-| [`apps/`](apps/) | PoliNetwork applications deployed with Docker Compose |
-| [`core/`](core/) | Komodo bootstrap plus the Komodo-managed `core` Stack |
-| [`bootstrap/`](bootstrap/) | Reproducible VM bootstrap and disaster-recovery tooling |
-| [`k8s-apps/`](k8s-apps/) | Legacy Kubernetes applications kept during the incremental migration |
+| [`infra/`](infra/) | One-time OpenBao and doco.cd control-plane bootstrap |
+| [`core/`](core/) | Core services reconciled by doco.cd |
+| [`apps/`](apps/) | PoliNetwork applications reconciled by doco.cd |
+| [`bootstrap/`](bootstrap/) | Host bootstrap and clean-host recovery contract |
+| [`k8s-apps/`](k8s-apps/) | Legacy Kubernetes workloads awaiting migration |
 
-Terraform remains in the separate `PoliNetworkOrg/terraform` repository. It
-creates the Azure infrastructure; this repository configures and runs the
-services on the resulting host. `bootstrap/prepare-secrets.sh` restores runtime
-secrets as service-scoped Compose secrets. Non-secret environment settings are
-tracked directly in Compose, so Docker commands need no env file.
+doco.cd polls this public repository and natively discovers every immediate
+`core/*/compose.yaml` and `apps/*/compose.yaml`. Add a service folder and push:
+there is no aggregate Compose file or deployment catalog to update. A folder
+can add `.doco-cd.yaml` only when it needs profiles, OpenBao secret references
+or another per-project option.
 
-After host and secret recovery, Komodo starts directly from `core/komodo`; its
-Git-backed Resource Sync manages the aggregate `core` Stack and the separate
-`applications` Stack. Adding `core/x/compose.yaml` or `apps/x/compose.yaml`
-automatically adds that folder to the corresponding deployment; no central
-service list is maintained.
+On a new VM, run the host bootstrap, start or restore OpenBao, provision the
+single doco.cd AppRole, and start doco.cd. See [`infra/`](infra/) for that
+short bootstrap boundary. Terraform remains in `PoliNetworkOrg/terraform`.

@@ -12,17 +12,12 @@ auto_auth {
       remove_secret_id_file_after_reading = false
     }
   }
-}
 
-template_config {
-  exit_on_retry_failure         = true
-  static_secret_render_interval = "1m"
-}
-
-template {
-  source               = "/openbao/templates/canary.env.ctmpl"
-  destination          = "/run/secrets/canary.env"
-  perms                = "0640"
-  backup               = false
-  error_on_missing_key = true
+  sink {
+    type = "file"
+    config = {
+      path = "/run/openbao/token"
+      mode = 0640
+    }
+  }
 }

@@ -1,0 +1,75 @@
+name: infra-doco-cd
+
+services:
+  openbao-agent:
+    image: quay.io/openbao/openbao:2.5.4
+    restart: unless-stopped
+    command: [agent, -config=/openbao/agent/config.hcl]
+    volumes:
+      - ./agent.hcl:/openbao/agent/config.hcl:ro
+      - /srv/polinetwork/state/openbao/tls/ca.crt:/openbao/tls/ca.crt:ro
+      - /srv/polinetwork/state/openbao/approle/doco-cd:/openbao/auth:ro
+      - openbao-token:/run/openbao
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETGID, SETUID]
+    mem_limit: 128m
+    cpus: 0.25
+    pids_limit: 64
+    healthcheck:
+      test: [CMD-SHELL, "test -s /run/openbao/token"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    networks: [pn-secrets]
+
+  doco-cd:
+    image: ghcr.io/kimdre/doco-cd:0.108.0@sha256:7b444cbd9b350e0d65a93942cfa025ae62fe52d5f00b7b791d93630ef6909cef
+    restart: unless-stopped
+    depends_on:
+      openbao-agent:
+        condition: service_healthy
+    environment:
+      TZ: Europe/Rome
+      DATA_HOST_PATH: /srv/polinetwork/state/doco-cd
+      LOG_LEVEL: info
+      SECRET_PROVIDER: openbao
+      SECRET_PROVIDER_SITE_URL: https://openbao:8200
+      SECRET_PROVIDER_ACCESS_TOKEN_FILE: /run/openbao/token
+      BAO_CACERT: /openbao/tls/ca.crt
+      POLL_CONFIG: |
+        - url: https://github.com/PoliNetworkOrg/polinetwork-cd.git
+          reference: refs/heads/vm
+          interval: 60s
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /srv/polinetwork/state/doco-cd:/data
+      - /srv/polinetwork/state/openbao/tls/ca.crt:/openbao/tls/ca.crt:ro
+      - openbao-token:/run/openbao:ro
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 256m
+    cpus: 0.50
+    pids_limit: 128
+    healthcheck:
+      test: [CMD, /doco-cd, healthcheck]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks: [pn-secrets, egress]
+
+volumes:
+  openbao-token:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: uid=100,gid=1000,mode=0770,size=1m
+
+networks:
+  pn-secrets:
+    external: true
+    name: pn-secrets
+  egress:

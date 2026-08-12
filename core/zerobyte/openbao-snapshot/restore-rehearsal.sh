@@ -2,7 +2,7 @@
 set -eu
 
 image='quay.io/openbao/openbao:2.5.4'
-production_container="${OPENBAO_CONTAINER:-core-openbao-1}"
+production_container="${OPENBAO_CONTAINER:-infra-openbao-openbao-1}"
 require_production="${REQUIRE_PRODUCTION_OPENBAO:-true}"
 azure_client_id='d76681da-d260-4ee9-a1e9-42526cca0cb4'
 restore_root="${ZEROBYTE_RESTORE_ROOT:-/srv/polinetwork/state/zerobyte/restore-tests}"

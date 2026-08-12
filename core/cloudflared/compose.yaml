@@ -30,4 +30,4 @@ networks:
 
 secrets:
   tunnel_token:
-    file: /srv/polinetwork/state/cloudflare/secrets/tunnel-token
+    environment: TUNNEL_TOKEN

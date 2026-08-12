@@ -1,28 +1,20 @@
 # Core services
 
-Each child directory owns one VM service: its Compose file, non-secret
-configuration, helper scripts and local runbook.
+Each immediate child directory is one independently deployed Compose project
+containing the service and its non-secret dynamic files.
 
-| Service | Included dependency |
+| Service | Purpose |
 | --- | --- |
-| [`traefik/`](traefik/) | Restricted Docker socket proxy |
-| [`cloudflared/`](cloudflared/) | — |
-| [`komodo/`](komodo/) | MongoDB and Periphery |
-| [`openbao/`](openbao/) | — |
-| [`zerobyte/`](zerobyte/) | OpenBao snapshot and restore tooling |
+| [`traefik/`](traefik/) | Edge routing and restricted Docker socket proxy |
+| [`cloudflared/`](cloudflared/) | Cloudflare Tunnel connector |
+| [`zerobyte/`](zerobyte/) | Backups and OpenBao snapshot recovery tooling |
 
-Every immediate child folder containing `compose.yaml` joins the `core` Stack
-automatically. Adding `core/x/compose.yaml` requires no root Compose or Komodo
-edit. A `.komodo-ignore` marker excludes the bootstrapped
-[`komodo/`](komodo/) folder. Komodo is started first and then manages the
-`core` and `applications` Stacks declared in
-[`komodo/resources/stacks.toml`](komodo/resources/stacks.toml).
+Adding `core/x/compose.yaml` is enough for doco.cd to discover and reconcile
+it. If the project needs secrets, add `core/x/.doco-cd.yaml` with OpenBao
+references and consume them as environment-backed Compose secrets. Use a
+unique folder name across both `core/` and `apps/`; a nested config can set an
+explicit `name` when that is not possible.
 
-Shared Docker networks are created by
-[`../bootstrap/bootstrap-host.sh`](../bootstrap/bootstrap-host.sh). No service
-publishes a host port; routed HTTP services join `pn-edge` and declare an
-explicit Traefik route. New databases or observability components receive
-their own directory. For local validation, run
-`../bootstrap/render-compose-catalog.sh .` and pass
-`-f .komodo.compose.yaml` to Compose. Komodo renders the catalog automatically
-inside a fresh deployment clone.
+Shared networks come from [`../bootstrap/bootstrap-host.sh`](../bootstrap/bootstrap-host.sh).
+Routed services join `pn-edge`; internal services should use the narrowest
+appropriate network and publish no host ports.

@@ -1,0 +1,103 @@
+name: infra-openbao
+
+services:
+  tls-init:
+    image: alpine/openssl:3.5.4
+    restart: "no"
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - |
+        count=0
+        for file in ca.crt tls.crt tls.key; do
+          [ ! -e "/tls/$$file" ] || count=$$((count + 1))
+        done
+        case "$$count" in
+          0)
+            umask 077
+            openssl req -x509 -newkey rsa:4096 -nodes -sha256 -days 3650 \
+              -subj '/CN=PoliNetwork OpenBao Internal CA' \
+              -addext 'basicConstraints=critical,CA:TRUE,pathlen:0' \
+              -addext 'keyUsage=critical,keyCertSign,cRLSign' \
+              -keyout /tmp/ca.key -out /tmp/ca.crt
+            openssl req -new -newkey rsa:3072 -nodes -sha256 \
+              -subj '/CN=openbao' \
+              -addext 'subjectAltName=DNS:openbao,DNS:openbao.polinetwork.org,IP:127.0.0.1' \
+              -addext 'basicConstraints=critical,CA:FALSE' \
+              -addext 'keyUsage=critical,digitalSignature,keyEncipherment' \
+              -addext 'extendedKeyUsage=serverAuth' \
+              -keyout /tmp/tls.key -out /tmp/tls.csr
+            openssl x509 -req -sha256 -days 3650 \
+              -in /tmp/tls.csr -CA /tmp/ca.crt -CAkey /tmp/ca.key \
+              -CAcreateserial -copy_extensions copy -out /tmp/tls.crt
+            openssl verify -CAfile /tmp/ca.crt /tmp/tls.crt
+            openssl x509 -in /tmp/tls.crt -noout -checkhost openbao
+            install -o 0 -g 0 -m 0644 /tmp/ca.crt /tls/ca.crt
+            install -o 100 -g 1000 -m 0644 /tmp/tls.crt /tls/tls.crt
+            install -o 100 -g 1000 -m 0600 /tmp/tls.key /tls/tls.key
+            ;;
+          3)
+            openssl verify -CAfile /tls/ca.crt /tls/tls.crt
+            openssl x509 -in /tls/tls.crt -noout -checkhost openbao
+            ;;
+          *)
+            echo 'partial OpenBao TLS state; refusing to replace it' >&2
+            exit 1
+            ;;
+        esac
+    read_only: true
+    tmpfs: [/tmp:size=16m,mode=0700]
+    volumes:
+      - /srv/polinetwork/state/openbao/tls:/tls
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE]
+    mem_limit: 64m
+    cpus: 0.25
+    pids_limit: 64
+
+  openbao:
+    image: quay.io/openbao/openbao:2.5.4
+    restart: unless-stopped
+    command: [server]
+    depends_on:
+      tls-init:
+        condition: service_completed_successfully
+    environment:
+      AZURE_CLIENT_ID: d76681da-d260-4ee9-a1e9-42526cca0cb4
+      BAO_ADDR: https://127.0.0.1:8200
+      BAO_CACERT: /openbao/tls/ca.crt
+      BAO_LOCAL_CONFIG: >-
+        {"ui":true,"log_level":"info","api_addr":"https://openbao.polinetwork.org","cluster_addr":"https://openbao:8201","seal":{"azurekeyvault":{"vault_name":"kv-polinetwork","key_name":"openbao-unseal"}},"storage":{"raft":{"path":"/openbao/file/raft","node_id":"vm01"}},"listener":{"tcp":{"address":"0.0.0.0:8200","cluster_address":"0.0.0.0:8201","tls_cert_file":"/openbao/tls/tls.crt","tls_key_file":"/openbao/tls/tls.key","tls_min_version":"tls12"}},"audit":[{"file":{"persistent-file":{"description":"Persistent OpenBao audit log","options":{"file_path":"/openbao/logs/audit.log","mode":"0600"}}}}],"telemetry":{"disable_hostname":true}}
+    volumes:
+      - /srv/polinetwork/state/openbao:/openbao/file
+      - /srv/polinetwork/state/openbao/audit:/openbao/logs
+      - /srv/polinetwork/state/openbao/tls:/openbao/tls:ro
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, SETGID, SETUID]
+    mem_limit: 512m
+    mem_swappiness: 0
+    cpus: 0.50
+    pids_limit: 256
+    healthcheck:
+      test: [CMD-SHELL, "bao status >/dev/null 2>&1; code=$$?; test $$code -eq 0 -o $$code -eq 2"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: pn-edge
+      traefik.http.routers.openbao.rule: Host(`openbao.polinetwork.org`)
+      traefik.http.services.openbao.loadbalancer.server.port: "8200"
+      traefik.http.services.openbao.loadbalancer.server.scheme: https
+      traefik.http.services.openbao.loadbalancer.serverstransport: openbao-tls@file
+    networks: [pn-secrets, pn-edge]
+
+networks:
+  pn-secrets:
+    external: true
+    name: pn-secrets
+  pn-edge:
+    external: true
+    name: pn-edge

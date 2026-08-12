@@ -55,6 +55,6 @@ networks:
 
 secrets:
   app_secret:
-    file: /srv/polinetwork/state/zerobyte/secrets/app-secret
+    environment: ZEROBYTE_APP_SECRET
   azure_storage_account_key:
-    file: /srv/polinetwork/state/zerobyte/secrets/azure-storage-account-key
+    environment: ZEROBYTE_AZURE_STORAGE_ACCOUNT_KEY

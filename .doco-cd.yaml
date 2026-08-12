@@ -1,0 +1,19 @@
+working_dir: core
+compose_files: [compose.yaml]
+prune_images: false
+auto_discovery:
+  enabled: true
+  depth: 1
+  delete: true
+  remove_volumes: false
+  remove_images: false
+---
+working_dir: apps
+compose_files: [compose.yaml]
+prune_images: false
+auto_discovery:
+  enabled: true
+  depth: 1
+  delete: true
+  remove_volumes: false
+  remove_images: false

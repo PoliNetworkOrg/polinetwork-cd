@@ -1,21 +1,9 @@
-# OpenBao Agent canary
+# OpenBao secret canary
 
-This profile validates the per-application OpenBao Agent pattern. The Agent
-authenticates with its dedicated AppRole and renders one secret into a tmpfs
-volume consumed by an otherwise network-isolated container.
+This project proves doco.cd's native OpenBao-to-Compose secret path. Its local
+`.doco-cd.yaml` resolves `secret/apps/canary` key `message`; Compose mounts the
+resolved value as `/run/secrets/canary_message` in a network-isolated canary.
 
-`bootstrap.sh` creates and verifies the least-privilege OpenBao policy and
-credential files without printing their values.
-
-Use this folder as the secret-bearing application contract:
-
-1. Store values under an application-owned OpenBao path such as
-   `secret/apps/x`.
-2. Give the folder's AppRole read access only to that path.
-3. Reference keys in an Agent `.ctmpl` file and render them into the shared
-   tmpfs volume.
-4. Mount only the rendered file into the application container.
-
-Docker Compose has no native OpenBao secret provider, so the Agent sidecar is
-the boundary that keeps the AppRole and OpenBao network access away from the
-application.
+Store `message=openbao-agent-ok` at that OpenBao path before enabling the
+project. No application-specific Agent, AppRole, env file or helper script is
+required.

@@ -1,0 +1,2 @@
+external_secrets:
+  TUNNEL_TOKEN: kv:secret:core/cloudflared:tunnel_token

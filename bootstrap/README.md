@@ -1,102 +1,36 @@
-# VM bootstrap and disaster-recovery contract
+# VM bootstrap
 
-This directory is the Git-backed source for host configuration that is not
-secret. The target is a repeatable recovery flow:
+This directory contains the reproducible host layer and recovery contract.
+The normal clean-host sequence is:
 
-1. Terraform creates or replaces `vm01` and attaches the data disks.
-2. An operator checks out this public repository.
-3. `bootstrap-host.sh` installs and configures the pinned container runtime and
-   creates the shared Docker networks.
-4. `prepare-secrets.sh` preserves or migrates protected files and silently
-   asks for any missing value from its documented off-host source. Secret
-   values are never command arguments or Git content.
-5. Retained data disks are reused, or off-host backups are restored to clean
-   storage before workloads start.
-6. `core/openbao/prepare.sh` prepares internal TLS before core services start.
-7. `core/komodo/start.sh` starts Komodo first; its Git-backed Resource Sync then
-   manages the `core` and `applications` Stacks.
+1. Terraform creates `vm01`, its managed identity and data disks.
+2. Check out the `vm` branch of this repository.
+3. Run `sudo bootstrap/bootstrap-host.sh` to install the pinned Docker runtime
+   and create the shared networks.
+4. Start [`../infra/openbao/`](../infra/openbao/), then initialize it or restore
+   the accepted Raft snapshot from Azure Blob.
+5. Provision the single doco.cd AppRole and start
+   [`../infra/doco-cd/`](../infra/doco-cd/).
 
-`render-compose-catalog.sh` is the common pre-deploy hook for those two Stacks.
-It deterministically discovers immediate child folders with `compose.yaml`.
-Komodo renders the deployment file inside a fresh clone; local checks use the
-ignored `.komodo.compose.yaml`. A `.komodo-ignore` marker opts out exceptional
-folders such as Komodo itself.
+From that point doco.cd polls Git and reconciles all projects under `core/` and
+`apps/`. There is no generated Compose catalog, env-file flag or deployment
+helper script.
 
-Secret restoration and state recovery will be added to the top-level
-orchestration only as each application gets an accepted clean-host restore
-procedure. Until then, this is the reproducible host and control-plane layer,
-not a claim that every application can already be recovered.
+`bootstrap-host.sh` supports Debian 13 ARM64 and verifies an already-running
+host without restarting containers. Pinned package versions are the non-secret
+defaults at the top of the file. Shared Docker networks and runtime config are
+validated exactly; drift fails for operator review.
 
-## Run the host layer
+## Recovery boundary
 
-Prerequisites:
-
-- Debian 13 ARM64 provisioned by the Terraform foundation module;
-- `/srv/polinetwork/state` and `/srv/polinetwork/applications` mounted on their
-  dedicated data disks by `prepare-data-disks.service`;
-- a clean checkout of this repository; and
-- root access through the `pnadmin` account.
-
-From the repository root on the VM:
-
-```sh
-sudo bootstrap/bootstrap-host.sh
-sudo bootstrap/prepare-secrets.sh runtime
-sudo core/openbao/prepare.sh
-core/komodo/start.sh
-```
-
-The script refuses unsupported OS/architecture combinations. If containers
-already exist, it enters validation-only mode: every package version, tracked
-runtime file and shared network must match exactly, and no service is
-restarted. Any drift fails closed for manual review.
-
-Package versions can be changed in Git by editing the non-secret defaults near
-the top of `bootstrap-host.sh`. The script deliberately fails if an exact
-version is no longer available; it never silently substitutes `latest`.
-
-## Configuration and custody inventory
-
-| Input | Canonical source | Clean-host handling |
-| --- | --- | --- |
-| Docker/containerd config and systemd ordering | This directory | Installed by `bootstrap-host.sh` |
-| Compose files, OpenBao policy/templates and backup scripts | This repository | Public Git checkout |
-| Shared Docker network definitions | `bootstrap-host.sh` | Created idempotently and verified exactly |
-| Terraform/cloud-init and disk preparation | `PoliNetworkOrg/terraform` | Applied before this script |
-| OpenBao managed-identity client ID | Terraform output; non-secret | Tracked directly in `core/openbao/compose.yaml` |
-| Internal OpenBao TLS | `core/openbao/prepare.sh` | New private key and CA per rebuilt host |
-| Zerobyte APP secret and Azure account key | `kv-polinetwork` | Streamed to root-owned mode-`0600` files |
-| Zerobyte organization recovery key | Approved break-glass store | Opens repositories independently of the UI account |
-| OpenBao recovery key and `pnadmin` password | Approved break-glass store | Used only for privileged recovery/verification |
-| Cloudflare Tunnel token | Off-host secret store | Mounted as a service-scoped Compose secret |
-| Application runtime secrets | Restored OpenBao data | Rendered by per-application Agents after OpenBao recovery |
-
-No secret required to recover OpenBao may exist only inside OpenBao. No
-configuration required to locate a backup may exist only in Zerobyte's local
+The OpenBao backup has passed native Raft snapshot creation, encrypted Azure
+Blob storage, byte-integrity restore and isolated clean-volume recovery. The
+break-glass entry point is
+[`../core/zerobyte/openbao-snapshot/disaster-restore.sh`](../core/zerobyte/openbao-snapshot/disaster-restore.sh);
+it opens the Restic repository directly and does not depend on Zerobyte's local
 database.
 
-`prepare-secrets.sh runtime` is idempotent: existing non-empty files are kept,
-and legacy Komodo/Cloudflare `compose.env` files are parsed without sourcing
-them and split into service-scoped files. It does not delete the legacy files.
-Use `prepare-secrets.sh recovery` only during disaster recovery to stage the
-Zerobyte organization recovery key; `all` performs both modes. See
-[`SECRETS.md`](SECRETS.md) for exact custody and consumer mappings.
-
-## Accepted and pending recovery scopes
-
-The current OpenBao backup has passed native Raft snapshot creation, encrypted
-off-host storage, byte-integrity restore and isolated clean-volume recovery.
-`../core/zerobyte/openbao-snapshot/disaster-restore.sh` additionally provides the
-clean-host entry point that opens Azure Blob directly with Restic, without a
-running Zerobyte instance or its local database.
-
-The complete one-script gate remains open until all of the following pass:
-
-- clean Terraform replacement of the VM with retained data disks;
-- clean-host OpenBao restore starting only with Git, Azure/Key Vault and the
-  approved break-glass store;
-- backup and restore of Komodo/Mongo state or a fully declarative replacement;
-- application-consistent backup and restore for every migrated database and
-  mutable application data tree;
-- off-host custody for every bootstrap secret, including the tunnel token;
-- ordered full-stack startup, health checks and a timed recovery rehearsal.
+No value needed to recover OpenBao may exist only in OpenBao. The few external
+inputs and their custody are listed in [`SECRETS.md`](SECRETS.md). Full-stack
+one-command recovery remains incomplete until every migrated stateful
+application has its own tested backup and restore procedure.
