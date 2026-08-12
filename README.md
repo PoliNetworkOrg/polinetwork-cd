@@ -17,6 +17,8 @@ there is no aggregate Compose file or deployment catalog to update. A folder
 can add `.doco-cd.yaml` only when it needs profiles, OpenBao secret references
 or another per-project option.
 
-On a new VM, run the host bootstrap, start or restore OpenBao, provision the
-single doco.cd AppRole, and start doco.cd. See [`infra/`](infra/) for that
-short bootstrap boundary. Terraform remains in `PoliNetworkOrg/terraform`.
+On a new VM, place the two protected recovery files described in
+[`bootstrap/SECRETS.md`](bootstrap/SECRETS.md), then run
+`sudo bootstrap/bootstrap-vm.sh`. It restores and converges the platform and
+asks once for the OpenBao administrator password without exposing it in a
+command argument. Terraform remains in `PoliNetworkOrg/terraform`.

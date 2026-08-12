@@ -8,8 +8,7 @@ depends on them:
 - [`doco-cd/`](doco-cd/) polls this repository and natively discovers every
   immediate `core/*/compose.yaml` and `apps/*/compose.yaml` project.
 
-On a new host, bootstrap Docker first, start OpenBao, restore or initialize it,
-restore the referenced runtime secrets, provision the single doco.cd AppRole
-described in its README, and then start doco.cd. These infrastructure projects
-are updated deliberately with ordinary `docker compose up -d`; they cannot
-safely deploy themselves.
+On a new host, [`../bootstrap/bootstrap-vm.sh`](../bootstrap/bootstrap-vm.sh)
+owns their ordering, recovery and host-local AppRole generation. These
+infrastructure projects are updated deliberately rather than deploying
+themselves.

@@ -26,9 +26,11 @@ to enforce the normal health gate.
 The state initialization container is idempotent: it enforces the Raft
 directory ownership and mode, generates all three TLS files only when none
 exists, validates a complete set, and refuses partial TLS state.
-OpenBao initialization, snapshot restoration and recovery-key custody remain
-operator-controlled steps. Native Raft backup and clean-host recovery tooling
-live in [`../../core/zerobyte/openbao-snapshot/`](../../core/zerobyte/openbao-snapshot/).
+Initialization and restoration ordering is owned by
+[`../../bootstrap/bootstrap-vm.sh`](../../bootstrap/bootstrap-vm.sh); the
+external recovery inputs remain operator-controlled. Native Raft backup and
+break-glass tooling live in
+[`../../core/zerobyte/openbao-snapshot/`](../../core/zerobyte/openbao-snapshot/).
 
 OpenBao is the sole runtime-secret store for doco.cd projects. It is not
 self-managed: updates to this Compose project are applied deliberately before
