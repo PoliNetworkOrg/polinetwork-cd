@@ -68,9 +68,11 @@ unset BAO_TOKEN
 Before the first poll, ensure every committed reference exists in OpenBao. The
 current paths are `secret/core/cloudflared`, `secret/core/zerobyte` and
 `secret/apps/canary`; their key names are visible in the corresponding local
-`.doco-cd.yaml`. Enter secret values through the OpenBao UI or stream them from
-their approved off-host source—never place a value in Git or a command
-argument.
+`.doco-cd.yaml`. The dedicated VM tunnel token is restored from Azure Key Vault
+secret `cloudflared-vm-tunnel-token`; the two Zerobyte values use their names
+listed in [`../../bootstrap/SECRETS.md`](../../bootstrap/SECRETS.md). Stream
+values from those approved off-host sources—never place a value in Git or a
+command argument.
 
 Start the control plane:
 
