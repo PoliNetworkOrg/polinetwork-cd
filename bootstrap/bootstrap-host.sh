@@ -61,7 +61,9 @@ for mount_point in /srv/polinetwork/state /srv/polinetwork/applications; do
   [ "$(findmnt -n -o FSTYPE -T "$mount_point")" = ext4 ] || fail "$mount_point is not ext4"
 done
 
-if command -v docker >/dev/null 2>&1 && systemctl is-active --quiet docker.service && \
+if command -v docker >/dev/null 2>&1 && \
+  systemctl is-active --quiet docker.socket && \
+  systemctl is-active --quiet docker.service && \
   [ -n "$(docker ps -aq 2>/dev/null)" ]; then
   for package_version in \
     "docker-ce:$docker_version" \
@@ -158,7 +160,7 @@ if [ "$config_changed" = true ] && systemctl is-active --quiet docker.service &&
   fail 'tracked runtime config changed while containers exist; review and restart manually'
 fi
 
-systemctl enable --now containerd.service docker.service
+systemctl enable --now containerd.service docker.socket docker.service
 if [ "$config_changed" = true ]; then
   systemctl restart containerd.service docker.service
 fi
