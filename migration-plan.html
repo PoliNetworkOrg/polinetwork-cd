@@ -1,0 +1,1686 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Decisioni e runbook operativo per la migrazione PoliNetwork da AKS a K3s.">
+  <title>PoliNetwork — piano operativo AKS → K3s</title>
+  <style>
+:root {
+  --canvas: oklch(0.145 0.015 250);
+  --sidebar: oklch(0.165 0.016 250);
+  --surface: oklch(0.19 0.016 250);
+  --surface-raised: oklch(0.225 0.018 250);
+  --border: oklch(0.29 0.018 250);
+  --border-strong: oklch(0.38 0.025 250);
+  --text: oklch(0.925 0.012 250);
+  --text-soft: oklch(0.76 0.024 250);
+  --text-muted: oklch(0.65 0.025 250);
+  --accent: oklch(0.74 0.14 225);
+  --accent-soft: oklch(0.27 0.055 225);
+  --success: oklch(0.75 0.14 150);
+  --warning: oklch(0.81 0.14 85);
+  --danger: oklch(0.71 0.17 25);
+  --code: oklch(0.12 0.012 250);
+  --selection: oklch(0.42 0.11 225);
+  --radius-lg: 14px;
+  --radius-md: 9px;
+  --content: 1120px;
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  font-size: 16px;
+  line-height: 1.58;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-block-start: 5rem;
+  background: var(--canvas);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--canvas);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--selection);
+  color: var(--text);
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: from-font;
+  text-underline-position: from-font;
+  text-decoration-skip-ink: auto;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  color: color-mix(in oklch, var(--accent) 84%, white);
+}
+
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.skip-link {
+  position: fixed;
+  inset-block-start: 0.75rem;
+  inset-inline-start: 0.75rem;
+  z-index: 100;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: var(--canvas);
+  font-weight: 700;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(250px, 300px) minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.sidebar {
+  position: sticky;
+  inset-block-start: 0;
+  align-self: start;
+  height: 100dvh;
+  overflow-y: auto;
+  border-inline-end: 1px solid var(--border);
+  background: var(--sidebar);
+  padding: 2rem 1.25rem;
+}
+
+.sidebar-header {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0 0.55rem 1.5rem;
+  border-block-end: 1px solid var(--border);
+}
+
+.eyebrow,
+.source-card span {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.sidebar-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.35rem;
+  font-weight: 760;
+  letter-spacing: -0.025em;
+}
+
+.sidebar-copy {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.toc {
+  margin-block: 1.25rem;
+  font-size: 0.88rem;
+}
+
+.toc ul {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toc ul ul {
+  margin-block-start: 0.2rem;
+  padding-inline-start: 0.85rem;
+  border-inline-start: 1px solid var(--border);
+}
+
+.toc a {
+  display: block;
+  padding: 0.42rem 0.55rem;
+  border-radius: 6px;
+  color: var(--text-soft);
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.toc a:hover,
+.toc a[aria-current="true"] {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.source-card {
+  display: grid;
+  gap: 0.35rem;
+  margin-block-start: 1.5rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.source-card code {
+  margin-block-end: 0.4rem;
+  color: var(--accent);
+  font-size: 0.82rem;
+  overflow-wrap: break-word;
+}
+
+.main-content {
+  min-width: 0;
+  width: 100%;
+  max-width: calc(var(--content) + 5rem);
+  margin-inline: auto;
+  padding: 1.25rem 2.5rem 4rem;
+}
+
+.document {
+  width: 100%;
+}
+
+.document > h1 {
+  max-width: 18ch;
+  margin: 0 0 1.5rem;
+  font-size: clamp(2.15rem, 5vw, 4.25rem);
+  line-height: 1.04;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+
+.document h2 {
+  margin-block: 5rem 1.5rem;
+  padding-block-start: 1.5rem;
+  border-block-start: 1px solid var(--border);
+  font-size: clamp(1.65rem, 3vw, 2.35rem);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.document h3 {
+  margin-block: 3.1rem 1rem;
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  line-height: 1.25;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+
+.document h4 {
+  margin-block: 2rem 0.65rem;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.heading-anchor {
+  margin-inline-start: 0.4rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  opacity: 0;
+  text-decoration: none;
+}
+
+h2:hover .heading-anchor,
+h3:hover .heading-anchor,
+h4:hover .heading-anchor,
+.heading-anchor:focus {
+  opacity: 1;
+}
+
+.document p,
+.document li {
+  max-width: 74ch;
+  overflow-wrap: break-word;
+}
+
+.document p {
+  margin-block: 0.85rem;
+}
+
+.document ul,
+.document ol {
+  display: grid;
+  gap: 0.38rem;
+  padding-inline-start: 1.4rem;
+}
+
+.document li::marker {
+  color: var(--text-muted);
+}
+
+.document strong {
+  color: var(--text);
+  font-weight: 720;
+}
+
+blockquote {
+  max-width: 74ch;
+  margin: 1.5rem 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border-strong);
+  border-inline-start: 4px solid var(--warning);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-soft);
+}
+
+blockquote p {
+  margin: 0 !important;
+}
+
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  margin-block: 1.25rem 2rem;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+thead {
+  background: var(--surface-raised);
+}
+
+th,
+td {
+  min-width: 9rem;
+  padding: 0.72rem 0.8rem;
+  border-block-end: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+th {
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 760;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+td {
+  color: var(--text-soft);
+}
+
+tr:last-child td {
+  border-block-end: 0;
+}
+
+tbody tr:hover {
+  background: oklch(0.22 0.022 225);
+}
+
+code,
+pre {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-variant-ligatures: none;
+}
+
+:not(pre) > code {
+  padding: 0.13em 0.35em;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: oklch(0.84 0.09 210);
+  font-size: 0.86em;
+}
+
+pre {
+  position: relative;
+  max-width: 100%;
+  margin-block: 1rem 1.5rem;
+  padding: 1rem 1.15rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--code);
+  color: oklch(0.86 0.025 230);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+pre code {
+  background: transparent;
+}
+
+hr {
+  margin-block: 3rem;
+  border: 0;
+  border-block-start: 1px solid var(--border);
+}
+
+footer {
+  margin-block-start: 5rem;
+  padding-block-start: 1.5rem;
+  border-block-start: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 920px) {
+  .app-shell {
+    display: block;
+  }
+
+  .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--border);
+  }
+
+  .toc ul ul {
+    display: none;
+  }
+
+  .source-card {
+    display: none;
+  }
+
+  .main-content {
+    padding-inline: 1.25rem;
+  }
+}
+
+@media (max-width: 620px) {
+  .main-content {
+    padding: 0.75rem 0.9rem 3rem;
+  }
+
+  .document > h1 {
+    font-size: 2.35rem;
+  }
+
+  th,
+  td {
+    min-width: 12rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+
+  body {
+    background: white;
+    color: #111;
+  }
+
+  .sidebar,
+  .heading-anchor {
+    display: none !important;
+  }
+
+  .app-shell {
+    display: block;
+  }
+
+  .main-content {
+    max-width: none;
+    padding: 0;
+  }
+
+  .document h2,
+  footer {
+    border-color: #bbb;
+  }
+
+  .document p,
+  .document li,
+  td {
+    color: #222;
+  }
+
+  table,
+  .table-scroll,
+  th,
+  td,
+  pre,
+  blockquote {
+    border-color: #bbb;
+    background: white;
+    color: #111;
+  }
+
+  a {
+    color: #111;
+  }
+}
+
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#content">Vai al contenuto</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navigazione del piano">
+      <div class="sidebar-header">
+        <p class="eyebrow">PoliNetwork infrastructure</p>
+        <p class="sidebar-title">AKS → K3s</p>
+        <p class="sidebar-copy">Decisioni e istruzioni operative, dalla preparazione al decommissioning.</p>
+      </div>
+      <nav class="toc" aria-label="Indice">
+        <div class="toc">
+<ul>
+<li><a href="#1-decisioni-prese-stato-e-blocchi">1. Decisioni prese, stato e blocchi</a><ul>
+<li><a href="#obiettivo-e-principio-operativo">Obiettivo e principio operativo</a></li>
+<li><a href="#perimetro-reale-dei-workload">Perimetro reale dei workload</a></li>
+<li><a href="#repository-scelta-semplice">Repository: scelta semplice</a></li>
+<li><a href="#storage-tre-dischi-totali-due-per-i-dati">Storage: tre dischi totali, due per i dati</a></li>
+<li><a href="#costo-dello-storage-e-budget-azure">Costo dello storage e budget Azure</a></li>
+<li><a href="#servicelb-metallb-e-traefik">ServiceLB, MetalLB e Traefik</a></li>
+<li><a href="#versioni-e-aggiornamenti-k3straefik">Versioni e aggiornamenti K3s/Traefik</a></li>
+<li><a href="#eso-namespaced">ESO namespaced</a></li>
+<li><a href="#cloudflare-tunnel-e-ssh">Cloudflare Tunnel e SSH</a></li>
+<li><a href="#aggiornamento-automatico-di-latest">Aggiornamento automatico di :latest</a></li>
+<li><a href="#terraform-state-separati-e-foundation-gia-applicata">Terraform: state separati e foundation già applicata</a></li>
+<li><a href="#postgresql-mariadb-e-file-blobs">PostgreSQL, MariaDB e file-blobs</a></li>
+<li><a href="#argo-cd">Argo CD</a></li>
+<li><a href="#modifiche-di-sicurezza-incluse-nella-migrazione">Modifiche di sicurezza incluse nella migrazione</a></li>
+<li><a href="#blocker-reali">Blocker reali</a></li>
+<li><a href="#identita-azure-da-verificare">Identità Azure da verificare</a></li>
+</ul>
+</li>
+<li><a href="#2-istruzioni-precise-per-eseguire-la-migrazione">2. Istruzioni precise per eseguire la migrazione</a><ul>
+<li><a href="#regole-di-esecuzione">Regole di esecuzione</a></li>
+<li><a href="#0-fotografia-e-audit-read-only">0 — Fotografia e audit read-only</a></li>
+<li><a href="#1-ristrutturare-polinetwork-cd">1 — Ristrutturare polinetwork-cd</a></li>
+<li><a href="#2-riconciliare-terraform-gia-applicato">2 — Riconciliare Terraform già applicato</a></li>
+<li><a href="#3-provisionare-debian-e-k3s-con-ansible">3 — Provisionare Debian e K3s con Ansible</a></li>
+<li><a href="#4-bootstrap-flux-e-storage">4 — Bootstrap Flux e storage</a></li>
+<li><a href="#5-migrare-key-vault-e-secret-verso-eso">5 — Migrare Key Vault e secret verso ESO</a></li>
+<li><a href="#6-configurare-traefik-cloudflared-e-access-ssh">6 — Configurare Traefik, cloudflared e Access SSH</a></li>
+<li><a href="#7-configurare-latest-automatico">7 — Configurare latest automatico</a></li>
+<li><a href="#8-canary-bot-maintenance">8 — Canary bot-maintenance</a></li>
+<li><a href="#9-migrare-i-workload-e-i-dati">9 — Migrare i workload e i dati</a></li>
+<li><a href="#10-osservabilita-backup-e-test-dr">10 — Osservabilità, backup e test DR</a></li>
+<li><a href="#11-cutover-e-rimozione-aks-entro-il-secondo-giorno">11 — Cutover e rimozione AKS entro il secondo giorno</a></li>
+<li><a href="#rigenerare-e-pubblicare-questo-documento">Rigenerare e pubblicare questo documento</a></li>
+</ul>
+</li>
+</ul>
+</div>
+
+      </nav>
+      <div class="source-card">
+        <span>Sorgente canonica</span>
+        <code>migration-plan.md</code>
+        <span>Rigenera con</span>
+        <code>make html</code>
+        <span>Pubblica con</span>
+        <code>make publish</code>
+      </div>
+    </aside>
+
+    <main id="content" class="main-content">
+      <article class="document">
+        <h1 id="polinetwork-piano-operativo-aks-k3s">PoliNetwork — piano operativo AKS → K3s<a class="heading-anchor" href="#polinetwork-piano-operativo-aks-k3s" title="Permanent link">#</a></h1>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Valore</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stato</td>
+<td>Pronto per l’implementazione incrementale</td>
+</tr>
+<tr>
+<td>Ultimo aggiornamento</td>
+<td>23 agosto 2026</td>
+</tr>
+<tr>
+<td>Produzione durante i lavori</td>
+<td>AKS, fino al cutover finale</td>
+</tr>
+<tr>
+<td>Target</td>
+<td>K3s single-node trattato da subito come production</td>
+</tr>
+<tr>
+<td>Durata prevista</td>
+<td>1–2 giorni</td>
+</tr>
+<tr>
+<td>Sorgente modificabile</td>
+<td><code>migration-plan.md</code></td>
+</tr>
+<tr>
+<td>HTML generato</td>
+<td><code>migration-plan.html</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<blockquote>
+<p>Questo Markdown è la sorgente del documento. Modificalo e usa <code>make publish</code> per rigenerare l’HTML e aggiornare Postplan. Non modificare direttamente l’HTML.</p>
+</blockquote>
+<h2 id="1-decisioni-prese-stato-e-blocchi">1. Decisioni prese, stato e blocchi<a class="heading-anchor" href="#1-decisioni-prese-stato-e-blocchi" title="Permanent link">#</a></h2>
+<h3 id="obiettivo-e-principio-operativo">Obiettivo e principio operativo<a class="heading-anchor" href="#obiettivo-e-principio-operativo" title="Permanent link">#</a></h3>
+<p>La piattaforma deve poter essere ricostruita da una VM vuota usando Terraform, Ansible e Git. Il report è rivolto all’attuale owner/approvatore o alla persona che gli succederà: non richiede ulteriori livelli di approvazione interni.</p>
+<p>Le operazioni normali avvengono così:</p>
+<pre><code class="language-text">Terraform → risorse Azure
+Ansible   → Debian, mount, hardening e K3s
+Flux      → tutto ciò che vive in Kubernetes
+ESO       → secret da Azure Key Vault
+</code></pre>
+<p><code>kubectl</code> e SSH restano strumenti eccezionali per diagnosi, manutenzione o migrazioni one-shot. Non fanno parte della gestione quotidiana.</p>
+<p>AKS continua a fornire production durante la costruzione. K3s viene però configurato subito con regole, backup e sicurezza da production; cambia soltanto il traffico che riceve. Il passaggio avviene in 1–2 giorni, senza una settimana di osservazione.</p>
+<h3 id="perimetro-reale-dei-workload">Perimetro reale dei workload<a class="heading-anchor" href="#perimetro-reale-dei-workload" title="Permanent link">#</a></h3>
+<p><code>polinetwork-cd#main</code> contiene molti servizi. <code>bot-maintenance</code> è soltanto il primo canary, non l’unico servizio da migrare.</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Workload attuale</th>
+<th>Decisione</th>
+<th>Storage/dipendenze principali</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>admin</code></td>
+<td>Migrare</td>
+<td>backend</td>
+</tr>
+<tr>
+<td><code>backend</code></td>
+<td>Migrare</td>
+<td>PostgreSQL, Key Vault, Azure <code>file-blobs</code></td>
+</tr>
+<tr>
+<td><code>bot-maintenance</code></td>
+<td>Migrare per primo come canary</td>
+<td>secret Telegram; può restare spento per alcune ore</td>
+</tr>
+<tr>
+<td><code>bot-ts</code> / Telegram</td>
+<td>Migrare</td>
+<td>Redis, InfluxDB, secret</td>
+</tr>
+<tr>
+<td><code>influxdb</code></td>
+<td>Migrare</td>
+<td>5 GiB dati + 500 MiB config dichiarati</td>
+</tr>
+<tr>
+<td><code>monitoring</code></td>
+<td>Migrare 1:1</td>
+<td>Grafana, Prometheus e node-exporter; Loki/Tempo/Mimir non iniziali</td>
+</tr>
+<tr>
+<td><code>polinetcc</code></td>
+<td>Migrare</td>
+<td>PostgreSQL e secret</td>
+</tr>
+<tr>
+<td><code>postgres</code></td>
+<td>Migrare con dump/restore a writer fermi</td>
+<td>32 GiB dichiarati, circa 87 MiB usati</td>
+</tr>
+<tr>
+<td><code>uptime-kuma</code></td>
+<td>Migrare</td>
+<td>200 MiB dichiarati, circa 19 MiB usati</td>
+</tr>
+<tr>
+<td><code>web</code></td>
+<td>Migrare</td>
+<td>backend</td>
+</tr>
+<tr>
+<td><code>cloudflared</code></td>
+<td>Migrare come applicazione Flux</td>
+<td>token da ESO; route verso Traefik</td>
+</tr>
+<tr>
+<td><code>mariadb</code></td>
+<td>Conservare come legacy</td>
+<td>dump finale verificato; nessun requisito di continuità</td>
+</tr>
+<tr>
+<td><code>bot-rooms</code>, vecchio bot C#, <code>bot-prod</code>, <code>tutor-prod</code></td>
+<td>Non migrare</td>
+<td>esclusione intenzionale</td>
+</tr>
+<tr>
+<td>cartelle <code>tests/*</code> disabilitate</td>
+<td>Non migrare</td>
+<td>test storici</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il vecchio Deployment C# in <code>bot-mat</code> non viene migrato; viene migrato solo <code>bot-mat-maintenance</code>, rinominabile in modo più chiaro come <code>bot-maintenance</code> durante la ristrutturazione.</p>
+<h3 id="repository-scelta-semplice">Repository: scelta semplice<a class="heading-anchor" href="#repository-scelta-semplice" title="Permanent link">#</a></h3>
+<p>La soluzione consigliata è:</p>
+<ul>
+<li><code>polinetwork-cd</code>: unica source of truth per Flux, manifest applicativi, Ansible e documentazione operativa;</li>
+<li><code>terraform</code>: repository separato per risorse Azure e state remoto;</li>
+<li>repository applicativi: codice, test e build delle immagini.</li>
+</ul>
+<p>Tenere Ansible in <code>polinetwork-cd</code> è pratico: con un solo clone si ricostruiscono host e cluster. Terraform resta separato perché ha state, permessi e lifecycle diversi; mescolarlo al repository riconciliato da Flux aumenterebbe il rischio senza semplificare il ripristino.</p>
+<p>Struttura target:</p>
+<pre><code class="language-text">polinetwork-cd/
+  ansible/
+    inventories/k3s/
+    roles/{base,security,storage,k3s,flux,backup}/
+    playbooks/{provision,verify}.yml
+  clusters/k3s/
+    flux-system/
+    infrastructure.yaml
+    apps.yaml
+  infrastructure/
+    storage/
+    traefik/              # HelmChartConfig del Traefik bundled e routing condiviso
+    external-secrets/
+    cloudflared/
+    observability/
+    backup/
+  apps/
+    admin/
+    backend/
+    bot-maintenance/
+    bot-ts/
+    influxdb/
+    polinetcc/
+    postgres/
+    uptime-kuma/
+    web/
+  docs/
+</code></pre>
+<p>Le cartelle continuano a corrispondere ai namespace. I <code>config.json</code> custom vengono eliminati dopo la conversione:</p>
+<ul>
+<li>un namespace disabilitato semplicemente non è referenziato da <code>clusters/k3s/apps.yaml</code>;</li>
+<li>l’automazione immagini è descritta con risorse Flux standard vicino al workload;</li>
+<li>non serve più un generatore custom basato su <code>disabled</code> e <code>update_strategy</code>.</li>
+</ul>
+<h3 id="storage-tre-dischi-totali-due-per-i-dati">Storage: tre dischi totali, due per i dati<a class="heading-anchor" href="#storage-tre-dischi-totali-due-per-i-dati" title="Permanent link">#</a></h3>
+<p>Inventario misurato su AKS:</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Dato</th>
+<th style="text-align: right;">Richiesto oggi</th>
+<th style="text-align: right;">Usato osservato</th>
+<th>Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PostgreSQL</td>
+<td style="text-align: right;">32 GiB</td>
+<td style="text-align: right;">87 MiB</td>
+<td>fast</td>
+</tr>
+<tr>
+<td>MariaDB legacy</td>
+<td style="text-align: right;">100 GiB</td>
+<td style="text-align: right;">577 MiB</td>
+<td>solo dump; restore temporaneo se serve</td>
+</tr>
+<tr>
+<td>Redis</td>
+<td style="text-align: right;">500 MiB</td>
+<td style="text-align: right;">quasi vuoto</td>
+<td>fast</td>
+</tr>
+<tr>
+<td>InfluxDB</td>
+<td style="text-align: right;">5.5 GiB</td>
+<td style="text-align: right;">15 MiB</td>
+<td>standard</td>
+</tr>
+<tr>
+<td>Prometheus</td>
+<td style="text-align: right;">12 GiB</td>
+<td style="text-align: right;">349 MiB</td>
+<td>standard</td>
+</tr>
+<tr>
+<td>Grafana</td>
+<td style="text-align: right;">1 GiB</td>
+<td style="text-align: right;">51 MiB</td>
+<td>standard</td>
+</tr>
+<tr>
+<td>Uptime Kuma</td>
+<td style="text-align: right;">200 MiB</td>
+<td style="text-align: right;">19 MiB</td>
+<td>fast</td>
+</tr>
+<tr>
+<td><code>file-blobs</code></td>
+<td style="text-align: right;">Azure Blob</td>
+<td style="text-align: right;">esterno al cluster</td>
+<td>resta su Azure Blob</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Configurazione scelta:</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Disco</th>
+<th>SKU/capacità iniziale</th>
+<th>Mount</th>
+<th>Contenuto</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OS</td>
+<td>Standard SSD 64 GiB</td>
+<td><code>/</code></td>
+<td>Debian e strumenti host; nessun dato applicativo</td>
+</tr>
+<tr>
+<td>fast</td>
+<td>Premium SSD v2 64 GiB, baseline 3.000 IOPS / 125 MB/s</td>
+<td><code>/srv/fast</code></td>
+<td>PostgreSQL, Redis e futuri dati realmente critici</td>
+</tr>
+<tr>
+<td>standard</td>
+<td>Standard SSD E10 128 GiB</td>
+<td><code>/srv/standard</code></td>
+<td>K3s/containerd, InfluxDB, Prometheus, Grafana, volumi non critici e staging backup</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Si usa <code>/srv/standard</code>, non <code>/srv/hdd</code>, perché il disco è uno Standard SSD e ospita anche K3s. Un HDD risparmierebbe circa 3,71 USD/mese ma rallenterebbe containerd, volumi ordinari e restore; il risparmio non giustifica il collo di bottiglia. Azure indica Premium SSD v2 per workload sensibili a latenza e Standard SSD per applicazioni leggere. <a href="https://learn.microsoft.com/en-us/azure/virtual-machines/disks-types">Azure Managed Disk types</a></p>
+<p>Flux installa un solo local-path-provisioner con due StorageClass:</p>
+<ul>
+<li><code>fast</code>, directory <code>/srv/fast/volumes</code>, per PostgreSQL, Redis e dati realmente critici;</li>
+<li><code>standard</code>, directory <code>/srv/standard/volumes</code>, per gli altri PVC e i Job di backup/restore.</li>
+</ul>
+<p>Il provisioner supporta StorageClass diverse associate a <code>nodePath</code> differenti. Le dimensioni dei PVC local-path non sono quote reali: retention e alert disco sono quindi obbligatori. <a href="https://github.com/rancher/local-path-provisioner">Rancher Local Path Provisioner</a></p>
+<p>Budget iniziale sui dischi:</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Disco</th>
+<th style="text-align: right;">Budget iniziale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PostgreSQL</td>
+<td>fast</td>
+<td style="text-align: right;">16 GiB iniziali</td>
+</tr>
+<tr>
+<td>Redis e cache critiche</td>
+<td>fast</td>
+<td style="text-align: right;">4 GiB</td>
+</tr>
+<tr>
+<td>crescita database e margine</td>
+<td>fast</td>
+<td style="text-align: right;">circa 40 GiB</td>
+</tr>
+<tr>
+<td>K3s, containerd e immagini</td>
+<td>standard</td>
+<td style="text-align: right;">40 GiB</td>
+</tr>
+<tr>
+<td>InfluxDB</td>
+<td>standard</td>
+<td style="text-align: right;">8 GiB</td>
+</tr>
+<tr>
+<td>Prometheus, Grafana e Uptime Kuma</td>
+<td>standard</td>
+<td style="text-align: right;">16 GiB</td>
+</tr>
+<tr>
+<td>staging backup, restore workspace e margine</td>
+<td>standard</td>
+<td style="text-align: right;">circa 56 GiB</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>I valori sono budget interni, non quote rigide. Oggi i dati persistenti attivi, esclusa MariaDB legacy, usano meno di 1 GiB; PostgreSQL usa circa 87 MiB, InfluxDB circa 15 MiB e Prometheus circa 349 MiB. Alert al 70% e 85% e revisione dopo le prime 24 ore. I backup autorevoli vanno su Azure Blob ZRS; <code>/srv/standard</code> da solo non è un backup.</p>
+<p>Le immagini container stanno sullo Standard SSD. K3s usa <code>data-dir: /srv/standard/k3s</code>, quindi containerd salva layer, snapshot e immagini in <code>/srv/standard/k3s/agent/containerd</code>. Sul nodo AKS sono presenti circa 8,6 GB di immagini uniche, ma molte appartengono ad AKS, Longhorn, Argo e CSI e non verranno migrate. Il budget di 40 GiB copre ampiamente immagini target, layer estratti e qualche versione precedente. Kubelet esegue garbage collection automatica delle immagini inutilizzate con soglie high/low configurate da Ansible; non serve pulizia SSH periodica.</p>
+<p>Il target iniziale installa soltanto Grafana, Prometheus e node-exporter. Loki, Tempo e Mimir non sono requisiti del cutover e non vengono installati nei primi due giorni. Potranno essere valutati in seguito, uno alla volta, dopo aver misurato CPU, memoria e crescita di <code>/srv/standard</code>; non riserviamo oggi disco o controller per componenti che non servono.</p>
+<h3 id="costo-dello-storage-e-budget-azure">Costo dello storage e budget Azure<a class="heading-anchor" href="#costo-dello-storage-e-budget-azure" title="Permanent link">#</a></h3>
+<p>Prezzi retail Consumption in USD per <code>westeurope</code>, verificati il 14 agosto 2026 tramite <a href="https://learn.microsoft.com/en-us/rest/api/cost-management/retail-prices/azure-retail-prices">Azure Retail Prices API</a>. Sono stime prima di sponsorship, transazioni, egress e tasse.</p>
+<p>Baseline storage attuale, escludendo interamente la VM di prova recente (<code>vm01</code>, <code>disk-core</code>, <code>disk-services</code> e <code>disk-vm01-os</code>):</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Risorsa production</th>
+<th>Tier fatturato</th>
+<th style="text-align: right;">USD/mese</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OS disk node AKS</td>
+<td>Premium P10 128 GiB</td>
+<td style="text-align: right;">21,68</td>
+</tr>
+<tr>
+<td>PostgreSQL</td>
+<td>Premium P4 32 GiB</td>
+<td style="text-align: right;">5,81</td>
+</tr>
+<tr>
+<td>MariaDB</td>
+<td>Standard HDD S10 128 GiB</td>
+<td style="text-align: right;">5,89</td>
+</tr>
+<tr>
+<td>Totale</td>
+<td></td>
+<td style="text-align: right;"><strong>33,38</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Target:</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Risorsa</th>
+<th>Tier</th>
+<th style="text-align: right;">USD/mese</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OS VM</td>
+<td>Standard SSD 64 GiB</td>
+<td style="text-align: right;">da ricalcolare sul listino corrente</td>
+</tr>
+<tr>
+<td><code>/srv/fast</code></td>
+<td>Premium SSD v2 64 GiB, performance baseline</td>
+<td style="text-align: right;">6,07</td>
+</tr>
+<tr>
+<td><code>/srv/standard</code></td>
+<td>Standard SSD E10 128 GiB</td>
+<td style="text-align: right;">9,60 + transazioni</td>
+</tr>
+<tr>
+<td>NAT Gateway + IP pubblico outbound</td>
+<td>Standard</td>
+<td style="text-align: right;">da includere: tariffa oraria, dati processati e bandwidth</td>
+</tr>
+<tr>
+<td>Totale</td>
+<td></td>
+<td style="text-align: right;"><strong>da ricalcolare prima del prossimo apply</strong></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Il target mantiene 192 GiB di data disk e, isolando i soli dischi, resta più economico della baseline production. Un Premium da 32 GiB costerebbe circa 3,04 USD/mese, ma coinciderebbe già con la dimensione nominale dell’attuale volume PostgreSQL e lascerebbe poco margine a Redis e alla crescita del database. Il 64 GiB costa soltanto circa 3,04 USD/mese in più ed è la scelta consigliata.</p>
+<p>Non si acquistano 4.000 IOPS. Il Premium SSD v2 include 3.000 IOPS e 125 MB/s; in West Europe aggiungere 1.000 IOPS costa circa 5,84 USD/mese, quasi quanto i 6,07 USD/mese della capacità da 64 GiB. Le metriche Azure degli ultimi 30 giorni mostrano sul node pool AKS un picco complessivo dei data disk di circa 3,06 IOPS, p99 circa 0,78 IOPS. La misura a un minuto può nascondere burst molto brevi, ma il margine rispetto a 3.000 è comunque enorme. Si aumenta a 4.000 soltanto se <code>Data Disk IOPS Consumed Percentage</code> resta oltre il 70% o se la latenza applicativa dimostra un collo di bottiglia. Premium SSD v2 permette di modificare IOPS e throughput senza sostituire il disco, fino a quattro volte in 24 ore. <a href="https://learn.microsoft.com/en-us/azure/virtual-machines/disks-types#premium-ssd-v2">Azure Premium SSD v2 performance</a></p>
+<p>La stima del 14 agosto, precedente all’implementazione Terraform, era <strong>103–110 USD/mese</strong>. Non è più utilizzabile come approvazione di spesa: il codice applicato usa un OS disk da 64 GiB e un NAT Gateway con IP pubblico outbound, non inclusi in quel totale. Azure fattura il NAT Gateway dall’istante di creazione, più dati processati e bandwidth. <a href="https://azure.microsoft.com/en-us/pricing/details/azure-nat-gateway/">Azure NAT Gateway pricing</a></p>
+<p>Prima del prossimo apply si deve quindi rigenerare il confronto current/target dal Cost Management reale e dal listino <code>westeurope</code>, includendo NAT, IP, Key Vault, Blob e transazioni. Se i 2.000 USD sono annuali, il tetto medio resta 166,67 USD/mese. Saldo e scadenza reali della sponsorship restano da leggere nel portale; nessun cutover è autorizzato da una stima precedente.</p>
+<h3 id="servicelb-metallb-e-traefik">ServiceLB, MetalLB e Traefik<a class="heading-anchor" href="#servicelb-metallb-e-traefik" title="Permanent link">#</a></h3>
+<p>ServiceLB crea Pod <code>svclb-*</code> con <code>hostPort</code> per ogni Service <code>LoadBalancer</code>; su un nodo singolo occupa direttamente le porte del nodo. MetalLB assegna VIP da un pool e li annuncia tramite ARP/L2 o BGP; è utile soprattutto quando una rete esterna deve raggiungere Service <code>LoadBalancer</code> su bare metal. <a href="https://docs.k3s.io/networking/networking-services">K3s ServiceLB</a> · <a href="https://metallb.io/configuration/">MetalLB</a></p>
+<p>Nel target il traffico entra così:</p>
+<pre><code class="language-text">Internet → Cloudflare → cloudflared nel cluster → Traefik ClusterIP → Service → Pod
+</code></pre>
+<p>Cloudflare non ha bisogno di un IP <code>LoadBalancer</code>: <code>cloudflared</code> raggiunge Traefik tramite DNS Kubernetes. Quindi:</p>
+<ul>
+<li>ServiceLB disabilitato;</li>
+<li>MetalLB non installato;</li>
+<li>Traefik bundled di K3s mantenuto e configurato come <code>ClusterIP</code> tramite <code>HelmChartConfig</code> gestito da Flux;</li>
+<li>nessun Azure Load Balancer e nessun IP pubblico.</li>
+</ul>
+<p>Se in futuro un consumer nella VNet dovesse richiedere un vero VIP, si rivaluterà un Azure Internal Load Balancer o MetalLB. Oggi entrambi sarebbero componenti inutili.</p>
+<p>Non si installa una seconda release Traefik con Flux. K3s distribuisce Traefik come componente packaged tramite il proprio Helm controller; Flux conserva in Git e riconcilia soltanto il <code>HelmChartConfig</code>, gli <code>Ingress</code>/<code>IngressRoute</code> e i middleware. Il Service risultante è <code>traefik</code> nel namespace <code>kube-system</code>. <a href="https://docs.k3s.io/networking/networking-services">K3s networking services</a> · <a href="https://docs.k3s.io/add-ons/helm#customizing-packaged-components-with-helmchartconfig">K3s HelmChartConfig</a></p>
+<h3 id="versioni-e-aggiornamenti-k3straefik">Versioni e aggiornamenti K3s/Traefik<a class="heading-anchor" href="#versioni-e-aggiornamenti-k3straefik" title="Permanent link">#</a></h3>
+<p>Versioni iniziali fissate al 14 agosto 2026:</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Componente</th>
+<th>Versione</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>K3s</td>
+<td><code>v1.36.3+k3s1</code></td>
+</tr>
+<tr>
+<td>Kubernetes</td>
+<td><code>v1.36.3</code></td>
+</tr>
+<tr>
+<td>Traefik bundled</td>
+<td><code>v3.7.8</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>v1.36.3+k3s1</code> è la release indicata dal canale K3s <code>stable</code> alla data del piano, ma Ansible deve usare questa versione esatta e il relativo checksum: non deve seguire automaticamente <code>stable</code> o <code>latest</code>. Prima dell'implementazione, se il piano non viene eseguito subito, si ricontrollano release note, supporto e componenti embedded e si aggiorna il pin con una modifica revisionata. <a href="https://docs.k3s.io/release-notes/v1.36.X">K3s v1.36 release notes</a></p>
+<p>Il lifecycle supportato del Traefik bundled segue K3s. Un <code>HelmChartConfig</code> può tecnicamente cambiare <code>image.tag</code>, ma farlo aggiornerebbe l'immagine senza aggiornare insieme chart, valori e CRD: nel target non si usa questo override. Le correzioni Traefik arrivano quindi tramite una nuova release K3s. Se in futuro servisse aggiornare Traefik con urgenza senza aggiornare K3s, la modifica va trattata come decisione architetturale: disabilitare il componente bundled e passare a una <code>HelmRelease</code> Flux, non forzare soltanto il tag dell'immagine.</p>
+<p>L'upgrade K3s resta manuale e controllato, eseguito da Ansible in finestra di manutenzione; non si installa inizialmente <code>system-upgrade-controller</code>. Si applicano normalmente le patch mensili e si passa alle minor una alla volta, senza saltare versioni. Per ogni upgrade:</p>
+<ol>
+<li>leggere le release note K3s e Kubernetes, inclusi i cambi del chart Traefik;</li>
+<li>fissare in Git nuova versione e checksum, senza usare un channel mobile;</li>
+<li>salvare in modo coordinato <code>${data-dir}/server/db</code>, <code>${data-dir}/server/token</code> e configurazione K3s, verificando che la copia sia disponibile off-VM;</li>
+<li>applicare il role Ansible, che sostituisce il binario e riavvia <code>k3s</code> mantenendo la configurazione in <code>/etc/rancher/k3s/config.yaml</code>;</li>
+<li>verificare versione, nodo <code>Ready</code>, Flux, ESO, Traefik, tunnel e smoke test applicativi;</li>
+<li>in caso di regressione, ripristinare binario precedente, datastore e token della stessa copia.</li>
+</ol>
+<p>Durante il riavvio l'API Kubernetes è brevemente indisponibile; i container già avviati normalmente continuano a funzionare. Se la release cambia Traefik, il suo rollout può comunque interrompere per breve tempo il traffico sul single-node: l'upgrade richiede quindi una finestra e non promette zero downtime. Un rollback tra minor richiede il datastore precedente; senza quel backup non si procede. <a href="https://docs.k3s.io/upgrades/manual">K3s manual upgrades</a> · <a href="https://docs.k3s.io/datastore/backup-restore">K3s backup and restore</a> · <a href="https://docs.k3s.io/upgrades/roll-back">K3s rollback</a></p>
+<h3 id="eso-namespaced">ESO namespaced<a class="heading-anchor" href="#eso-namespaced" title="Permanent link">#</a></h3>
+<p>Si usa un <code>SecretStore</code> in ogni namespace che consuma secret. La ragione è semplice: un <code>ExternalSecret</code> può riferirsi soltanto allo store dello stesso namespace. Un errore in <code>backend</code> non può quindi puntare per sbaglio allo store <code>platform</code> di <code>cloudflared</code>.</p>
+<p>Il costo è una piccola ripetizione YAML, ridotta con un Kustomize component comune. Un <code>ClusterSecretStore</code> sarebbe più corto ma globale e richiederebbe conditions/label ben mantenute. In un cluster piccolo, con secret di applicazioni e platform distinti, il confine namespaced è più leggibile per il prossimo owner.</p>
+<p>I due vault target, senza suffissi di ambiente, sono:</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Vault</th>
+<th>Contenuto</th>
+<th>Consumer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kv-pn-infra</code></td>
+<td>Cloudflare, backup e secret dei controller</td>
+<td>namespace infrastrutturali autorizzati</td>
+</tr>
+<tr>
+<td><code>kv-pn-apps</code></td>
+<td>secret runtime delle applicazioni e database</td>
+<td>SecretStore dei namespace applicativi</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Un vault separato <code>kv-pn-dev</code> verrà creato soltanto se nascerà una vera trust boundary dev. Non si usano nomi <code>-prod</code>: qui dev e prod non sono piattaforme separate.</p>
+<p>I nomi dei Key Vault sono globalmente unici; <code>kv-pn-infra</code> e <code>kv-pn-apps</code> risultavano disponibili il 14 agosto 2026, ma la disponibilità non costituisce una prenotazione e va ricontrollata prima del piano Terraform. Non si crea un vault CI finché non esiste un secret CI reale: GHCR usa il <code>GITHUB_TOKEN</code> temporaneo e Azure usa GitHub OIDC. I secret CI/CD legacy restano nel vault corrente finché il consumer non è verificato, poi vengono ruotati o revocati invece di essere copiati alla cieca.</p>
+<p>L’identità ESO può leggere entrambi i vault target. L’identità CI non entra nel cluster. Il target usa Azure RBAC e non access policy legacy. ESO raccomanda Workload Identity; su K3s self-managed richiede però un issuer OIDC raggiungibile e aggiunge bootstrap. Per la prima migrazione si usa una UAMI della VM con accesso read-only ai vault e blocco dell’IMDS per i Pod non autorizzati; se quel test di isolamento fallisce, il cutover dei secret si ferma e si implementa Workload Identity. <a href="https://external-secrets.io/latest/provider/azure-key-vault/">ESO Azure Key Vault provider</a></p>
+<h3 id="cloudflare-tunnel-e-ssh">Cloudflare Tunnel e SSH<a class="heading-anchor" href="#cloudflare-tunnel-e-ssh" title="Permanent link">#</a></h3>
+<p><code>cloudflared</code> resta un Deployment gestito da Flux. Le route hostname correnti vengono ricreate verso Traefik, non codificate a mano nell’host. Il token arriva da <code>kv-pn-infra</code> tramite ESO.</p>
+<p>Cloudflare Access for Infrastructure non rende SSH pubblico. Il flusso è outbound-only: <code>cloudflared</code> apre il tunnel verso Cloudflare, mentre NSG e firewall non accettano TCP/22 da Internet. <a href="https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/">Cloudflare Tunnel</a></p>
+<p>Accesso amministrativo:</p>
+<pre><code class="language-text">laptop con WARP + login Entra/MFA
+  → policy Cloudflare Access
+  → tunnel outbound
+  → IP privato VM:22
+</code></pre>
+<p>Configurazione scelta:</p>
+<ol>
+<li>il tunnel annuncia una route <code>/32</code> per l’IP privato della VM;</li>
+<li>in Zero Trust si crea un Infrastructure Target, per esempio <code>k3s.polinetwork.internal</code>, associato a quell’IP;</li>
+<li>l’Infrastructure Application consente protocollo SSH, porta 22 e solo l’utente Unix amministrativo creato da Ansible;</li>
+<li>la policy ammette il gruppo Entra degli owner con MFA e device enrollment;</li>
+<li>il laptop usa Cloudflare One Client/WARP in modalità Traffic and DNS;</li>
+<li>Ansible configura <code>sshd</code> per la CA Cloudflare e disabilita password/root login;</li>
+<li>il test utente è <code>warp-cli target list</code> seguito da <code>ssh &lt;utente&gt;@k3s.polinetwork.internal</code>.</li>
+</ol>
+<p>Cloudflare usa certificati SSH brevi al posto di chiavi personali permanenti. La procedura completa e i campi Terraform sono nella documentazione ufficiale. <a href="https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/use-cases/ssh/ssh-infrastructure-access/">Cloudflare Access for Infrastructure SSH</a></p>
+<p>Poiché il tunnel vive in K3s, se K3s è completamente fermo anche questo percorso può non funzionare. Il break-glass resta Azure Run Command o Serial Console. Installare un secondo <code>cloudflared</code> via systemd soltanto per SSH sarebbe più resiliente, ma duplicare tunnel e credenziali non è giustificato finché il break-glass Azure è verificato.</p>
+<p>Una discussione successiva ha esplorato come alternativa Headscale + Headplane come servizi systemd, con Better Auth aggiornato come IdP OIDC e Authentik soltanto se la gestione utenti di Better Auth non fosse sufficiente. Questa alternativa risponde alla preferenza per una UI e per amministratori che non hanno necessariamente un account Entra, ma non è mai stata approvata come sostituzione del flusso Cloudflare né riportata nell’implementazione. Il baseline eseguibile di questo piano resta quindi Cloudflare Access SSH. Prima di finalizzare il role Ansible, l’owner deve confermare esplicitamente una delle due strade; se sceglie Headscale, vanno aggiornati insieme questo piano, bootstrap, backup, monitoring e modello IAM.</p>
+<h3 id="aggiornamento-automatico-di-latest">Aggiornamento automatico di <code>:latest</code><a class="heading-anchor" href="#aggiornamento-automatico-di-latest" title="Permanent link">#</a></h3>
+<p>Il repository Git conserva il tag desiderato <code>latest</code>, ma non viene modificato a ogni build. Per questa modalità si usa la Gitless image automation del Flux Operator, non <code>ImageUpdateAutomation</code>:</p>
+<ol>
+<li>un <code>ResourceSetInputProvider</code> di tipo <code>OCIArtifactTag</code> osserva in GHCR il solo tag <code>latest</code> ed esporta tag e digest;</li>
+<li>un <code>ResourceSet</code> usa quei valori per generare la <code>Kustomization</code> applicativa;</li>
+<li><code>Kustomization.spec.images</code> sostituisce in cluster <code>latest</code> con <code>latest@sha256:&lt;digest&gt;</code>;</li>
+<li>la modifica del Pod template crea un nuovo ReplicaSet e Kubernetes esegue il rollout, senza commit automatici.</li>
+</ol>
+<p>Il Deployment versionato in Git continua a esprimere soltanto:</p>
+<pre><code class="language-yaml">image: ghcr.io/polinetworkorg/backend:latest
+</code></pre>
+<p>La <code>Kustomization</code> generata dal Flux Operator materializza invece il digest nel cluster. Senza questa trasformazione la stringa del Pod template non cambierebbe quando GHCR sostituisce <code>latest</code>, quindi Kubernetes non creerebbe un nuovo ReplicaSet; <code>imagePullPolicy: Always</code> da sola agisce soltanto quando un Pod viene creato e non provoca il rollout. <a href="https://fluxoperator.dev/docs/resourcesets/image-automation/">Flux Operator: Gitless image automation</a> · <a href="https://kubernetes.io/docs/concepts/containers/images/">Kubernetes image pull policy</a></p>
+<p>Il percorso ordinario è event-driven: un webhook GitHub di organizzazione, limitato all’evento <code>package</code>, chiama un Flux <code>Receiver</code> di tipo <code>github</code>. Il Receiver verifica la firma HMAC e forza subito la riconciliazione dei <code>ResourceSetInputProvider</code> delle immagini PoliNetwork; se il digest di <code>latest</code> è cambiato, il <code>ResourceSet</code> aggiorna la <code>Kustomization</code> generata e avvia il rollout. GitHub emette l’evento <code>package</code> con azione <code>published</code> quando un package viene pubblicato. <a href="https://fluxcd.io/flux/guides/webhook-receivers/">Flux webhook receivers</a> · <a href="https://docs.github.com/en/webhooks/webhook-events-and-payloads#package">GitHub webhook <code>package</code></a></p>
+<p>Il Receiver è pubblicato tramite Traefik e Cloudflare su un hostname dedicato. Non va protetto da Cloudflare Access, perché GitHub non può completarne il login: l’autenticazione applicativa è la firma HMAC di GitHub; Cloudflare fornisce TLS, proxy e rate limiting. Il secret del webhook è generato casualmente, conservato in Key Vault, materializzato da ESO nel Secret referenziato dal Receiver e mai inserito in Git. Si usa un solo Receiver con l’elenco esplicito dei provider PoliNetwork: un evento può quindi causare scansioni superflue degli altri repository, ma soltanto al momento di una pubblicazione e non ogni minuto.</p>
+<p>Il fallback <code>fluxcd.controlplane.io/reconcileEvery</code> dei provider è impostato a <code>6h</code>. Il webhook elimina quindi il polling frequente, non la riconciliazione periodica di sicurezza. GitHub non ritenta automaticamente le consegne fallite: un operatore può ridistribuirle dalla cronologia GitHub, mentre il fallback recupera comunque il nuovo digest entro sei ore. Il cutover richiede una prova reale di pubblicazione, consegna, digest runtime e rollout. <a href="https://docs.github.com/en/webhooks/using-webhooks/handling-failed-webhook-deliveries">GitHub: failed webhook deliveries</a></p>
+<p>Questa scelta rinuncia intenzionalmente ad avere ogni digest nella cronologia Git. Il digest applicato resta osservabile nello stato del <code>ResourceSetInputProvider</code>, nella <code>Kustomization</code> generata, nel Deployment e nei ReplicaSet. Per rollback: sospendere il provider, recuperare il digest precedente dal ReplicaSet e inserirlo come override esplicito revisionato in Git; dopo la correzione rimuovere l’override e riattivare il provider. Non affidarsi al solo <code>kubectl rollout undo</code>, perché la riconciliazione ripristinerebbe il digest corrente.</p>
+<p>Questa automazione vale per immagini PoliNetwork. Database, controller e immagini terze usano una versione esplicita e vengono aggiornati con una PR, senza digest obbligatorio.</p>
+<h3 id="terraform-state-separati-e-foundation-gia-applicata">Terraform: state separati e foundation già applicata<a class="heading-anchor" href="#terraform-state-separati-e-foundation-gia-applicata" title="Permanent link">#</a></h3>
+<p>La ristrutturazione Terraform non è più un’attività futura. La PR Terraform <code>#79</code>, incorporata in <code>stable</code> come commit <code>0937051</code>, ha separato:</p>
+<ul>
+<li><code>environments/legacy</code>, backend key <code>state.tfstate</code>, che conserva AKS e le risorse Kubernetes/Helm legacy;</li>
+<li><code>environments/k3s</code>, backend key <code>k3s.tfstate</code>, che possiede soltanto la foundation K3s;</li>
+<li><code>module.shared</code>, mantenuto nello state legacy, per storage backup, container, retention e budget condivisi.</li>
+</ul>
+<p>Il cleanup autorizzato del precedente tentativo è stato applicato: <code>vm01</code>, il suo PIP/NIC/NSG/VNet, <code>disk-core</code>, <code>disk-services</code>, le vecchie identity e la chiave OpenBao non risultano più presenti. Sono stati mantenuti AKS, <code>rg-polinetwork</code>, <code>polinetworksa</code>, <code>polinetworkbackups</code>, i container backup, retention e budget. Non si usa comunque mai un <code>terraform destroy</code> generale e una risorsa condivisa non deve appartenere a entrambi gli state.</p>
+<p>Verifica read-only del 23 agosto 2026:</p>
+<ul>
+<li><code>k3s01</code> è accesa, usa <code>Standard_E2ps_v6</code>, IP privato <code>10.43.1.4</code> e nessun IP pubblico sulla NIC;</li>
+<li>sono collegati <code>disk-k3s-fast</code> Premium SSD v2 64 GiB, <code>disk-k3s-standard</code> Standard SSD 128 GiB e OS disk Standard SSD 64 GiB;</li>
+<li>VNet, subnet, NSG deny-inbound, NAT Gateway outbound-only, UAMI/RBAC e Blob access sono nello state K3s;</li>
+<li>il piano <code>environments/legacy</code> termina con <code>No changes</code>;</li>
+<li>il piano corrente <code>environments/k3s</code> mostra <code>0 add, 3 change, 0 destroy</code>: i tre Key Vault applicati hanno ancora firewall <code>Allow</code>, mentre il codice richiede <code>Deny</code> e la subnet K3s;</li>
+<li>la VNet temporanea <code>disk-insp-2-vnet</code> esiste ancora fuori dallo state K3s e va identificata prima di una sua eventuale rimozione.</li>
+</ul>
+<p>Esiste inoltre una divergenza tra il codice applicato e l’ultima decisione: Terraform ha creato <code>kv-polinetwork-platform</code>, <code>kv-polinetwork-apps</code> e <code>kv-polinetwork-ci</code>; il target approvato successivamente usa soltanto <code>kv-pn-infra</code> e <code>kv-pn-apps</code>. Prima del prossimo apply bisogna correggere il codice, inventariare per metadata gli eventuali contenuti dei tre vault applicati e revisionare attentamente create/delete e RBAC. Il vault CI non va copiato automaticamente.</p>
+<h3 id="postgresql-mariadb-e-file-blobs">PostgreSQL, MariaDB e <code>file-blobs</code><a class="heading-anchor" href="#postgresql-mariadb-e-file-blobs" title="Permanent link">#</a></h3>
+<p>Per il cutover PostgreSQL basta un dump/restore in una finestra a bassa attività, purché prima si fermino tutti i writer. Questo produce un RPO del cutover prossimo a zero: non vengono accettate scritture tra dump e switch. Dopo il cutover servono comunque backup periodici, perché il dump della migrazione non protegge dai guasti futuri.</p>
+<p>MariaDB non ha un RPO/RTO operativo. Scrivere “RPO 0” significherebbe zero perdita dati ed è più restrittivo del necessario. La definizione corretta è: servizio legacy senza SLA; si conserva un dump finale con checksum, si prova una volta il restore e non si avvia MariaDB su K3s se non emerge un consumer reale.</p>
+<p><code>file-blobs</code> è lo storage on-demand del backend e resta <code>polinetworksa/file-blobs</code>. Il backend usa già Azure Blob SDK e restituisce URL Blob. Per la migrazione 1:1:</p>
+<ul>
+<li>non si copia <code>file-blobs</code> sui dischi della VM;</li>
+<li>il backend scrive/elimina tramite Managed Identity con ruolo limitato al container;</li>
+<li>la lettura pubblica resta invariata durante il cutover, perché oggi il container ha accesso pubblico <code>blob</code>;</li>
+<li>la privatizzazione richiede una modifica applicativa separata per URL SAS brevi o proxy del backend e non viene mescolata al cutover.</li>
+</ul>
+<h3 id="argo-cd">Argo CD<a class="heading-anchor" href="#argo-cd" title="Permanent link">#</a></h3>
+<p>Non si modifica Argo CD. Continua a riconciliare AKS esattamente come oggi mentre Flux possiede K3s. Non esiste conflitto perché i cluster sono diversi.</p>
+<p>Al cutover si fermano i workload AKS, si spostano le route e si lascia Flux gestire K3s. Argo, Image Updater e AKS vengono rimossi solo alla fine. Investire tempo in nuove policy Argo prima della sua eliminazione non porta beneficio alla migrazione.</p>
+<h3 id="modifiche-di-sicurezza-incluse-nella-migrazione">Modifiche di sicurezza incluse nella migrazione<a class="heading-anchor" href="#modifiche-di-sicurezza-incluse-nella-migrazione" title="Permanent link">#</a></h3>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Problema corrente</th>
+<th>Correzione target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SSH pubblico <code>0.0.0.0/0</code> sulla VM esistente</td>
+<td>nessun PIP e nessuna regola inbound; Access SSH via tunnel + break-glass Azure</td>
+</tr>
+<tr>
+<td>Service database <code>LoadBalancer</code></td>
+<td>PostgreSQL/Redis/InfluxDB solo <code>ClusterIP</code></td>
+</tr>
+<tr>
+<td>secret letti da Terraform e scritti come Secret Kubernetes</td>
+<td>rimuovere data source dei valori e provider Kubernetes dal root target; ESO crea i Secret</td>
+</tr>
+<tr>
+<td>Key Vault unico e access policy ampie</td>
+<td>due vault per trust boundary, Azure RBAC e identità dedicate</td>
+</tr>
+<tr>
+<td>credenziali Azure statiche nel backend</td>
+<td>Managed Identity con scope sul container Blob e sulle sole API necessarie</td>
+</tr>
+<tr>
+<td>Dashboard con cluster-admin</td>
+<td>non migrare Kubernetes Dashboard</td>
+</tr>
+<tr>
+<td>immagini terze non versionate (<code>redis</code>, <code>influxdb</code>, Prometheus, Grafana)</td>
+<td>tag di versione espliciti</td>
+</tr>
+<tr>
+<td>immagini PoliNetwork senza rollout deterministico di <code>latest</code></td>
+<td>Flux Operator risolve e applica <code>latest@sha256</code> direttamente in cluster</td>
+</tr>
+<tr>
+<td>Longhorn single-node con overhead elevato</td>
+<td>local-path-provisioner e backup off-VM</td>
+</tr>
+<tr>
+<td>assenza di request/limit</td>
+<td>valori iniziali per ogni workload, poi correzione con metriche</td>
+</tr>
+<tr>
+<td>digest runtime non registrato nella cronologia Git</td>
+<td>stato del provider, eventi e ReplicaSet osservabili; rollback con override digest esplicito e revisionato in Git</td>
+</tr>
+<tr>
+<td>backup locale confuso con DR</td>
+<td>dump cifrati su Blob ZRS e restore testato</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Le NetworkPolicy vengono aggiunte per namespace dopo lo smoke test del servizio, iniziando da database e controller. Non si applica un default-deny globale prima di conoscere i flussi: sarebbe sicurezza apparente con alto rischio di outage.</p>
+<h3 id="blocker-reali">Blocker reali<a class="heading-anchor" href="#blocker-reali" title="Permanent link">#</a></h3>
+<p>Non ci sono blocker per iniziare a scrivere Ansible e la struttura Flux. Prima del cutover devono però essere chiusi questi punti:</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Blocco prima del cutover</th>
+<th>Evidenza richiesta</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Route Cloudflare</td>
+<td>tabella hostname → servizio/porta → policy Access, poi route Traefik equivalente</td>
+</tr>
+<tr>
+<td>Secret</td>
+<td>ogni nome corrente associato a consumer, vault target ed ExternalSecret; nessun valore in Git</td>
+</tr>
+<tr>
+<td>PostgreSQL</td>
+<td>dump/restore di prova riuscito e lista completa dei writer da fermare</td>
+</tr>
+<tr>
+<td>Capacità VM</td>
+<td>test di almeno 1–2 ore con tutti i workload iniziali; CPU non stabilmente oltre l’80% e niente OOM</td>
+</tr>
+<tr>
+<td>Scelta SSH</td>
+<td>conferma esplicita Cloudflare Access oppure revisione completa verso Headscale/Headplane</td>
+</tr>
+<tr>
+<td>Accesso amministrativo</td>
+<td>Access SSH da rete domestica e Azure Run Command/Serial Console entrambi verificati prima di rimuovere il PIP</td>
+</tr>
+<tr>
+<td>Terraform/Key Vault</td>
+<td>codice riconciliato sui due vault finali; firewall <code>Deny</code>; piano K3s e legacy revisionati e poi entrambi <code>No changes</code></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>bot-maintenance</code> non è un blocker: è già multi-arch (<code>amd64</code>/<code>arm64</code>), pubblica soltanto <code>latest</code> e può essere fermato per alcune ore durante il canary.</p>
+<h3 id="identita-azure-da-verificare">Identità Azure da verificare<a class="heading-anchor" href="#identita-azure-da-verificare" title="Permanent link">#</a></h3>
+<p>Questi object ID sono stati rilevati nell’assessment. L’attuale owner può eseguire l’audit e decidere direttamente; la rimozione avviene soltanto dopo il cutover o dopo aver escluso consumer reali.</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Object ID</th>
+<th>Identità osservata</th>
+<th>Azione prevista</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>99053e08-87b6-4585-b77d-e9d2072551eb</code></td>
+<td>non risolta; Contributor subscription/KV</td>
+<td>cercare owner e log, poi rimuovere se orphan</td>
+</tr>
+<tr>
+<td><code>76786ae8-54bf-4468-b301-f7d1dec5c086</code></td>
+<td>non risolta; Contributor subscription</td>
+<td>cercare owner e log, poi rimuovere se orphan</td>
+</tr>
+<tr>
+<td><code>16990676-5daf-4d97-b0d0-a820d31ba947</code></td>
+<td>non risolta; Contributor + Owner state container</td>
+<td>verificare con priorità prima di toccare lo state</td>
+</tr>
+<tr>
+<td><code>14db305f-1e26-46cd-8acb-dbe49ef67282</code></td>
+<td>service principal legacy</td>
+<td>credenziale scaduta; rimuovere se senza consumer</td>
+</tr>
+<tr>
+<td><code>7254cc61-1f41-439b-822d-1fe5a7025a43</code></td>
+<td><code>CAnalyzer</code></td>
+<td>credenziale scaduta; rimuovere se senza consumer</td>
+</tr>
+<tr>
+<td><code>81dd9fd1-ea71-420a-9f8a-8cbb74f479a6</code></td>
+<td>GitHub Terraform read-only</td>
+<td>mantenere, solo plan/state read</td>
+</tr>
+<tr>
+<td><code>f220ce5b-e174-413d-b6f8-04e214b85d76</code></td>
+<td>GitHub Terraform read-write</td>
+<td>mantenere con OIDC e scope ridotto</td>
+</tr>
+<tr>
+<td><code>245ea657-bfb5-4ca2-9640-5487c648b902</code></td>
+<td>identity AKS</td>
+<td>eliminare con AKS</td>
+</tr>
+<tr>
+<td><code>43fab6a8-439d-4f98-b387-682df65783f8</code></td>
+<td>identity CSI AKS</td>
+<td>eliminare dopo CSI → ESO e AKS</td>
+</tr>
+<tr>
+<td><code>5c40836d-796f-4d54-a194-1f0b8374185a</code></td>
+<td><code>id-vm01-openbao</code></td>
+<td>eliminare con il vecchio tentativo se OpenBao non è target</td>
+</tr>
+<tr>
+<td><code>0959e426-bdaf-4168-9e92-2b43f4d55917</code></td>
+<td><code>id-vm01-backup</code></td>
+<td>riusare solo se coerente col nuovo backup; altrimenti sostituire</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="2-istruzioni-precise-per-eseguire-la-migrazione">2. Istruzioni precise per eseguire la migrazione<a class="heading-anchor" href="#2-istruzioni-precise-per-eseguire-la-migrazione" title="Permanent link">#</a></h2>
+<h3 id="regole-di-esecuzione">Regole di esecuzione<a class="heading-anchor" href="#regole-di-esecuzione" title="Permanent link">#</a></h3>
+<p>Lavora su branch e pull request. Un merge su <code>polinetwork-cd#main</code> è l’operazione ordinaria che Flux riconcilia; non eseguire deploy manuali. I comandi <code>kubectl</code> sotto indicati sono soltanto controlli eccezionali durante la migrazione. Non stampare mai Secret Kubernetes o valori Key Vault.</p>
+<p>La sequenza è pensata per due giornate. Se un criterio di uscita fallisce, si corregge Git/Ansible e si riesegue; AKS resta production fino al cutover.</p>
+<h3 id="0-fotografia-e-audit-read-only">0 — Fotografia e audit read-only<a class="heading-anchor" href="#0-fotografia-e-audit-read-only" title="Permanent link">#</a></h3>
+<p>Carica l’accesso Azure e conserva output senza secret in una directory ignorata da Git:</p>
+<pre><code class="language-bash">cd /home/lorenzo/dev/PoliNetwork/terraform
+source ./access_key.sh
+
+export MIGRATION_EVIDENCE=&quot;/home/lorenzo/dev/PoliNetwork/aks-vm-migration/evidence/$(date +%F)&quot;
+mkdir -p &quot;$MIGRATION_EVIDENCE&quot;
+chmod 700 &quot;$MIGRATION_EVIDENCE&quot;
+
+az account show --query '{subscription:name,id:id,tenant:tenantId,user:user.name}' -o yaml
+terraform state list &gt; &quot;$MIGRATION_EVIDENCE/terraform-state.txt&quot;
+terraform plan -lock=false -no-color &gt; &quot;$MIGRATION_EVIDENCE/terraform-current-plan.txt&quot;
+kubectl get deploy,statefulset,daemonset,cronjob,service,ingress,pvc -A -o wide \
+  &gt; &quot;$MIGRATION_EVIDENCE/kubernetes-inventory.txt&quot;
+</code></pre>
+<p>Il piano corrente deve terminare con <code>No changes</code>. Non usare <code>terraform apply</code> in questa fase.</p>
+<p>Per verificare tutte le identità note senza modificare Azure:</p>
+<pre><code class="language-bash">cd /home/lorenzo/dev/PoliNetwork/terraform
+source ./access_key.sh
+
+for object_id in \
+  99053e08-87b6-4585-b77d-e9d2072551eb \
+  76786ae8-54bf-4468-b301-f7d1dec5c086 \
+  16990676-5daf-4d97-b0d0-a820d31ba947 \
+  14db305f-1e26-46cd-8acb-dbe49ef67282 \
+  7254cc61-1f41-439b-822d-1fe5a7025a43 \
+  81dd9fd1-ea71-420a-9f8a-8cbb74f479a6 \
+  f220ce5b-e174-413d-b6f8-04e214b85d76 \
+  245ea657-bfb5-4ca2-9640-5487c648b902 \
+  43fab6a8-439d-4f98-b387-682df65783f8 \
+  5c40836d-796f-4d54-a194-1f0b8374185a \
+  0959e426-bdaf-4168-9e92-2b43f4d55917
+do
+  echo &quot;### $object_id&quot;
+  az ad sp show --id &quot;$object_id&quot; \
+    --query '{objectId:id,appId:appId,name:displayName,type:servicePrincipalType,enabled:accountEnabled}' \
+    -o yaml 2&gt;/dev/null || echo &quot;service principal non risolto&quot;
+  az role assignment list --all --include-inherited \
+    --assignee-object-id &quot;$object_id&quot; \
+    --query '[].{role:roleDefinitionName,scope:scope,assignmentId:id}' -o table
+done | tee &quot;$MIGRATION_EVIDENCE/identity-audit.txt&quot;
+</code></pre>
+<p>Per le due app GitHub Actions verifica che usino federation e non password:</p>
+<pre><code class="language-bash">for app_id in \
+  773afc65-715d-4050-a821-769c46fdb76f \
+  76b5658e-375b-454e-b28a-b2d0fb19ab43
+do
+  az ad app credential list --id &quot;$app_id&quot; \
+    --query '[].{name:displayName,end:endDateTime,keyId:keyId}' -o table
+  az ad app federated-credential list --id &quot;$app_id&quot; \
+    --query '[].{name:name,issuer:issuer,subject:subject,audiences:audiences}' -o table
+done
+</code></pre>
+<p>Output atteso: read-only limitata a PR/branch Terraform; read-write limitata all’Environment GitHub <code>production</code>. Per i principal non risolti controlla anche Entra ID → Enterprise applications → Deleted applications e Audit/Sign-in logs. Non revocare ancora nulla.</p>
+<p>Infine, dal pannello Cloudflare esporta soltanto metadata in una tabella:</p>
+<pre><code class="language-text">hostname | tunnel | origin service:porta | policy Access | nuovo Ingress Traefik
+</code></pre>
+<p>Non esportare token.</p>
+<h3 id="1-ristrutturare-polinetwork-cd">1 — Ristrutturare <code>polinetwork-cd</code><a class="heading-anchor" href="#1-ristrutturare-polinetwork-cd" title="Permanent link">#</a></h3>
+<p>Crea un branch da <code>origin/main</code>, non dal vecchio branch <code>vm</code>:</p>
+<pre><code class="language-bash">cd /home/lorenzo/dev/PoliNetwork/polinetwork-cd
+git fetch origin
+git switch -c k3s-flux origin/main
+</code></pre>
+<p>Esegui in commit piccoli e reversibili:</p>
+<ol>
+<li>crea <code>ansible/</code>, <code>clusters/k3s/</code>, <code>infrastructure/</code> e <code>apps/</code>;</li>
+<li>sposta ogni namespace attivo sotto <code>apps/&lt;namespace&gt;</code> conservando i manifest funzionanti;</li>
+<li>porta solo <code>bot-mat-maintenance</code> in <code>apps/bot-maintenance</code>; non portare il vecchio bot C#;</li>
+<li>non referenziare <code>bot-prod</code>, <code>bot-rooms</code>, <code>tutor-prod</code> e <code>tests</code>;</li>
+<li>converti gradualmente <code>SecretProviderClass</code> in <code>ExternalSecret</code>;</li>
+<li>elimina i <code>config.json</code> solo dopo che Flux rappresenta sia inclusione sia image automation;</li>
+<li>aggiungi CI con <code>kustomize build</code>, <code>flux-local test</code> o almeno schema validation prima del merge.</li>
+</ol>
+<p>Il criterio di uscita è che <code>clusters/k3s</code> ricostruisca l’intero target e nessun manifest attivo dipenda dal generatore Argo custom.</p>
+<h3 id="2-riconciliare-terraform-gia-applicato">2 — Riconciliare Terraform già applicato<a class="heading-anchor" href="#2-riconciliare-terraform-gia-applicato" title="Permanent link">#</a></h3>
+<p>Parti da <code>origin/stable</code>, non dal vecchio branch di implementazione. La state split, il cleanup e la foundation sono già stati applicati; non ripeterli e non importare risorse manualmente.</p>
+<ol>
+<li>crea una PR che sostituisca la mappa dei tre vault con <code>infra = "kv-pn-infra"</code> e <code>apps = "kv-pn-apps"</code>;</li>
+<li>aggiorna i riferimenti RBAC da <code>platform</code> a <code>infra</code> e rimuovi la risorsa CI;</li>
+<li>prima di pianificare, inventaria soltanto nomi/versioni e consumer dei tre vault esistenti, senza leggere o stampare valori;</li>
+<li>non copiare i secret CI legacy: migra soltanto un secret con consumer dimostrato; preferisci <code>GITHUB_TOKEN</code> e OIDC;</li>
+<li>includi nello stesso piano il firewall <code>default_action = "Deny"</code> e la subnet K3s per entrambi i vault target;</li>
+<li>lascia invariati VM, dischi, VNet, NAT, AKS e storage condiviso.</li>
+</ol>
+<p>Esegui i controlli sui due root:</p>
+<pre><code class="language-bash">cd /home/lorenzo/dev/PoliNetwork/terraform
+source ./access_key.sh
+
+terraform -chdir=environments/k3s init
+terraform -chdir=environments/k3s fmt -check
+terraform -chdir=environments/k3s validate
+terraform -chdir=environments/k3s plan -out=k3s.tfplan
+terraform -chdir=environments/k3s show -no-color k3s.tfplan &gt; k3s.plan.txt
+
+terraform -chdir=environments/legacy init
+terraform -chdir=environments/legacy fmt -check
+terraform -chdir=environments/legacy validate
+terraform -chdir=environments/legacy plan -out=legacy.tfplan
+terraform -chdir=environments/legacy show -no-color legacy.tfplan &gt; legacy.plan.txt
+</code></pre>
+<p>Il piano K3s può creare i due nomi finali e rimuovere i tre nomi precedenti, ma non deve sostituire VM/dischi né modificare AKS. Il piano legacy deve restare <code>No changes</code>. Poiché i Key Vault hanno purge protection, controlla esplicitamente il comportamento delle eliminazioni e conserva ogni secret ancora necessario prima dell’apply. Applica soltanto il piano revisionato tramite il workflow protetto; poi riesegui entrambi i piani fino a <code>No changes</code>.</p>
+<h3 id="3-provisionare-debian-e-k3s-con-ansible">3 — Provisionare Debian e K3s con Ansible<a class="heading-anchor" href="#3-provisionare-debian-e-k3s-con-ansible" title="Permanent link">#</a></h3>
+<p>Ansible deve:</p>
+<ul>
+<li>creare l’utente amministrativo e configurare sudo;</li>
+<li>disabilitare root login e password SSH;</li>
+<li>configurare nftables e unattended security updates senza reboot automatico;</li>
+<li>formattare ext4 e montare per UUID <code>/srv/fast</code> e <code>/srv/standard</code>;</li>
+<li>installare K3s <code>v1.36.3+k3s1</code>, verificandone il checksum, con secrets encryption, configurazione persistente in <code>/etc/rancher/k3s/config.yaml</code> e data-dir <code>/srv/standard/k3s</code>;</li>
+<li>configurare garbage collection automatica delle immagini, per esempio high 70% e low 55%;</li>
+<li>mantenere Traefik bundled e disabilitare ServiceLB e local-storage bundled;</li>
+<li>installare Flux controller e il root source pubblico;</li>
+<li>installare agent/script di backup host-level se necessari;</li>
+<li>eseguire test automatici di mount, servizio K3s, porte e idempotenza.</li>
+</ul>
+<p>Esecuzione:</p>
+<pre><code class="language-bash">cd /home/lorenzo/dev/PoliNetwork/polinetwork-cd/ansible
+ansible-playbook -i inventories/k3s playbooks/provision.yml --check --diff
+ansible-playbook -i inventories/k3s playbooks/provision.yml
+ansible-playbook -i inventories/k3s playbooks/provision.yml
+ansible-playbook -i inventories/k3s playbooks/verify.yml
+</code></pre>
+<p>La seconda esecuzione non deve produrre modifiche sostanziali. Se serve correggere qualcosa via SSH, la stessa correzione va immediatamente riportata nel role Ansible e ritestata.</p>
+<h3 id="4-bootstrap-flux-e-storage">4 — Bootstrap Flux e storage<a class="heading-anchor" href="#4-bootstrap-flux-e-storage" title="Permanent link">#</a></h3>
+<p>Flux riconcilia nell’ordine:</p>
+<pre><code class="language-text">namespaces e StorageClass
+→ HelmChartConfig e readiness del Traefik bundled
+→ External Secrets Operator
+→ SecretStore ed ExternalSecret
+→ cloudflared
+→ backup e osservabilità
+→ applicazioni
+</code></pre>
+<p>Installa local-path-provisioner pin a una versione e configura <code>storageClassConfigs</code> per <code>/srv/fast/volumes</code> e <code>/srv/standard/volumes</code>. <code>standard</code> è la default; soltanto PostgreSQL, Redis e altri dati dichiarati critici usano <code>fast</code>. InfluxDB, Prometheus, Grafana e Uptime Kuma usano <code>standard</code>.</p>
+<p>Configura Kustomization Flux separate con <code>dependsOn</code>, health check e prune. Il prune è abilitato per manifest ricreabili; PVC e namespace dati hanno protezioni esplicite e non vengono rimossi accidentalmente da un rename.</p>
+<p>Il root GitRepository è pubblico e fa bootstrap in sola lettura, senza PAT. Installa il Flux Operator open source a versione e digest fissati, quindi dichiara la <code>FluxInstance</code>; non installare <code>image-reflector-controller</code> o <code>image-automation-controller</code>, perché gli aggiornamenti immagine usano <code>ResourceSet</code> e <code>ResourceSetInputProvider</code>. Flux non richiede alcun permesso <code>contents:write</code> sul repository <code>polinetwork-cd</code>.</p>
+<p>Verifica eccezionale:</p>
+<pre><code class="language-bash">flux check
+flux get kustomizations -A
+flux get helmreleases -A
+</code></pre>
+<p>Da quel momento le riconciliazioni normali partono da merge/push Git, non da <code>flux reconcile</code> manuale.</p>
+<h3 id="5-migrare-key-vault-e-secret-verso-eso">5 — Migrare Key Vault e secret verso ESO<a class="heading-anchor" href="#5-migrare-key-vault-e-secret-verso-eso" title="Permanent link">#</a></h3>
+<p>Costruisci una tabella privata senza valori:</p>
+<pre><code class="language-text">nome secret | consumer | namespace | vault corrente | vault target | owner | ruota sì/no
+</code></pre>
+<p>Sposta per metadata/ownership:</p>
+<ul>
+<li>infrastruttura e Cloudflare → <code>kv-pn-infra</code>;</li>
+<li>runtime app/database → <code>kv-pn-apps</code>;</li>
+<li>pipeline → nessun vault nuovo finché non emerge un secret CI reale; usare <code>GITHUB_TOKEN</code> e OIDC dove già disponibili;</li>
+<li>sconosciuti → restano temporaneamente nel vault corrente e non vengono copiati alla cieca.</li>
+</ul>
+<p>Per ogni namespace Flux crea un <code>SecretStore</code> e gli <code>ExternalSecret</code>; le applicazioni passano da CSI mount a <code>secretKeyRef</code> o <code>envFrom</code>. Verifica solo <code>Ready</code> e nomi, mai i valori.</p>
+<p>Prima di usare secret reali esegui il test IMDS automatizzato dal playbook/CI:</p>
+<ol>
+<li>ESO deve ottenere i secret di test;</li>
+<li>un Pod applicativo senza autorizzazione deve ricevere un rifiuto da IMDS;</li>
+<li>i log non devono contenere token.</li>
+</ol>
+<p>Se il Pod ottiene un token Azure, non procedere: si implementa Azure Workload Identity per ESO prima del cutover.</p>
+<h3 id="6-configurare-traefik-cloudflared-e-access-ssh">6 — Configurare Traefik, cloudflared e Access SSH<a class="heading-anchor" href="#6-configurare-traefik-cloudflared-e-access-ssh" title="Permanent link">#</a></h3>
+<p>K3s installa il proprio Traefik bundled; Flux applica un <code>HelmChartConfig</code> <code>traefik</code> nel namespace <code>kube-system</code> che imposta il Service a <code>ClusterIP</code>, senza cambiare separatamente il tag dell'immagine. Flux gestisce inoltre gli <code>Ingress</code>/<code>IngressRoute</code> e i middleware. Per ogni hostname si crea una route con host, Service e porta corrispondenti. Il tunnel punta a:</p>
+<pre><code class="language-yaml">apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      spec:
+        type: ClusterIP
+</code></pre>
+<pre><code class="language-text">http://traefik.kube-system.svc.cluster.local:80
+</code></pre>
+<p>Non creare una <code>HelmRelease</code> Traefik né Service <code>LoadBalancer</code>. Prima di configurare le route Cloudflare, verificare che esistano una sola installazione Traefik e un solo Service <code>traefik</code>, di tipo <code>ClusterIP</code>.</p>
+<p>Per SSH in Cloudflare Zero Trust:</p>
+<ol>
+<li>Networking → Tunnels → route: aggiungi l’IP privato VM <code>/32</code> al tunnel K3s;</li>
+<li>Settings → WARP Client: abilita Traffic and DNS e Gateway proxy TCP;</li>
+<li>Access controls → Targets: crea <code>k3s.polinetwork.internal</code> con IP privato e virtual network del tunnel;</li>
+<li>Access controls → Applications: crea Infrastructure Application, target precedente, SSH/TCP 22;</li>
+<li>policy allow: gruppo Entra owner, MFA, username Unix creato da Ansible;</li>
+<li>Ansible installa la CA SSH Cloudflare e valida <code>sshd -t</code> prima del reload;</li>
+<li>sul laptop installa/enrolla WARP, poi esegui:</li>
+</ol>
+<pre><code class="language-bash">warp-cli target list
+ssh &lt;utente&gt;@k3s.polinetwork.internal
+</code></pre>
+<p>Prova anche Azure Run Command o Serial Console. Solo dopo entrambi i test elimina PIP e regola SSH pubblica tramite Terraform.</p>
+<h3 id="7-configurare-latest-automatico">7 — Configurare <code>latest</code> automatico<a class="heading-anchor" href="#7-configurare-latest-automatico" title="Permanent link">#</a></h3>
+<p>Per ogni immagine PoliNetwork aggiungi un <code>ResourceSetInputProvider</code> e un <code>ResourceSet</code>. Il provider risolve il digest del solo tag <code>latest</code>:</p>
+<pre><code class="language-yaml">apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: backend-image
+  namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: &quot;6h&quot;
+spec:
+  type: OCIArtifactTag
+  url: oci://ghcr.io/polinetworkorg/backend
+  filter:
+    includeTag: '^latest$'
+    limit: 1
+</code></pre>
+<p>Il <code>ResourceSet</code> genera la <code>Kustomization</code> dell’applicazione e applica il digest come image patch. Il root Flux continua a gestire il <code>GitRepository</code> e le definizioni dei <code>ResourceSet</code>, ma non deve anche dichiarare una seconda <code>Kustomization</code> per la stessa applicazione:</p>
+<pre><code class="language-yaml">apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSet
+metadata:
+  name: backend
+  namespace: flux-system
+spec:
+  inputStrategy:
+    name: Permute
+  inputsFrom:
+    - kind: ResourceSetInputProvider
+      name: backend-image
+  resources:
+    - apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: backend
+        namespace: flux-system
+      spec:
+        interval: 30m
+        path: ./apps/backend
+        prune: true
+        sourceRef:
+          kind: GitRepository
+          name: flux-system
+        images:
+          - name: ghcr.io/polinetworkorg/backend
+            newTag: &lt;&lt; inputs.backend_image.tag | quote &gt;&gt;
+            digest: &lt;&lt; inputs.backend_image.digest | quote &gt;&gt;
+</code></pre>
+<p>Nel Deployment in Git resta <code>image: ghcr.io/polinetworkorg/backend:latest</code>, senza marker Flux e senza digest. Verifica con il build locale del Flux Operator che il template produca <code>latest@sha256:&lt;digest&gt;</code> prima del merge. I dettagli comuni di <code>dependsOn</code>, health check, timeout e ServiceAccount vanno inclusi nella <code>Kustomization</code> generata come nelle altre applicazioni.</p>
+<p>Configura il webhook prima del canary, non come ottimizzazione successiva. Esempio ridotto del Receiver (la lista completa contiene tutti e soli i <code>ResourceSetInputProvider</code> PoliNetwork):</p>
+<pre><code class="language-yaml">apiVersion: notification.toolkit.fluxcd.io/v1
+kind: Receiver
+metadata:
+  name: polinetwork-packages
+  namespace: flux-system
+spec:
+  type: github
+  events:
+    - ping
+    - package
+  secretRef:
+    name: github-package-webhook
+  resources:
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: backend-image
+</code></pre>
+<ol>
+<li>crea un hostname dedicato che inoltra soltanto il path <code>/hook/...</code> del Service <code>webhook-receiver</code> di <code>notification-controller</code>; non pubblicare altri endpoint del controller;</li>
+<li>applica rate limiting Cloudflare, ma non Cloudflare Access;</li>
+<li>genera il secret in Key Vault e sincronizzalo con ESO nel Secret <code>github-package-webhook</code> con chiave <code>token</code>;</li>
+<li>recupera <code>.status.webhookPath</code> del Receiver senza registrarlo nei log del repository;</li>
+<li>crea un webhook GitHub a livello organizzazione verso l’URL dedicato, content type JSON, TLS verification attiva, stesso secret e solo eventi <code>package</code>;</li>
+<li>verifica l’evento <code>ping</code>, poi pubblica un nuovo <code>latest</code> di test e controlla consegna GitHub <code>2xx</code>, riconciliazione immediata, nuovo digest nello stato del provider e rollout, confermando che Git non riceva commit;</li>
+<li>verifica anche il fallback in una prova controllata con un intervallo temporaneamente ridotto, poi ripristina <code>6h</code> tramite Git.</li>
+</ol>
+<p>Se non è disponibile il permesso amministrativo per creare il webhook di organizzazione, usa temporaneamente webhook di repository con la stessa configurazione soltanto nei repository che pubblicano le immagini; non tornare al polling ogni minuto.</p>
+<h3 id="8-canary-bot-maintenance">8 — Canary <code>bot-maintenance</code><a class="heading-anchor" href="#8-canary-bot-maintenance" title="Permanent link">#</a></h3>
+<p>Committa namespace, Deployment, request/limit, probe, SecretStore ed ExternalSecret. Mantieni il worker spento finché i secret non sono <code>Ready</code>.</p>
+<p>Durante una finestra breve:</p>
+<ol>
+<li>ferma il Deployment AKS <code>bot-mat-maintenance</code> per evitare doppie azioni;</li>
+<li>abilita quello K3s tramite commit Git;</li>
+<li>verifica startup, log applicativi e side effect per 1–2 ore;</li>
+<li>pubblica una nuova immagine <code>latest</code> di test e verifica il digest runtime, il rollout Flux e l’assenza di commit automatici;</li>
+<li>se fallisce, sospendi il provider, applica l’override del digest precedente oppure disabilita il workload K3s tramite commit Git e riattiva il Deployment AKS.</li>
+</ol>
+<p>Non serve un’osservazione di sette giorni: questo canary può restare fermo alcune ore e serve a validare ARM64, ESO, Flux e image automation nello stesso giorno.</p>
+<h3 id="9-migrare-i-workload-e-i-dati">9 — Migrare i workload e i dati<a class="heading-anchor" href="#9-migrare-i-workload-e-i-dati" title="Permanent link">#</a></h3>
+<p>Ordine consigliato, mantenendo AKS attivo per ciò che non è ancora passato:</p>
+<ol>
+<li><code>admin</code>, <code>web</code> e <code>polinetcc</code> con hostname temporanei;</li>
+<li><code>backend</code>, inizialmente con PostgreSQL AKS raggiungibile solo tramite percorso privato temporaneo;</li>
+<li><code>bot-ts</code>, Redis e InfluxDB, fermando i worker concorrenti;</li>
+<li>PostgreSQL con cutover dati;</li>
+<li>Uptime Kuma;</li>
+<li>Grafana, Prometheus e node-exporter con retention e alert disco;</li>
+<li>route Cloudflare definitive.</li>
+</ol>
+<p>Per ogni workload: verifica ARM64, secret ESO, dipendenze, probe, request/limit, route e rollback. Un merge abilita il target; non usare <code>kubectl apply</code>.</p>
+<p>Per PostgreSQL:</p>
+<ol>
+<li>esegui prima un dump/restore di prova sul target e misura la durata;</li>
+<li>nella finestra finale ferma Deployment e CronJob che scrivono;</li>
+<li>verifica che non restino sessioni applicative di scrittura;</li>
+<li>crea dump consistente, checksum e copia off-VM;</li>
+<li>ripristina sul target e confronta schema, conteggi e query principali;</li>
+<li>abilita i consumer K3s e sposta le route;</li>
+<li>non consentire mai scritture contemporanee su source e target.</li>
+</ol>
+<p>Per MariaDB:</p>
+<ol>
+<li>identifica eventuali consumer con ricerca nei repository e connessioni correnti;</li>
+<li>se non esistono, crea un dump finale con routine/eventi/trigger e checksum;</li>
+<li>prova il restore una volta in un database temporaneo;</li>
+<li>salva il dump cifrato su Blob ZRS;</li>
+<li>non installare MariaDB permanentemente su K3s.</li>
+</ol>
+<p><code>file-blobs</code> non viene migrato: dopo aver assegnato la Managed Identity al backend, prova upload, download pubblico e delete di un file test.</p>
+<h3 id="10-osservabilita-backup-e-test-dr">10 — Osservabilità, backup e test DR<a class="heading-anchor" href="#10-osservabilita-backup-e-test-dr" title="Permanent link">#</a></h3>
+<p>Installa Grafana, Prometheus e node-exporter con versioni esplicite e retention Prometheus compatibile con il PVC da 12 GiB. Imposta alert su:</p>
+<ul>
+<li>CPU host oltre 80% per 15 minuti;</li>
+<li>memoria disponibile sotto 2 GiB;</li>
+<li><code>/srv/fast</code> e <code>/srv/standard</code> al 70% e 85%;</li>
+<li>IOPS consumati del disco fast oltre 70% per 15 minuti;</li>
+<li>inode, backup fallito, Flux non Ready, ExternalSecret non Ready, tunnel down e certificati in scadenza.</li>
+</ul>
+<p>Durante il test di 1–2 ore con tutti i workload, se CPU o memoria superano stabilmente i limiti, riduci retention/frequenza di scrape e sospendi dashboard non necessarie. Loki, Tempo e Mimir restano fuori dal perimetro iniziale.</p>
+<p>Backup automatici:</p>
+<ul>
+<li>PostgreSQL: dump periodico consistente, cifrato, su Blob ZRS;</li>
+<li>InfluxDB/Grafana/Uptime Kuma: backup applicativo o archivio coerente dei rispettivi path;</li>
+<li>K3s SQLite + server token: snapshot coordinato per facilitare il recovery, non come unica source of truth;</li>
+<li>Terraform state: blob versioning/soft delete;</li>
+<li>Key Vault: soft delete e purge protection;</li>
+<li>repository: GitHub più mirror/export periodico se desiderato.</li>
+</ul>
+<p>Test DR obbligatorio prima di spegnere AKS:</p>
+<ol>
+<li>ricrea una VM vuota con Terraform;</li>
+<li>esegui Ansible due volte;</li>
+<li>lascia che Flux ricostruisca platform e app;</li>
+<li>verifica ESO senza leggere valori;</li>
+<li>ripristina PostgreSQL e gli altri dati;</li>
+<li>verifica Cloudflare, endpoint, image automation, monitoring e backup.</li>
+</ol>
+<p>Ogni passaggio manuale non previsto diventa una correzione ad Ansible, Flux o al documento, non una nota affidata alla memoria.</p>
+<h3 id="11-cutover-e-rimozione-aks-entro-il-secondo-giorno">11 — Cutover e rimozione AKS entro il secondo giorno<a class="heading-anchor" href="#11-cutover-e-rimozione-aks-entro-il-secondo-giorno" title="Permanent link">#</a></h3>
+<p>Quando tutti i workload sono validati:</p>
+<ol>
+<li>esegui i dump finali e ferma tutti i writer AKS;</li>
+<li>sposta le route Cloudflare al tunnel/Traefik K3s;</li>
+<li>esegui smoke test di login Access, API, web, bot, upload Blob e dashboard;</li>
+<li>osserva per alcune ore CPU, errori, tunnel e spazio disco;</li>
+<li>in caso di errore, ripristina le route AKS e riattiva soltanto i writer source;</li>
+<li>se tutto è stabile, rimuovi le Application Argo senza modificare prima le policy Argo;</li>
+<li>genera un piano Terraform di decommissioning che elimini solo AKS, LB/PIP/dischi e identity non più usati;</li>
+<li>conserva dump e snapshot finali per 14 giorni anche se AKS viene eliminato subito;</li>
+<li>applica il piano e controlla costi, endpoint e backup.</li>
+</ol>
+<p>Non aspettare sette giorni per il decommissioning. La finestra di rollback lunga è fornita dai dump/snapshot conservati, non dal mantenimento dell’intero AKS acceso.</p>
+<h3 id="rigenerare-e-pubblicare-questo-documento">Rigenerare e pubblicare questo documento<a class="heading-anchor" href="#rigenerare-e-pubblicare-questo-documento" title="Permanent link">#</a></h3>
+<pre><code class="language-bash">cd /home/lorenzo/dev/PoliNetwork/aks-vm-migration
+make html
+make publish
+</code></pre>
+<p>Su Arch Linux, se manca il renderer Markdown:</p>
+<pre><code class="language-bash">sudo pacman -S python-markdown
+</code></pre>
+      </article>
+
+      <footer>
+        Modifica il Markdown, non questo file HTML. Nessun valore di secret deve entrare nel documento.
+      </footer>
+    </main>
+  </div>
+</body>
+</html>

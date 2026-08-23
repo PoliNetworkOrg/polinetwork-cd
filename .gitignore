@@ -1,0 +1,9 @@
+evidence/
+__pycache__/
+*.tfplan
+*.tfstate
+*.tfstate.*
+*.sql
+*.sql.gz
+*.sql.zst
+*.kubeconfig
