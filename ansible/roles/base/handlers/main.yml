@@ -1,0 +1,7 @@
+---
+- name: Load Kubernetes kernel modules
+  ansible.builtin.command: /usr/sbin/modprobe {{ item }}
+  loop:
+    - overlay
+    - br_netfilter
+  changed_when: true

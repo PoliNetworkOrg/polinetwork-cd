@@ -1,0 +1,190 @@
+---
+- name: Verify the PoliNetwork K3s production node
+  hosts: k3s_servers
+  become: true
+  gather_facts: true
+  vars_files:
+    - ../vars/main.yml
+  vars:
+    expected_mounts:
+      - /srv/fast
+      - /srv/standard
+  tasks:
+    - name: Verify operating system and architecture
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Debian"
+          - ansible_distribution_major_version == "13"
+          - ansible_architecture in ["aarch64", "arm64"]
+        fail_msg: This playbook supports Debian 13 ARM64 only.
+
+    - name: Read mounted filesystems
+      ansible.builtin.command:
+        argv: [findmnt, --noheadings, --output, "FSTYPE,SOURCE", --target, "{{ item }}"]
+      loop: "{{ expected_mounts }}"
+      register: mounted_filesystems
+      changed_when: false
+
+    - name: Assert data disks use ext4 and UUID sources
+      ansible.builtin.assert:
+        that:
+          - item.stdout is match('^ext4 /dev/') or item.stdout is match('^ext4 UUID=')
+        fail_msg: "{{ item.item }} is not an ext4 data-disk mount."
+      loop: "{{ mounted_filesystems.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Read K3s version
+      ansible.builtin.command: /usr/local/bin/k3s --version
+      register: installed_k3s_version
+      changed_when: false
+
+    - name: Assert exact K3s version
+      ansible.builtin.assert:
+        that:
+          - k3s_version in installed_k3s_version.stdout
+        fail_msg: "Expected {{ k3s_version }}, got {{ installed_k3s_version.stdout }}"
+
+    - name: Collect service state
+      ansible.builtin.service_facts:
+
+    - name: Verify required services are active and enabled
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services[item].status == "enabled"
+          - ansible_facts.services[item].state == "running"
+        fail_msg: "{{ item }} is not active and enabled."
+      loop:
+        - k3s.service
+        - polinetwork-firewall.service
+        - k3s-control-plane-backup.timer
+
+    - name: Wait for the node to report Ready
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/k3s
+          - kubectl
+          - wait
+          - --for=condition=Ready
+          - node/k3s01
+          - --timeout=180s
+      changed_when: false
+
+    - name: Read Kubernetes service and pod CIDRs
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/k3s
+          - kubectl
+          - get
+          - node/k3s01
+          - -o
+          - jsonpath={.spec.podCIDR}
+      register: runtime_pod_cidr
+      changed_when: false
+
+    - name: Assert the runtime pod CIDR is outside the Azure VNet
+      ansible.builtin.assert:
+        that:
+          - runtime_pod_cidr.stdout is match('^10\\.52\\.')
+        fail_msg: "Unexpected pod CIDR {{ runtime_pod_cidr.stdout }}; it must not overlap {{ azure_vnet_cidr }}."
+
+    - name: Verify ServiceLB and bundled local-storage are absent
+      ansible.builtin.shell: |
+        set -o pipefail
+        ! /usr/local/bin/k3s kubectl get pods -A -o name | grep -E '/svclb-|local-path-provisioner'
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Verify Traefik is a ClusterIP service
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/k3s
+          - kubectl
+          - --namespace=kube-system
+          - get
+          - service/traefik
+          - -o
+          - jsonpath={.spec.type}
+      register: traefik_service_type
+      retries: 30
+      delay: 10
+      until: traefik_service_type.stdout == "ClusterIP"
+      changed_when: false
+
+    - name: Verify Flux reconciliation is ready
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/k3s
+          - kubectl
+          - --namespace=flux-system
+          - wait
+          - --for=condition=Ready
+          - fluxinstance/flux
+          - --timeout=300s
+      changed_when: false
+
+    - name: Verify Pod traffic is denied access to Azure IMDS
+      ansible.builtin.command:
+        argv: [nft, list, chain, inet, polinetwork, forward_guard]
+      register: imds_firewall
+      changed_when: false
+      failed_when: "'169.254.169.254' not in imds_firewall.stdout or 'drop' not in imds_firewall.stdout"
+
+    - name: Remove a stale IMDS isolation probe
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/k3s
+          - kubectl
+          - delete
+          - pod/imds-isolation-probe
+          - --ignore-not-found=true
+          - --wait=true
+      changed_when: false
+
+    - name: Prove a generic Pod cannot obtain an Azure identity token
+      block:
+        - name: Create the IMDS isolation probe
+          ansible.builtin.command:
+            argv:
+              - /usr/local/bin/k3s
+              - kubectl
+              - run
+              - imds-isolation-probe
+              - --image=busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+              - --restart=Never
+              - --command
+              - --
+              - sh
+              - -ec
+              - |
+                imds_url='http://169.254.169.254/metadata/identity/oauth2/token?api-version=2019-08-01'
+                imds_url="${imds_url}&resource=https%3A%2F%2Fstorage.azure.com%2F"
+                imds_url="${imds_url}&client_id={{ backup_identity_client_id }}"
+                if wget -T 3 -qO /dev/null --header 'Metadata: true' "$imds_url"; then
+                  exit 1
+                fi
+                exit 0
+          changed_when: true
+
+        - name: Wait for the blocked IMDS request to succeed as a test
+          ansible.builtin.command:
+            argv:
+              - /usr/local/bin/k3s
+              - kubectl
+              - wait
+              - --for=jsonpath={.status.phase}=Succeeded
+              - pod/imds-isolation-probe
+              - --timeout=180s
+          changed_when: false
+      always:
+        - name: Remove the IMDS isolation probe
+          ansible.builtin.command:
+            argv:
+              - /usr/local/bin/k3s
+              - kubectl
+              - delete
+              - pod/imds-isolation-probe
+              - --ignore-not-found=true
+              - --wait=true
+          changed_when: false

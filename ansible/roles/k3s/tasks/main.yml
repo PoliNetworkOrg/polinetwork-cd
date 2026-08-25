@@ -1,0 +1,75 @@
+---
+- name: Verify the K3s data disk is mounted
+  ansible.builtin.command: mountpoint --quiet /srv/standard
+  changed_when: false
+
+- name: Create K3s configuration directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /etc/rancher/k3s
+    - /etc/rancher/k3s/bootstrap
+
+- name: Download the pinned ARM64 K3s binary
+  ansible.builtin.get_url:
+    url: "{{ k3s_release_url }}"
+    dest: /usr/local/bin/k3s
+    owner: root
+    group: root
+    mode: "0755"
+    checksum: "sha256:{{ k3s_sha256 }}"
+  notify: Restart K3s
+
+- name: Install K3s configuration
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart K3s
+
+- name: Install the K3s systemd unit
+  ansible.builtin.template:
+    src: k3s.service.j2
+    dest: /etc/systemd/system/k3s.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart K3s
+
+- name: Enable and start K3s
+  ansible.builtin.systemd_service:
+    name: k3s
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Apply K3s handlers before readiness checks
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for the Kubernetes API
+  ansible.builtin.command:
+    argv: [/usr/local/bin/k3s, kubectl, get, --raw=/readyz]
+  register: k3s_api_ready
+  retries: 36
+  delay: 5
+  until: k3s_api_ready.rc == 0 and k3s_api_ready.stdout == "ok"
+  changed_when: false
+
+- name: Wait for the node to be Ready
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - wait
+      - --for=condition=Ready
+      - node/k3s01
+      - --timeout=180s
+  changed_when: false

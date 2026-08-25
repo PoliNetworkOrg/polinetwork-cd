@@ -1,0 +1,14 @@
+[Unit]
+Description=PoliNetwork host firewall and Azure IMDS isolation
+Documentation=man:nft(8)
+Wants=network-pre.target
+Before=network-pre.target k3s.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/polinetwork-firewall
+ExecReload=/usr/local/sbin/polinetwork-firewall
+
+[Install]
+WantedBy=multi-user.target

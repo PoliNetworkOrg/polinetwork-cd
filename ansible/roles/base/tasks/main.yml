@@ -1,0 +1,73 @@
+---
+- name: Assert supported Debian ARM64 host
+  ansible.builtin.assert:
+    that:
+      - ansible_distribution == "Debian"
+      - ansible_distribution_major_version == "13"
+      - ansible_architecture in ["aarch64", "arm64"]
+    fail_msg: This role intentionally supports Debian 13 ARM64 only.
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - acl
+      - apparmor
+      - apparmor-utils
+      - ca-certificates
+      - curl
+      - jq
+      - kmod
+      - nftables
+      - python3
+      - python3-apt
+      - sqlite3
+      - sudo
+      - unattended-upgrades
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Set UTC timezone
+  community.general.timezone:
+    name: Etc/UTC
+
+- name: Create K3s administrator group
+  ansible.builtin.group:
+    name: k3s-admin
+    system: true
+    state: present
+
+- name: Ensure the administrative user is present
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    shell: /bin/bash
+    groups:
+      - sudo
+      - k3s-admin
+    append: true
+    create_home: true
+    state: present
+
+- name: Install scoped sudo policy for the administrative user
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/90-{{ admin_user }}"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+    content: |
+      {{ admin_user }} ALL=(ALL:ALL) NOPASSWD: ALL
+
+- name: Load Kubernetes kernel modules at boot
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k3s.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      overlay
+      br_netfilter
+  notify: Load Kubernetes kernel modules
+
+- name: Apply base handlers before continuing
+  ansible.builtin.meta: flush_handlers

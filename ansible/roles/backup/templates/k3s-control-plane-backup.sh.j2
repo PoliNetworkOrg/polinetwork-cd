@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+readonly backup_root=/srv/standard/backups/k3s-control-plane
+readonly timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+readonly hostname="$(hostname -s)"
+readonly work_dir="${backup_root}/.${timestamp}"
+readonly archive="${backup_root}/${hostname}-${timestamp}.tar.gz"
+readonly blob_url="https://{{ backup_storage_account }}.blob.core.windows.net/{{ backup_storage_container }}/k3s-control-plane/${hostname}/${hostname}-${timestamp}.tar.gz"
+
+cleanup() {
+    rm -rf -- "$work_dir"
+}
+trap cleanup EXIT
+
+mkdir -p -- "$work_dir"
+sqlite3 "{{ k3s_data_dir }}/server/db/state.db" ".timeout 30000" ".backup '${work_dir}/state.db'"
+install -m 0600 "{{ k3s_data_dir }}/server/token" "${work_dir}/server-token"
+install -m 0600 /etc/rancher/k3s/config.yaml "${work_dir}/config.yaml"
+tar --create --gzip --file "$archive" --directory "$work_dir" .
+sha256sum "$archive" > "${archive}.sha256"
+archive_sha256="$(sha256sum "$archive" | cut -d ' ' -f 1)"
+
+access_token="$({
+    curl --fail --silent --show-error \
+      --header Metadata:true \
+      "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2019-08-01&resource=https%3A%2F%2Fstorage.azure.com%2F&client_id={{ backup_identity_client_id }}"
+} | jq --exit-status --raw-output .access_token)"
+
+curl --fail --silent --show-error \
+  --request PUT \
+  --header "Authorization: Bearer ${access_token}" \
+  --header "x-ms-date: $(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S GMT')" \
+  --header "x-ms-version: 2023-11-03" \
+  --header "x-ms-blob-type: BlockBlob" \
+  --header "x-ms-meta-sha256: ${archive_sha256}" \
+  --header "Content-Type: application/gzip" \
+  --data-binary "@${archive}" \
+  "$blob_url"
+
+unset access_token
+unset archive_sha256
+find "$backup_root" -maxdepth 1 -type f -mtime +{{ backup_local_retention_days }} -delete

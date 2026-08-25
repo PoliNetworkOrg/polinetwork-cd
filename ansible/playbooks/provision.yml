@@ -1,0 +1,21 @@
+---
+- name: Provision the PoliNetwork K3s production node
+  hosts: k3s_servers
+  become: true
+  gather_facts: true
+  serial: 1
+  vars_files:
+    - ../vars/main.yml
+  roles:
+    - role: base
+      tags: [base]
+    - role: security
+      tags: [security]
+    - role: storage
+      tags: [storage]
+    - role: k3s
+      tags: [k3s]
+    - role: backup
+      tags: [backup]
+    - role: flux
+      tags: [flux]
