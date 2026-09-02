@@ -18,6 +18,8 @@ metadata:
     app: grafana
   name: grafana
 spec:
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: grafana
