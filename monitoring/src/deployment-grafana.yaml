@@ -18,6 +18,8 @@ metadata:
     app: grafana
   name: grafana
 spec:
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: grafana
@@ -32,7 +34,7 @@ spec:
           - 0
       containers:
         - name: grafana
-          image: grafana/grafana:latest
+          image: grafana/grafana@sha256:2d1f9ae67c1778d33e291d4c3c759cd8b650e67491f02533499eb950e075eeb5
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
@@ -58,8 +60,10 @@ spec:
             timeoutSeconds: 1
           resources:
             requests:
-              cpu: 250m
-              memory: 400Mi
+              cpu: "25m"
+              memory: "768Mi"
+            limits:
+              memory: "1Gi"
           volumeMounts:
             - mountPath: /var/lib/grafana
               name: grafana-pv
