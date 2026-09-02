@@ -14,6 +14,20 @@ spec:
       labels:
         app: bot-ts-redis
     spec:
+      initContainers:
+        - name: init-redis-data-permissions
+          image: redis@sha256:1f073813b641755b70b0200da64131bbeeb4ec5b633ca67772229b49820caafa
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - chown -R 999:999 /data
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          volumeMounts:
+            - name: redis-pvc
+              mountPath: /data
       containers:
         - name: bot-ts-redis
           image: redis@sha256:1f073813b641755b70b0200da64131bbeeb4ec5b633ca67772229b49820caafa

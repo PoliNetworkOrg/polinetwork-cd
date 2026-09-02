@@ -13,9 +13,14 @@ container = lambda do |resource, name|
   resource.dig("spec", "template", "spec", "containers").find { |item| item["name"] == name } ||
     raise("missing container #{name}")
 end
+init_container = lambda do |resource, name|
+  resource.dig("spec", "template", "spec", "initContainers").find { |item| item["name"] == name } ||
+    raise("missing init container #{name}")
+end
 
 redis = deployment.call("bot-ts-redis")
 redis_container = container.call(redis, "bot-ts-redis")
+redis_permissions = init_container.call(redis, "init-redis-data-permissions")
 bot_container = container.call(deployment.call("bot-ts"), "bot-ts")
 pvc = documents.find { |doc| doc["kind"] == "PersistentVolumeClaim" && doc.dig("metadata", "name") == "redis-pvc" }
 
@@ -24,6 +29,10 @@ raise "Redis must use noeviction" unless redis_container.fetch("args", []).inclu
 raise "Redis must enable AOF" unless redis_container.fetch("args", []).each_cons(2).include?(["--appendonly", "yes"])
 raise "Redis must have readiness and liveness probes" unless redis_container["readinessProbe"] && redis_container["livenessProbe"]
 raise "Redis must mount redis-pvc at /data" unless redis_container.fetch("volumeMounts", []).any? { |mount| mount == { "name" => "redis-pvc", "mountPath" => "/data" } }
+raise "Redis permissions init image must be pinned" unless redis_permissions["image"].include?("@sha256:")
+raise "Redis permissions init must run as root" unless redis_permissions.dig("securityContext", "runAsUser") == 0
+raise "Redis permissions init must chown the data directory" unless redis_permissions.fetch("command", []).last == "chown -R 999:999 /data"
+raise "Redis permissions init must mount redis-pvc at /data" unless redis_permissions.fetch("volumeMounts", []).any? { |mount| mount == { "name" => "redis-pvc", "mountPath" => "/data" } }
 raise "The bot must not mount the Redis data volume" if bot_container.fetch("volumeMounts", []).any? { |mount| mount["name"] == "redis-pvc" }
 raise "Redis PVC must leave room for AOF rewrites" unless pvc.dig("spec", "resources", "requests", "storage") == "1Gi"
 
