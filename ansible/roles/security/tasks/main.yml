@@ -1,0 +1,96 @@
+---
+- name: Install Kubernetes sysctl policy
+  ansible.builtin.template:
+    src: 99-k3s.conf.j2
+    dest: /etc/sysctl.d/99-k3s.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload sysctl
+
+- name: Install SSH hardening drop-in
+  ansible.builtin.template:
+    src: 90-polinetwork-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/90-polinetwork-hardening.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Reload SSH
+
+- name: Configure unattended security updates
+  ansible.builtin.template:
+    src: 52unattended-upgrades-local.j2
+    dest: /etc/apt/apt.conf.d/52unattended-upgrades-local
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable periodic APT updates
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+
+- name: Create nftables policy directory
+  ansible.builtin.file:
+    path: /etc/nftables.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install host firewall and Pod IMDS guard
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.d/polinetwork.nft
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload PoliNetwork firewall
+
+- name: Install isolated firewall loader
+  ansible.builtin.copy:
+    dest: /usr/local/sbin/polinetwork-firewall
+    owner: root
+    group: root
+    mode: "0750"
+    content: |
+      #!/bin/sh
+      set -eu
+      if /usr/sbin/nft list table inet polinetwork >/dev/null 2>&1; then
+          /usr/sbin/nft delete table inet polinetwork
+      fi
+      exec /usr/sbin/nft --file /etc/nftables.d/polinetwork.nft
+  notify: Reload PoliNetwork firewall
+
+- name: Install isolated firewall service
+  ansible.builtin.template:
+    src: polinetwork-firewall.service.j2
+    dest: /etc/systemd/system/polinetwork-firewall.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd for firewall
+    - Reload PoliNetwork firewall
+
+- name: Disable the global nftables loader
+  ansible.builtin.systemd_service:
+    name: nftables
+    enabled: false
+    state: stopped
+
+- name: Enable the isolated PoliNetwork firewall
+  ansible.builtin.systemd_service:
+    name: polinetwork-firewall
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Apply security handlers before continuing
+  ansible.builtin.meta: flush_handlers

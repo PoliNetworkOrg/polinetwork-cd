@@ -1,0 +1,43 @@
+---
+- name: Create control-plane backup directory
+  ansible.builtin.file:
+    path: /srv/standard/backups/k3s-control-plane
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Install K3s control-plane backup script
+  ansible.builtin.template:
+    src: k3s-control-plane-backup.sh.j2
+    dest: /usr/local/sbin/k3s-control-plane-backup
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Install K3s backup service
+  ansible.builtin.template:
+    src: k3s-control-plane-backup.service.j2
+    dest: /etc/systemd/system/k3s-control-plane-backup.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd for backup
+
+- name: Install K3s backup timer
+  ansible.builtin.template:
+    src: k3s-control-plane-backup.timer.j2
+    dest: /etc/systemd/system/k3s-control-plane-backup.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd for backup
+
+- name: Apply backup systemd changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start the backup timer
+  ansible.builtin.systemd_service:
+    name: k3s-control-plane-backup.timer
+    enabled: true
+    state: started

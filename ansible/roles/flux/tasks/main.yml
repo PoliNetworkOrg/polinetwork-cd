@@ -1,0 +1,65 @@
+---
+- name: Download the pinned Flux Operator install manifest
+  ansible.builtin.get_url:
+    url: "{{ flux_operator_url }}"
+    dest: /etc/rancher/k3s/bootstrap/flux-operator.yaml
+    owner: root
+    group: root
+    mode: "0644"
+    checksum: "sha256:{{ flux_operator_sha256 }}"
+
+- name: Apply Flux Operator
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - apply
+      - --server-side
+      - --field-manager=ansible-bootstrap
+      - --filename=/etc/rancher/k3s/bootstrap/flux-operator.yaml
+  register: flux_operator_apply
+  changed_when: "'created' in flux_operator_apply.stdout or 'configured' in flux_operator_apply.stdout"
+
+- name: Wait for the Flux Operator deployment
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --namespace=flux-system
+      - rollout
+      - status
+      - deployment/flux-operator
+      - --timeout=300s
+  changed_when: false
+
+- name: Install FluxInstance bootstrap definition
+  ansible.builtin.template:
+    src: flux-instance.yaml.j2
+    dest: /etc/rancher/k3s/bootstrap/flux-instance.yaml
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Apply FluxInstance
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - apply
+      - --server-side
+      - --field-manager=ansible-bootstrap
+      - --filename=/etc/rancher/k3s/bootstrap/flux-instance.yaml
+  register: flux_instance_apply
+  changed_when: "'created' in flux_instance_apply.stdout or 'configured' in flux_instance_apply.stdout"
+
+- name: Wait for FluxInstance readiness
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - --namespace=flux-system
+      - wait
+      - --for=condition=Ready
+      - fluxinstance/flux
+      - --timeout=600s
+  changed_when: false

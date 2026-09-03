@@ -1,0 +1,106 @@
+---
+- name: Resolve Azure data disks by LUN
+  ansible.builtin.shell: |
+    set -eu
+    for candidate in \
+      /dev/disk/azure/scsi1/lun{{ item.lun }} \
+      /dev/disk/azure/data/by-lun/{{ item.lun }}; do
+      if [ -e "$candidate" ]; then
+        readlink -f "$candidate"
+        exit 0
+      fi
+    done
+    exit 1
+  args:
+    executable: /bin/bash
+  loop:
+    - { name: fast, lun: 0, minimum_bytes: 60000000000, mount: /srv/fast }
+    - { name: standard, lun: 1, minimum_bytes: 120000000000, mount: /srv/standard }
+  register: storage_azure_data_disks
+  changed_when: false
+
+- name: Build data-disk map
+  ansible.builtin.set_fact:
+    storage_data_disks: "{{ storage_data_disks | default({}) | combine({item.item.name: item.item | combine({'device': item.stdout})}) }}"
+  loop: "{{ storage_azure_data_disks.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+
+- name: Read data-disk sizes
+  ansible.builtin.command:
+    argv: [lsblk, --bytes, --nodeps, --noheadings, --output, SIZE, "{{ item.value.device }}"]
+  loop: "{{ storage_data_disks | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: storage_data_disk_sizes
+  changed_when: false
+
+- name: Assert expected data-disk capacities
+  ansible.builtin.assert:
+    that:
+      - item.stdout | trim | int >= item.item.value.minimum_bytes
+    fail_msg: "{{ item.item.key }} disk is smaller than expected; refusing to format it."
+  loop: "{{ storage_data_disk_sizes.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+
+- name: Inspect existing filesystems
+  ansible.builtin.command:
+    argv: [blkid, -s, TYPE, -o, value, "{{ item.value.device }}"]
+  loop: "{{ storage_data_disks | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: storage_data_disk_filesystems
+  changed_when: false
+  failed_when: storage_data_disk_filesystems.rc not in [0, 2]
+
+- name: Refuse unexpected existing filesystems
+  ansible.builtin.assert:
+    that:
+      - item.stdout | trim in ['', 'ext4']
+    fail_msg: "{{ item.item.key }} contains {{ item.stdout | trim }}; refusing destructive conversion."
+  loop: "{{ storage_data_disk_filesystems.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+
+- name: Create ext4 filesystems without forcing existing disks
+  community.general.filesystem:
+    dev: "{{ item.value.device }}"
+    fstype: ext4
+    force: false
+  loop: "{{ storage_data_disks | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Read filesystem UUIDs
+  ansible.builtin.command:
+    argv: [blkid, -s, UUID, -o, value, "{{ item.value.device }}"]
+  loop: "{{ storage_data_disks | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  register: storage_data_disk_uuids
+  changed_when: false
+
+- name: Mount data disks by UUID
+  ansible.posix.mount:
+    path: "{{ item.item.value.mount }}"
+    src: "UUID={{ item.stdout | trim }}"
+    fstype: ext4
+    opts: defaults,noatime,nofail,x-systemd.device-timeout=30s
+    state: mounted
+  loop: "{{ storage_data_disk_uuids.results }}"
+  loop_control:
+    label: "{{ item.item.key }}"
+
+- name: Create persistent storage directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - /srv/fast/volumes
+    - /srv/standard/volumes
+    - /srv/standard/k3s
+    - /srv/standard/backups
