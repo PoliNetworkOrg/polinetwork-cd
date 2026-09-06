@@ -129,6 +129,10 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: db-pass
+            - name: REDIS_HOST
+              value: "redis-service.redis.svc.cluster.local"
+            - name: REDIS_PORT
+              value: "6379"
             - name: ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
