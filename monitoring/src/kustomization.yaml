@@ -5,3 +5,4 @@ resources:
   - deployment-grafana.yaml
   - deployment-prometheus.yaml
   - deployment-node-exporter.yaml
+  - prometheus-k8s-rbac.yaml
