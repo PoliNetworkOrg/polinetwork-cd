@@ -14,12 +14,6 @@ spec:
     objects: |
       array:
         - |
-          objectName: auth-db-user
-          objectType: secret
-        - |
-          objectName: auth-db-pass
-          objectType: secret
-        - |
           objectName: auth-better-auth-secret
           objectType: secret
         - |
