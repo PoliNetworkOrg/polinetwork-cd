@@ -1,0 +1,200 @@
+apiVersion: secrets-store.csi.x-k8s.io/v1
+kind: SecretProviderClass
+metadata:
+  name: auth-spc
+  namespace: auth
+spec:
+  provider: azure
+  parameters:
+    usePodIdentity: "false"
+    useVMManagedIdentity: "true"
+    userAssignedIdentityID: "31ef9b42-b1c6-4bbc-bbce-3cf2faa1c8cb"
+    tenantId: "7f8cafc8-4314-4070-9744-fe02f91bcb21"
+    keyvaultName: "kv-polinetwork"
+    objects: |
+      array:
+        - |
+          objectName: auth-db-user
+          objectType: secret
+        - |
+          objectName: auth-db-pass
+          objectType: secret
+        - |
+          objectName: auth-better-auth-secret
+          objectType: secret
+        - |
+          objectName: auth-entra-client-id
+          objectType: secret
+        - |
+          objectName: auth-entra-client-secret
+          objectType: secret
+        - |
+          objectName: auth-google-client-id
+          objectType: secret
+        - |
+          objectName: auth-google-client-secret
+          objectType: secret
+        - |
+          objectName: auth-telegram-client-id
+          objectType: secret
+        - |
+          objectName: auth-telegram-client-secret
+          objectType: secret
+  secretObjects:
+    - secretName: azure-kv
+      type: Opaque
+      data:
+        - objectName: auth-better-auth-secret
+          key: auth-secret
+        - objectName: auth-entra-client-id
+          key: entra-client-id
+        - objectName: auth-entra-client-secret
+          key: entra-client-secret
+        - objectName: auth-google-client-id
+          key: google-client-id
+        - objectName: auth-google-client-secret
+          key: google-client-secret
+        - objectName: auth-telegram-client-id
+          key: telegram-client-id
+        - objectName: auth-telegram-client-secret
+          key: telegram-client-secret
+        - objectName: postgres-root-password
+          key: db-pass
+        - objectName: postgres-root-user
+          key: db-user
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth
+  ports:
+    - name: auth
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:
+        - name: auth
+          image: ghcr.io/polinetworkorg/auth@sha256:dfe4c1126fe48126e3a0a5c6258cdc3054e0ecd3cfb356e34b783c1f08e0e0e1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Europe/Rome"
+            - name: DB_NAME
+              value: "polinetwork_auth"
+            - name: DB_HOST
+              value: "postgres-service.postgres.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-user
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-pass
+            - name: BETTER_AUTH_URL
+              value: "https://auth.polinetwork.org"
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: auth-secret
+            - name: PN_ENTRA_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: entra-client-id
+            - name: PN_ENTRA_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: entra-client-secret
+            - name: PN_ENTRA_TENANT_ID
+              value: "7f8cafc8-4314-4070-9744-fe02f91bcb21"
+            - name: PN_ENTRA_MEMBER_GROUP_ID
+              value: "1c68dbb8-4ac3-4569-a886-283b5a825cbd"
+            - name: PN_ENTRA_MEMBER_REFRESH_HOURS
+              value: 24
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: google-client-id
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: google-client-secret
+            - name: TELEGRAM_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: telegram-client-id
+            - name: TELEGRAM_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: telegram-client-secret
+          startupProbe:
+            tcpSocket:
+              port: 3000
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: 3000
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "20m"
+              memory: "256Mi"
+            limits:
+              memory: "512Mi"
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "auth-spc"
