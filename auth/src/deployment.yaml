@@ -147,7 +147,7 @@ spec:
             - name: PN_ENTRA_MEMBER_GROUP_ID
               value: "1c68dbb8-4ac3-4569-a886-283b5a825cbd"
             - name: PN_ENTRA_MEMBER_REFRESH_HOURS
-              value: 24
+              value: "24"
             - name: GOOGLE_CLIENT_ID
               valueFrom:
                 secretKeyRef:
