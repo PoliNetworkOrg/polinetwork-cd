@@ -19,6 +19,9 @@ spec:
         - |
           objectName: postgres-polinetcc-password
           objectType: secret
+        - |
+          objectName: polinetcc-oidc-client-id
+          objectType: secret
   secretObjects:
     - secretName: azure-kv
       type: Opaque
@@ -27,6 +30,8 @@ spec:
           key: db-pass
         - objectName: postgres-polinetcc-user
           key: db-user
+        - objectName: polinetcc-oidc-client-id
+          key: oidc-client-id
 ---
 apiVersion: v1
 kind: Service
@@ -90,6 +95,21 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: db-pass
+            - name: OIDC_URL
+              value: "https://auth.polinetwork.org"
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oidc-client-id
+            - name: OIDC_SCOPE
+              value: "openid profile email polinetwork:identity"
+            - name: ROLES_CLAIM
+              value: "polinetwork:identity"
+            - name: ROLE_ADMIN
+              value: "socio"
+            - name: ROLE_VIEWER
+              value: "socio" # TODO: change this when RBAC is implemented
           startupProbe:
             tcpSocket:
               port: 6111
