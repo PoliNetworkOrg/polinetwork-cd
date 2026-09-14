@@ -95,14 +95,14 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: db-pass
-            - name: OIDC_URL
+            - name: NEXT_PUBLIC_OIDC_URL
               value: "https://auth.polinetwork.org/api/auth"
-            - name: OIDC_CLIENT_ID
+            - name: NEXT_PUBLIC_OIDC_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: azure-kv
                   key: oidc-client-id
-            - name: OIDC_SCOPE
+            - name: NEXT_PUBLIC_OIDC_SCOPE
               value: "openid profile email polinetwork:identity"
             - name: ROLES_CLAIM
               value: "polinetwork:identity"
