@@ -96,7 +96,7 @@ spec:
                   name: azure-kv
                   key: db-pass
             - name: OIDC_URL
-              value: "https://auth.polinetwork.org"
+              value: "https://auth.polinetwork.org/api/auth"
             - name: OIDC_CLIENT_ID
               valueFrom:
                 secretKeyRef:
