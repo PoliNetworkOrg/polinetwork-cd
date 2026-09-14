@@ -115,7 +115,7 @@ spec:
             - name: NEXT_PUBLIC_OIDC_SCOPE
               value: "openid profile email polinetwork:identity"
             - name: ROLES_CLAIM
-              value: "polinetwork:identity"
+              value: "polinetwork_states"
             - name: ROLE_ADMIN
               value: "socio"
             - name: ROLE_VIEWER
