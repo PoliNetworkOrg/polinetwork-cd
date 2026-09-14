@@ -22,6 +22,9 @@ spec:
         - |
           objectName: polinetcc-oidc-client-id
           objectType: secret
+        - |
+          objectName: polinetcc-session-secret
+          objectType: secret
   secretObjects:
     - secretName: azure-kv
       type: Opaque
@@ -32,6 +35,8 @@ spec:
           key: db-user
         - objectName: polinetcc-oidc-client-id
           key: oidc-client-id
+        - objectName: polinetcc-session-secret
+          key: session-secret
 ---
 apiVersion: v1
 kind: Service
@@ -95,6 +100,11 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: db-pass
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: session-secret
             - name: NEXT_PUBLIC_OIDC_URL
               value: "https://auth.polinetwork.org/api/auth"
             - name: NEXT_PUBLIC_OIDC_CLIENT_ID
