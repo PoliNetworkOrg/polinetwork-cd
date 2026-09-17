@@ -36,6 +36,8 @@ metadata:
   name: prometheus-server
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: prometheus-server
@@ -46,14 +48,14 @@ spec:
     spec:
       initContainers:
         - name: init-permissions
-          image: busybox
+          image: busybox@sha256:dc2d74b28e4cf8984fa52af1f39bc7c3d9c73760b41a74d629f5d11b1ab28616
           command: ["sh", "-c", "chown -R 65534:65534 /prometheus"]
           volumeMounts:
             - name: prometheus-storage
               mountPath: /prometheus
       containers:
         - name: prometheus
-          image: prom/prometheus
+          image: prom/prometheus@sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0
           ports:
             - containerPort: 9090
           volumeMounts:
@@ -65,6 +67,32 @@ spec:
             - "--config.file=/etc/prometheus/prometheus.yml"
             - "--storage.tsdb.path=/prometheus"
             - "--storage.tsdb.retention.time=14d"
+          startupProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "192Mi"
+            limits:
+              memory: "512Mi"
       volumes:
         - name: config-volume
           configMap:

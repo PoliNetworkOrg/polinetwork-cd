@@ -1,8 +1,8 @@
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
 metadata:
-  name: backend-spc
-  namespace: backend
+  name: auth-spc
+  namespace: auth
 spec:
   provider: azure
   parameters:
@@ -14,25 +14,25 @@ spec:
     objects: |
       array:
         - |
-          objectName: backend-auth-secret            
+          objectName: auth-better-auth-secret
           objectType: secret
         - |
-          objectName: backend-azure-client-id            
+          objectName: auth-entra-client-id
           objectType: secret
         - |
-          objectName: backend-azure-client-secret            
+          objectName: auth-entra-client-secret
           objectType: secret
         - |
-          objectName: backend-azure-tenant-id            
+          objectName: auth-google-client-id
           objectType: secret
         - |
-          objectName: backend-encryption-key            
+          objectName: auth-google-client-secret
           objectType: secret
         - |
-          objectName: backend-auth-github-id            
+          objectName: auth-telegram-client-id
           objectType: secret
         - |
-          objectName: backend-auth-github-secret            
+          objectName: auth-telegram-client-secret
           objectType: secret
         - |
           objectName: postgres-root-user            
@@ -40,24 +40,25 @@ spec:
         - |
           objectName: postgres-root-password
           objectType: secret
+
   secretObjects:
     - secretName: azure-kv
       type: Opaque
       data:
-        - objectName: backend-azure-client-id
-          key: azure-client-id
-        - objectName: backend-azure-client-secret
-          key: azure-client-secret
-        - objectName: backend-azure-tenant-id
-          key: azure-tenant-id
-        - objectName: backend-encryption-key
-          key: encryption-key
-        - objectName: backend-auth-github-secret
-          key: auth-github-id
-        - objectName: backend-auth-github-id
-          key: auth-github-secret
-        - objectName: backend-auth-secret
+        - objectName: auth-better-auth-secret
           key: auth-secret
+        - objectName: auth-entra-client-id
+          key: entra-client-id
+        - objectName: auth-entra-client-secret
+          key: entra-client-secret
+        - objectName: auth-google-client-id
+          key: google-client-id
+        - objectName: auth-google-client-secret
+          key: google-client-secret
+        - objectName: auth-telegram-client-id
+          key: telegram-client-id
+        - objectName: auth-telegram-client-secret
+          key: telegram-client-secret
         - objectName: postgres-root-password
           key: db-pass
         - objectName: postgres-root-user
@@ -66,19 +67,19 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend-service
+  name: auth-service
 spec:
   selector:
-    app: backend
+    app: auth
   ports:
-    - name: backend
+    - name: auth
       port: 3000
       targetPort: 3000
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: auth
 spec:
   replicas: 1
   strategy:
@@ -88,15 +89,15 @@ spec:
       maxSurge: 1
   selector:
     matchLabels:
-      app: backend
+      app: auth
   template:
     metadata:
       labels:
-        app: backend
+        app: auth
     spec:
       containers:
-        - name: backend
-          image: ghcr.io/polinetworkorg/backend@sha256:9243dbab3bc0834a04ac1005b8c69f8797ef74e66531a0485c2188f24499f445
+        - name: auth
+          image: ghcr.io/polinetworkorg/auth@sha256:dfe4c1126fe48126e3a0a5c6258cdc3054e0ecd3cfb356e34b783c1f08e0e0e1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
@@ -109,12 +110,8 @@ spec:
               value: "production"
             - name: TZ
               value: "Europe/Rome"
-            - name: PUBLIC_URL
-              value: "https://api.polinetwork.org"
-            - name: TRUSTED_ORIGINS
-              value: "https://polinetwork.org,https://admin.polinetwork.org,http://localhost:3001,http://localhost:3002"
             - name: DB_NAME
-              value: "polinetwork_backend"
+              value: "polinetwork_auth"
             - name: DB_HOST
               value: "postgres-service.postgres.svc.cluster.local"
             - name: DB_PORT
@@ -129,45 +126,49 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: db-pass
-            - name: REDIS_HOST
-              value: "redis-service.redis.svc.cluster.local"
-            - name: REDIS_PORT
-              value: "6379"
-            - name: ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: azure-kv
-                  key: encryption-key
+            - name: BETTER_AUTH_URL
+              value: "https://auth.polinetwork.org"
             - name: BETTER_AUTH_SECRET
               valueFrom:
                 secretKeyRef:
                   name: azure-kv
                   key: auth-secret
-            - name: GITHUB_CLIENT_SECRET
+            - name: PN_ENTRA_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: azure-kv
-                  key: auth-github-id
-            - name: GITHUB_CLIENT_ID
+                  key: entra-client-id
+            - name: PN_ENTRA_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: azure-kv
-                  key: auth-github-secret
-            - name: AZURE_CLIENT_ID
+                  key: entra-client-secret
+            - name: PN_ENTRA_TENANT_ID
+              value: "7f8cafc8-4314-4070-9744-fe02f91bcb21"
+            - name: PN_ENTRA_MEMBER_GROUP_ID
+              value: "1c68dbb8-4ac3-4569-a886-283b5a825cbd"
+            - name: PN_ENTRA_MEMBER_REFRESH_HOURS
+              value: "24"
+            - name: GOOGLE_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: azure-kv
-                  key: azure-client-id
-            - name: AZURE_CLIENT_SECRET
+                  key: google-client-id
+            - name: GOOGLE_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: azure-kv
-                  key: azure-client-secret
-            - name: AZURE_TENANT_ID
+                  key: google-client-secret
+            - name: TELEGRAM_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: azure-kv
-                  key: azure-tenant-id
+                  key: telegram-client-id
+            - name: TELEGRAM_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: telegram-client-secret
           startupProbe:
             tcpSocket:
               port: 3000
@@ -197,4 +198,4 @@ spec:
             driver: secrets-store.csi.k8s.io
             readOnly: true
             volumeAttributes:
-              secretProviderClass: "backend-spc"
+              secretProviderClass: "auth-spc"

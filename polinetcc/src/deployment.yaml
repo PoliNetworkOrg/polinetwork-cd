@@ -19,6 +19,12 @@ spec:
         - |
           objectName: postgres-polinetcc-password
           objectType: secret
+        - |
+          objectName: polinetcc-oidc-client-id
+          objectType: secret
+        - |
+          objectName: polinetcc-session-secret
+          objectType: secret
   secretObjects:
     - secretName: azure-kv
       type: Opaque
@@ -27,6 +33,10 @@ spec:
           key: db-pass
         - objectName: postgres-polinetcc-user
           key: db-user
+        - objectName: polinetcc-oidc-client-id
+          key: oidc-client-id
+        - objectName: polinetcc-session-secret
+          key: session-secret
 ---
 apiVersion: v1
 kind: Service
@@ -47,7 +57,10 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: polinetcc
@@ -87,6 +100,49 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: db-pass
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: session-secret
+            - name: NEXT_PUBLIC_OIDC_URL
+              value: "https://auth.polinetwork.org/api/auth"
+            - name: NEXT_PUBLIC_OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oidc-client-id
+            - name: NEXT_PUBLIC_OIDC_SCOPE
+              value: "openid profile email polinetwork:identity"
+            - name: ROLES_CLAIM
+              value: "polinetwork_states"
+            - name: ROLE_ADMIN
+              value: "socio"
+            - name: ROLE_VIEWER
+              value: "socio" # TODO: change this when RBAC is implemented
+          startupProbe:
+            tcpSocket:
+              port: 6111
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: 6111
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 6111
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "160Mi"
+            limits:
+              memory: "320Mi"
       volumes:
         - name: secrets-store
           csi:

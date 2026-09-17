@@ -14,18 +14,66 @@ spec:
       labels:
         app: bot-ts-redis
     spec:
+      initContainers:
+        - name: init-redis-data-permissions
+          image: redis@sha256:1f073813b641755b70b0200da64131bbeeb4ec5b633ca67772229b49820caafa
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - chown -R 999:999 /data
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          volumeMounts:
+            - name: redis-pvc
+              mountPath: /data
       containers:
         - name: bot-ts-redis
-          image: redis
+          image: redis@sha256:1f073813b641755b70b0200da64131bbeeb4ec5b633ca67772229b49820caafa
           imagePullPolicy: IfNotPresent
+          args:
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - everysec
+            - --maxmemory
+            - 320mb
+            - --maxmemory-policy
+            - noeviction
           ports:
             - containerPort: 6379
+          volumeMounts:
+            - name: redis-pvc
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
           resources:
             limits:
               memory: "400Mi"
             requests:
               cpu: "50m"
               memory: "400Mi"
+      volumes:
+        - name: redis-pvc
+          persistentVolumeClaim:
+            claimName: redis-pvc
 ---
 apiVersion: v1
 kind: Service
@@ -84,7 +132,7 @@ spec:
   storageClassName: longhorn
   resources:
     requests:
-      storage: 500Mi
+      storage: 1Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -138,8 +186,6 @@ spec:
             - name: secrets-store
               mountPath: /mnt/secrets-store
               readOnly: true
-            - name: redis-pvc
-              mountPath: /data
           resources:
             requests:
               cpu: "100m"
@@ -153,6 +199,3 @@ spec:
             readOnly: true
             volumeAttributes:
               secretProviderClass: "bot-ts-spc"
-        - name: redis-pvc
-          persistentVolumeClaim:
-            claimName: redis-pvc
