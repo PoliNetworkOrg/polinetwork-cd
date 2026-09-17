@@ -3,14 +3,21 @@ set -euo pipefail
 umask 077
 
 readonly backup_root=/srv/standard/backups/k3s-control-plane
-readonly timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-readonly hostname="$(hostname -s)"
+timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+readonly timestamp
+hostname="$(hostname -s)"
+readonly hostname
 readonly work_dir="${backup_root}/.${timestamp}"
 readonly archive="${backup_root}/${hostname}-${timestamp}.tar.gz"
 readonly blob_url="https://{{ backup_storage_account }}.blob.core.windows.net/{{ backup_storage_container }}/k3s-control-plane/${hostname}/${hostname}-${timestamp}.tar.gz"
 
 cleanup() {
+    exit_code=$?
     rm -rf -- "$work_dir"
+    find "$backup_root" -maxdepth 1 -type f \
+      -mtime +{{ backup_local_retention_days }} -delete || true
+    trap - EXIT
+    exit "$exit_code"
 }
 trap cleanup EXIT
 
@@ -27,10 +34,14 @@ access_token="$({
       --header Metadata:true \
       "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2019-08-01&resource=https%3A%2F%2Fstorage.azure.com%2F&client_id={{ backup_identity_client_id }}"
 } | jq --exit-status --raw-output .access_token)"
+readonly auth_header="${work_dir}/azure-authorization.header"
+printf 'Authorization: Bearer %s\n' "$access_token" > "$auth_header"
+chmod 0600 "$auth_header"
+unset access_token
 
 curl --fail --silent --show-error \
   --request PUT \
-  --header "Authorization: Bearer ${access_token}" \
+  --header "@${auth_header}" \
   --header "x-ms-date: $(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S GMT')" \
   --header "x-ms-version: 2023-11-03" \
   --header "x-ms-blob-type: BlockBlob" \
@@ -39,6 +50,4 @@ curl --fail --silent --show-error \
   --data-binary "@${archive}" \
   "$blob_url"
 
-unset access_token
 unset archive_sha256
-find "$backup_root" -maxdepth 1 -type f -mtime +{{ backup_local_retention_days }} -delete

@@ -18,19 +18,35 @@
           - ansible_architecture in ["aarch64", "arm64"]
         fail_msg: This playbook supports Debian 13 ARM64 only.
 
-    - name: Read mounted filesystems
+    - name: Read runtime mounted filesystems
       ansible.builtin.command:
-        argv: [findmnt, --noheadings, --output, "FSTYPE,SOURCE", --target, "{{ item }}"]
+        argv: [findmnt, --noheadings, --output, FSTYPE, --mountpoint, "{{ item }}"]
       loop: "{{ expected_mounts }}"
-      register: mounted_filesystems
+      register: runtime_mounts
       changed_when: false
 
-    - name: Assert data disks use ext4 and UUID sources
+    - name: Read persistent filesystem definitions
+      ansible.builtin.command:
+        argv: [findmnt, --fstab, --noheadings, --output, "FSTYPE,SOURCE", --mountpoint, "{{ item }}"]
+      loop: "{{ expected_mounts }}"
+      register: persistent_mounts
+      changed_when: false
+
+    - name: Assert data disks are mounted as ext4
       ansible.builtin.assert:
         that:
-          - item.stdout is match('^ext4 /dev/') or item.stdout is match('^ext4 UUID=')
-        fail_msg: "{{ item.item }} is not an ext4 data-disk mount."
-      loop: "{{ mounted_filesystems.results }}"
+          - item.stdout | trim == "ext4"
+        fail_msg: "{{ item.item }} is not mounted as ext4."
+      loop: "{{ runtime_mounts.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Assert data disks persist by UUID
+      ansible.builtin.assert:
+        that:
+          - item.stdout is match('^ext4 UUID=[0-9a-fA-F-]+$')
+        fail_msg: "{{ item.item }} does not have a persistent ext4 UUID mount."
+      loop: "{{ persistent_mounts.results }}"
       loop_control:
         label: "{{ item.item }}"
 
@@ -39,10 +55,14 @@
       register: installed_k3s_version
       changed_when: false
 
+    - name: Extract installed K3s version token
+      ansible.builtin.set_fact:
+        installed_k3s_version_token: "{{ installed_k3s_version.stdout_lines[0].split()[2] }}"
+
     - name: Assert exact K3s version
       ansible.builtin.assert:
         that:
-          - k3s_version in installed_k3s_version.stdout
+          - installed_k3s_version_token == k3s_version
         fail_msg: "Expected {{ k3s_version }}, got {{ installed_k3s_version.stdout }}"
 
     - name: Collect service state
@@ -58,6 +78,20 @@
         - k3s.service
         - polinetwork-firewall.service
         - k3s-control-plane-backup.timer
+
+    - name: Read listening TCP ports
+      ansible.builtin.command:
+        argv: [ss, --no-header, --listening, --numeric, --tcp]
+      register: listening_tcp_ports
+      changed_when: false
+
+    - name: Assert only the intended host entry points are listening
+      ansible.builtin.assert:
+        that:
+          - listening_tcp_ports.stdout is search(':22\\s')
+          - listening_tcp_ports.stdout is search(':6443\\s')
+          - listening_tcp_ports.stdout is not search(':(80|443)\\s')
+        fail_msg: SSH and K3s API must listen, while Traefik must not expose host ports 80/443.
 
     - name: Wait for the node to report Ready
       ansible.builtin.command:
@@ -88,13 +122,18 @@
           - runtime_pod_cidr.stdout is match('^10\\.52\\.')
         fail_msg: "Unexpected pod CIDR {{ runtime_pod_cidr.stdout }}; it must not overlap {{ azure_vnet_cidr }}."
 
-    - name: Verify ServiceLB and bundled local-storage are absent
-      ansible.builtin.shell: |
-        set -o pipefail
-        ! /usr/local/bin/k3s kubectl get pods -A -o name | grep -E '/svclb-|local-path-provisioner'
-      args:
-        executable: /bin/bash
+    - name: Read all Kubernetes pod names
+      ansible.builtin.command:
+        argv: [/usr/local/bin/k3s, kubectl, get, pods, --all-namespaces, --output=name]
+      register: kubernetes_pod_names
       changed_when: false
+
+    - name: Verify ServiceLB and bundled local-storage are absent
+      ansible.builtin.assert:
+        that:
+          - kubernetes_pod_names.stdout is not search('/svclb-')
+          - kubernetes_pod_names.stdout is not search('local-path-provisioner')
+        fail_msg: ServiceLB or the bundled local-storage provisioner is still running.
 
     - name: Verify Traefik is a ClusterIP service
       ansible.builtin.command:
@@ -124,12 +163,70 @@
           - --timeout=300s
       changed_when: false
 
+    - name: Verify Flux infrastructure reconciliation is ready
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/k3s
+          - kubectl
+          - --namespace=flux-system
+          - wait
+          - --for=condition=Ready
+          - kustomization/{{ item }}
+          - --timeout=300s
+      loop:
+        - infrastructure-security
+        - infrastructure-traefik
+      changed_when: false
+
     - name: Verify Pod traffic is denied access to Azure IMDS
       ansible.builtin.command:
         argv: [nft, list, chain, inet, polinetwork, forward_guard]
       register: imds_firewall
       changed_when: false
       failed_when: "'169.254.169.254' not in imds_firewall.stdout or 'drop' not in imds_firewall.stdout"
+
+    - name: Remove a stale host-namespace admission probe
+      ansible.builtin.command:
+        argv:
+          - /usr/local/bin/k3s
+          - kubectl
+          - delete
+          - pod/host-namespace-probe
+          - --ignore-not-found=true
+          - --wait=true
+      changed_when: false
+
+    - name: Prove untrusted workloads cannot use host networking
+      block:
+        - name: Attempt to create a host-network Pod
+          ansible.builtin.command:
+            argv:
+              - /usr/local/bin/k3s
+              - kubectl
+              - run
+              - host-namespace-probe
+              - --image=busybox:1.37.0@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+              - --restart=Never
+              - --overrides={"spec":{"hostNetwork":true}}
+              - --command
+              - --
+              - /bin/true
+          register: host_namespace_probe
+          changed_when: false
+          failed_when: >-
+            host_namespace_probe.rc == 0 or
+            'deny-host-namespaces' not in host_namespace_probe.stderr
+      always:
+        - name: Remove the host-namespace admission probe
+          ansible.builtin.command:
+            argv:
+              - /usr/local/bin/k3s
+              - kubectl
+              - delete
+              - pod/host-namespace-probe
+              - --ignore-not-found=true
+              - --wait=true
+          changed_when: false
 
     - name: Remove a stale IMDS isolation probe
       ansible.builtin.command:
@@ -188,3 +285,75 @@
               - --ignore-not-found=true
               - --wait=true
           changed_when: false
+
+    - name: Execute and upload a fresh control-plane backup
+      ansible.builtin.systemd_service:
+        name: k3s-control-plane-backup.service
+        state: restarted
+
+    - name: Find the newest local backup archive
+      ansible.builtin.shell: |
+        set -o pipefail
+        find /srv/standard/backups/k3s-control-plane -maxdepth 1 -type f -name '*.tar.gz' -printf '%T@ %p\n' \
+          | sort --numeric-sort --reverse \
+          | head --lines=1 \
+          | cut --delimiter=' ' --fields=2-
+      args:
+        executable: /bin/bash
+      register: newest_backup_archive
+      changed_when: false
+      failed_when: newest_backup_archive.stdout | trim == ""
+
+    - name: Create temporary restore verification directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: k3s-restore-verification.
+      register: restore_verification_directory
+
+    - name: Validate the newest backup can be restored
+      block:
+        - name: Verify the local backup checksum
+          ansible.builtin.command:
+            argv:
+              - sha256sum
+              - --check
+              - "{{ newest_backup_archive.stdout | trim }}.sha256"
+          changed_when: false
+
+        - name: Extract the newest backup archive
+          ansible.builtin.unarchive:
+            src: "{{ newest_backup_archive.stdout | trim }}"
+            dest: "{{ restore_verification_directory.path }}"
+            remote_src: true
+
+        - name: Verify restored SQLite integrity
+          ansible.builtin.command:
+            argv:
+              - sqlite3
+              - "{{ restore_verification_directory.path }}/state.db"
+              - PRAGMA integrity_check;
+          register: restored_sqlite_integrity
+          changed_when: false
+          failed_when: restored_sqlite_integrity.stdout | trim != "ok"
+
+        - name: Verify restored control-plane custody files
+          ansible.builtin.stat:
+            path: "{{ restore_verification_directory.path }}/{{ item }}"
+          loop:
+            - server-token
+            - config.yaml
+          register: restored_custody_files
+
+        - name: Assert restored custody files are non-empty
+          ansible.builtin.assert:
+            that:
+              - item.stat.isreg
+              - item.stat.size > 0
+          loop: "{{ restored_custody_files.results }}"
+          loop_control:
+            label: "{{ item.item }}"
+      always:
+        - name: Remove temporary restore verification directory
+          ansible.builtin.file:
+            path: "{{ restore_verification_directory.path }}"
+            state: absent

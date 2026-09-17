@@ -43,6 +43,7 @@
     owner: root
     group: root
     mode: "0755"
+  when: not ansible_check_mode
 
 - name: Install host firewall and Pod IMDS guard
   ansible.builtin.template:
@@ -52,6 +53,7 @@
     group: root
     mode: "0644"
   notify: Reload PoliNetwork firewall
+  when: not ansible_check_mode
 
 - name: Install isolated firewall loader
   ansible.builtin.copy:
@@ -67,6 +69,7 @@
       fi
       exec /usr/sbin/nft --file /etc/nftables.d/polinetwork.nft
   notify: Reload PoliNetwork firewall
+  when: not ansible_check_mode
 
 - name: Install isolated firewall service
   ansible.builtin.template:
@@ -78,12 +81,14 @@
   notify:
     - Reload systemd for firewall
     - Reload PoliNetwork firewall
+  when: not ansible_check_mode
 
 - name: Disable the global nftables loader
   ansible.builtin.systemd_service:
     name: nftables
     enabled: false
     state: stopped
+  when: not ansible_check_mode
 
 - name: Enable the isolated PoliNetwork firewall
   ansible.builtin.systemd_service:
@@ -91,6 +96,12 @@
     enabled: true
     state: started
     daemon_reload: true
+  when: not ansible_check_mode
 
 - name: Apply security handlers before continuing
   ansible.builtin.meta: flush_handlers
+
+- name: Report deferred firewall validation in check mode
+  ansible.builtin.debug:
+    msg: The nftables policy is rendered and activated during the apply run.
+  when: ansible_check_mode

@@ -4,11 +4,19 @@ on:
   pull_request:
     paths:
       - ansible/**
+      - clusters/k3s/**
+      - infrastructure/**
+      - monitoring/src/deployment-node-exporter.yaml
+      - tests/**
       - .github/workflows/ansible.yml
   push:
     branches: [main]
     paths:
       - ansible/**
+      - clusters/k3s/**
+      - infrastructure/**
+      - monitoring/src/deployment-node-exporter.yaml
+      - tests/**
       - .github/workflows/ansible.yml
 
 permissions:
@@ -39,8 +47,30 @@ jobs:
         working-directory: ansible
         run: ansible-lint .
 
+      - name: Lint operator and rendered backup scripts
+        working-directory: ansible
+        run: |
+          ansible localhost --inventory localhost, --connection local \
+            --module-name ansible.builtin.template \
+            --args 'src=roles/backup/templates/k3s-control-plane-backup.sh.j2 dest=/tmp/k3s-control-plane-backup mode=0700' \
+            --extra-vars @vars/main.yml \
+            --extra-vars ansible_become=false >/dev/null
+          shellcheck scripts/*.sh /tmp/k3s-control-plane-backup
+
       - name: Check playbook syntax
         working-directory: ansible
         run: |
           ansible-playbook playbooks/provision.yml --syntax-check
           ansible-playbook playbooks/verify.yml --syntax-check
+
+      - name: Build Flux Kustomizations
+        run: |
+          go run sigs.k8s.io/kustomize/kustomize/v5@v5.7.1 build clusters/k3s >/dev/null
+          go run sigs.k8s.io/kustomize/kustomize/v5@v5.7.1 build infrastructure/security >/dev/null
+          go run sigs.k8s.io/kustomize/kustomize/v5@v5.7.1 build infrastructure/traefik >/dev/null
+          go run sigs.k8s.io/kustomize/kustomize/v5@v5.7.1 build monitoring/src >/dev/null
+
+      - name: Check workload manifests
+        run: |
+          ruby tests/workload-manifests.test.rb
+          ruby tests/redis-manifest.test.rb

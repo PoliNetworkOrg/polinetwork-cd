@@ -13,8 +13,14 @@
       - acl
       - apparmor
       - apparmor-utils
+      - bash
       - ca-certificates
+      - coreutils
       - curl
+      - e2fsprogs
+      - findutils
+      - gzip
+      - iproute2
       - jq
       - kmod
       - nftables
@@ -22,7 +28,9 @@
       - python3-apt
       - sqlite3
       - sudo
+      - tar
       - unattended-upgrades
+      - util-linux
     state: present
     update_cache: true
     cache_valid_time: 3600

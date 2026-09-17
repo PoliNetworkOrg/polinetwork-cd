@@ -18,6 +18,7 @@
     - { name: standard, lun: 1, minimum_bytes: 120000000000, mount: /srv/standard }
   register: storage_azure_data_disks
   changed_when: false
+  check_mode: false
 
 - name: Build data-disk map
   ansible.builtin.set_fact:
@@ -34,6 +35,7 @@
     label: "{{ item.key }}"
   register: storage_data_disk_sizes
   changed_when: false
+  check_mode: false
 
 - name: Assert expected data-disk capacities
   ansible.builtin.assert:
@@ -52,6 +54,7 @@
     label: "{{ item.key }}"
   register: storage_data_disk_filesystems
   changed_when: false
+  check_mode: false
   failed_when: storage_data_disk_filesystems.rc not in [0, 2]
 
 - name: Refuse unexpected existing filesystems
@@ -80,6 +83,8 @@
     label: "{{ item.key }}"
   register: storage_data_disk_uuids
   changed_when: false
+  check_mode: false
+  when: not ansible_check_mode
 
 - name: Mount data disks by UUID
   ansible.posix.mount:
@@ -91,6 +96,12 @@
   loop: "{{ storage_data_disk_uuids.results }}"
   loop_control:
     label: "{{ item.item.key }}"
+  when: not ansible_check_mode
+
+- name: Report deferred mount validation in check mode
+  ansible.builtin.debug:
+    msg: Disk formatting and UUID mounts are validated during the apply run.
+  when: ansible_check_mode
 
 - name: Create persistent storage directories
   ansible.builtin.file:

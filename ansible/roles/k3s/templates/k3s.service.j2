@@ -3,6 +3,7 @@ Description=Lightweight Kubernetes
 Documentation=https://k3s.io
 After=network-online.target
 Wants=network-online.target
+RequiresMountsFor=/srv/standard
 
 [Service]
 Type=notify

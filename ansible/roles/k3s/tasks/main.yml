@@ -2,6 +2,8 @@
 - name: Verify the K3s data disk is mounted
   ansible.builtin.command: mountpoint --quiet /srv/standard
   changed_when: false
+  check_mode: false
+  when: not ansible_check_mode
 
 - name: Create K3s configuration directories
   ansible.builtin.file:
@@ -13,6 +15,7 @@
   loop:
     - /etc/rancher/k3s
     - /etc/rancher/k3s/bootstrap
+  when: not ansible_check_mode
 
 - name: Download the pinned ARM64 K3s binary
   ansible.builtin.get_url:
@@ -23,6 +26,7 @@
     mode: "0755"
     checksum: "sha256:{{ k3s_sha256 }}"
   notify: Restart K3s
+  when: not ansible_check_mode
 
 - name: Install K3s configuration
   ansible.builtin.template:
@@ -32,6 +36,7 @@
     group: root
     mode: "0600"
   notify: Restart K3s
+  when: not ansible_check_mode
 
 - name: Install the K3s systemd unit
   ansible.builtin.template:
@@ -43,6 +48,7 @@
   notify:
     - Reload systemd
     - Restart K3s
+  when: not ansible_check_mode
 
 - name: Enable and start K3s
   ansible.builtin.systemd_service:
@@ -50,9 +56,15 @@
     enabled: true
     state: started
     daemon_reload: true
+  when: not ansible_check_mode
 
 - name: Apply K3s handlers before readiness checks
   ansible.builtin.meta: flush_handlers
+
+- name: Report deferred K3s installation in check mode
+  ansible.builtin.debug:
+    msg: K3s installation and runtime readiness are validated during the apply run.
+  when: ansible_check_mode
 
 - name: Wait for the Kubernetes API
   ansible.builtin.command:
@@ -62,6 +74,7 @@
   delay: 5
   until: k3s_api_ready.rc == 0 and k3s_api_ready.stdout == "ok"
   changed_when: false
+  when: not ansible_check_mode
 
 - name: Wait for the node to be Ready
   ansible.builtin.command:
@@ -73,3 +86,4 @@
       - node/k3s01
       - --timeout=180s
   changed_when: false
+  when: not ansible_check_mode
