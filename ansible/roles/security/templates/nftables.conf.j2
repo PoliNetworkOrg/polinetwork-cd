@@ -1,0 +1,29 @@
+table inet polinetwork {
+    chain input {
+        type filter hook input priority filter; policy drop;
+
+        iifname "lo" accept
+        ct state established,related accept
+        ct state invalid drop
+
+        meta l4proto ipv6-icmp accept
+        ip protocol icmp accept
+        udp sport 67 udp dport 68 accept
+
+        # Azure NSG remains the external boundary; SSH is reachable only over an
+        # approved private path because the VM has no public IP.
+        tcp dport 22 accept
+        ip saddr {{ node_private_ip }} accept
+        ip saddr {{ azure_vnet_cidr }} tcp dport 6443 accept
+        ip saddr {{ k3s_cluster_cidr }} accept
+        ip saddr {{ k3s_service_cidr }} accept
+    }
+
+    chain forward_guard {
+        type filter hook forward priority -10; policy accept;
+
+        # User-assigned VM identities are host-only. Generic Pods must never
+        # obtain tokens from the Azure Instance Metadata Service.
+        ip saddr {{ k3s_cluster_cidr }} ip daddr 169.254.169.254 drop
+    }
+}

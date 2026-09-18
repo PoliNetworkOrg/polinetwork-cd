@@ -1,0 +1,28 @@
+---
+admin_user: pnadmin
+node_private_ip: 10.43.1.4
+azure_vnet_cidr: 10.43.0.0/16
+
+# These ranges deliberately do not overlap the Azure VNet. K3s defaults to
+# 10.42.0.0/16 and 10.43.0.0/16; the latter would collide with vnet-k3s.
+k3s_cluster_cidr: 10.52.0.0/16
+k3s_service_cidr: 10.53.0.0/16
+k3s_cluster_dns: 10.53.0.10
+
+k3s_version: v1.36.3+k3s1
+k3s_release_url: https://github.com/k3s-io/k3s/releases/download/v1.36.3%2Bk3s1/k3s-arm64
+k3s_sha256: c9a209103f480f163b7c6a56f00862b4481927b284dc29a3716bb70d886691a8
+k3s_data_dir: /srv/standard/k3s
+
+flux_operator_version: v0.58.1
+flux_operator_url: https://github.com/controlplaneio-fluxcd/flux-operator/releases/download/v0.58.1/install.yaml
+flux_operator_sha256: d674546f8cd6c9a09c55a279b119c880ae6d79c726ff7c57ec4d92b26827a04d
+flux_distribution_version: 2.9.4
+flux_repository_url: https://github.com/PoliNetworkOrg/polinetwork-cd.git
+flux_repository_ref: refs/heads/main
+flux_repository_path: clusters/k3s
+
+backup_storage_account: polinetworkbackups
+backup_storage_container: backups
+backup_identity_client_id: 50a10002-28f0-4a85-9e46-62fdfed166bd
+backup_local_retention_days: 7
