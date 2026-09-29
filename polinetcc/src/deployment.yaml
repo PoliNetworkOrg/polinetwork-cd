@@ -115,11 +115,11 @@ spec:
             - name: OIDC_SCOPE
               value: "openid profile email polinetwork:identity"
             - name: ROLES_CLAIM
-              value: "polinetwork_states"
+              value: "polinetwork_permissions"
             - name: ROLE_ADMIN
-              value: "socio"
+              value: "polinetcc:write"
             - name: ROLE_VIEWER
-              value: "socio" # TODO: change this when RBAC is implemented
+              value: "polinetcc:read"
           startupProbe:
             tcpSocket:
               port: 6111
