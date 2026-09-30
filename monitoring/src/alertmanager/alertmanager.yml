@@ -1,0 +1,44 @@
+global:
+  resolve_timeout: 5m
+
+templates:
+  - /etc/alertmanager/*.tmpl
+
+route:
+  receiver: telegram
+  group_by:
+    - alertname
+    - severity
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  routes:
+    - matchers:
+        - severity = "critical"
+      receiver: telegram
+      repeat_interval: 1h
+
+# Mute the warning while the critical alert with the same name is firing
+# on the same object.
+inhibit_rules:
+  - source_matchers:
+      - severity = "critical"
+    target_matchers:
+      - severity = "warning"
+    equal:
+      - alertname
+      - node
+      - instance
+      - mountpoint
+      - namespace
+      - persistentvolumeclaim
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - bot_token_file: /mnt/secrets-store/monitoring-telegram-bot-token
+        # TODO: replace with the Telegram chat id (group ids are negative, e.g. -1001234567890)
+        chat_id: 0
+        parse_mode: HTML
+        send_resolved: true
+        message: '{{ template "telegram.message" . }}'
