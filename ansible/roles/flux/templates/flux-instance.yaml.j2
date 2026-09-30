@@ -1,0 +1,25 @@
+apiVersion: fluxcd.controlplane.io/v1
+kind: FluxInstance
+metadata:
+  name: flux
+  namespace: flux-system
+spec:
+  distribution:
+    version: "{{ flux_distribution_version }}"
+    registry: ghcr.io/fluxcd
+  components:
+    - source-controller
+    - source-watcher
+    - kustomize-controller
+    - helm-controller
+    - notification-controller
+  cluster:
+    type: kubernetes
+    multitenant: false
+    networkPolicy: true
+    domain: cluster.local
+  sync:
+    kind: GitRepository
+    url: "{{ flux_repository_url }}"
+    ref: "{{ flux_repository_ref }}"
+    path: "{{ flux_repository_path }}"

@@ -14,8 +14,6 @@ spec:
       labels:
         app: node-exporter
     spec:
-      hostNetwork: true
-      hostPID: true
       containers:
         - name: node-exporter
           image: prom/node-exporter:v1.8.2
@@ -30,7 +28,6 @@ spec:
           ports:
             - name: metrics
               containerPort: 9100
-              hostPort: 9100
               protocol: TCP
           securityContext:
             runAsUser: 65534

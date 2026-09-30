@@ -1,0 +1,16 @@
+data-dir: {{ k3s_data_dir }}
+node-name: k3s01
+node-ip: {{ node_private_ip }}
+write-kubeconfig-mode: "0640"
+write-kubeconfig-group: k3s-admin
+secrets-encryption: true
+cluster-cidr: {{ k3s_cluster_cidr }}
+service-cidr: {{ k3s_service_cidr }}
+cluster-dns: {{ k3s_cluster_dns }}
+flannel-backend: vxlan
+disable:
+  - servicelb
+  - local-storage
+kubelet-arg:
+  - image-gc-high-threshold=70
+  - image-gc-low-threshold=55
