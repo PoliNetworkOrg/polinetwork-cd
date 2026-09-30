@@ -58,4 +58,19 @@ raise "Grafana image must be pinned" unless grafana["image"].include?("@sha256:"
 raise "Grafana memory request must cover its observed working set" unless grafana.dig("resources", "requests", "memory") == "768Mi"
 raise "Grafana must use Recreate with its single-writer PVC" unless grafana_deployment.dig("spec", "strategy", "type") == "Recreate"
 
+postgres_deployment = deployment("postgres/src/deployment.yaml", "postgres")
+postgres = container(postgres_deployment, "postgres")
+raise "PostgreSQL must keep a single writer during rollout" unless postgres_deployment.dig("spec", "strategy", "type") == "Recreate"
+raise "PostgreSQL must report database readiness" unless postgres.dig("readinessProbe", "exec", "command").last.include?("pg_isready")
+raise "Do not restart PostgreSQL automatically on probe failures" if postgres["livenessProbe"]
+
+claims = Dir.glob(File.join(ROOT, "**/src/*.yaml")).flat_map do |path|
+  YAML.load_stream(File.read(path)).compact.select { |doc| doc["kind"] == "PersistentVolumeClaim" }
+end
+claims.each do |claim|
+  next unless claim.dig("spec", "storageClassName") == "longhorn"
+  options = claim.dig("metadata", "annotations", "argocd.argoproj.io/sync-options").to_s.split(",")
+  raise "Argo must retain #{claim.dig("metadata", "name")}" unless ["Prune=false", "Delete=false"].all? { |option| options.include?(option) }
+end
+
 puts "workload manifest checks passed"
