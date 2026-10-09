@@ -3,7 +3,7 @@
 require "yaml"
 
 root = File.expand_path("..", __dir__)
-documents = YAML.load_stream(File.read(File.join(root, "bot-ts/src/deployment.yaml"))).compact
+documents = YAML.load_stream(File.read(File.join(root, "apps/bot-ts/deployment.yaml"))).compact
 
 deployment = lambda do |name|
   documents.find { |doc| doc["kind"] == "Deployment" && doc.dig("metadata", "name") == name } ||
