@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # Unmodified rancher/local-path-provisioner v0.0.37 deploy manifest; upgrade
+  # by replacing this file and the busybox tag in local-path-configmap.yaml.
+  - upstream/local-path-storage.yaml
+  - storage-classes.yaml
+patches:
+  # Replaced by the fast and standard classes.
+  - target:
+      kind: StorageClass
+      name: local-path
+    patch: |-
+      $patch: delete
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: local-path
+  - path: local-path-configmap.yaml

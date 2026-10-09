@@ -1,0 +1,26 @@
+# Volumes are plain directories on the Ansible-mounted data disks:
+# /srv/<class>/volumes/<namespace>/<pvc>. Retain keeps the directory when a PVC
+# is deleted; local-path sizes are not enforced quotas.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: standard
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: rancher.io/local-path
+parameters:
+  nodePath: /srv/standard/volumes
+  pathPattern: "{{ .PVC.Namespace }}/{{ .PVC.Name }}/"
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: fast
+provisioner: rancher.io/local-path
+parameters:
+  nodePath: /srv/fast/volumes
+  pathPattern: "{{ .PVC.Namespace }}/{{ .PVC.Name }}/"
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
