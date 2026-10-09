@@ -1,0 +1,11 @@
+[Unit]
+Description=Six-hourly K3s application data backup
+
+[Timer]
+OnCalendar=*-*-* 00/6:45:00 UTC
+RandomizedDelaySec=10m
+Persistent=true
+Unit=k3s-application-backup.service
+
+[Install]
+WantedBy=timers.target

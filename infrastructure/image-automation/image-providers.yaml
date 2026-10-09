@@ -1,0 +1,99 @@
+# One provider per PoliNetwork image: only the latest tag, resolved to its
+# digest. The GitHub package webhook triggers them; 6h polling is the fallback.
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: admin-image
+  namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: "6h"
+spec:
+  type: OCIArtifactTag
+  url: oci://ghcr.io/polinetworkorg/admin
+  filter:
+    includeTag: '^latest$'
+    limit: 1
+---
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: auth-image
+  namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: "6h"
+spec:
+  type: OCIArtifactTag
+  url: oci://ghcr.io/polinetworkorg/auth
+  filter:
+    includeTag: '^latest$'
+    limit: 1
+---
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: backend-image
+  namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: "6h"
+spec:
+  type: OCIArtifactTag
+  url: oci://ghcr.io/polinetworkorg/backend
+  filter:
+    includeTag: '^latest$'
+    limit: 1
+---
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: bot-mat-image
+  namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: "6h"
+spec:
+  type: OCIArtifactTag
+  url: oci://ghcr.io/polinetworkorg/bot-maintenance
+  filter:
+    includeTag: '^latest$'
+    limit: 1
+---
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: bot-ts-image
+  namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: "6h"
+spec:
+  type: OCIArtifactTag
+  url: oci://ghcr.io/polinetworkorg/telegram
+  filter:
+    includeTag: '^latest$'
+    limit: 1
+---
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: polinetcc-image
+  namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: "6h"
+spec:
+  type: OCIArtifactTag
+  url: oci://ghcr.io/polinetworkorg/polinet.cc
+  filter:
+    includeTag: '^latest$'
+    limit: 1
+---
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: web-image
+  namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: "6h"
+spec:
+  type: OCIArtifactTag
+  url: oci://ghcr.io/polinetworkorg/web
+  filter:
+    includeTag: '^latest$'
+    limit: 1

@@ -1,0 +1,40 @@
+# Generates the bot-ts Kustomization with the current digest of
+# ghcr.io/polinetworkorg/telegram:latest (provider bot-ts-image).
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSet
+metadata:
+  name: bot-ts
+  namespace: flux-system
+spec:
+  inputStrategy:
+    name: Permute
+  inputsFrom:
+    - kind: ResourceSetInputProvider
+      name: bot-ts-image
+  resources:
+    - apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: bot-ts
+        namespace: flux-system
+        annotations:
+          # Never garbage-collect the app if the provider exports no inputs.
+          fluxcd.controlplane.io/prune: disabled
+      spec:
+        dependsOn:
+          - name: infrastructure-secret-stores
+          - name: infrastructure-storage
+          - name: infrastructure-traefik
+        interval: 30m
+        retryInterval: 1m
+        timeout: 5m
+        prune: true
+        wait: true
+        sourceRef:
+          kind: GitRepository
+          name: flux-system
+        path: ./apps/bot-ts
+        images:
+          - name: ghcr.io/polinetworkorg/telegram
+            newTag: << inputs.bot_ts_image.tag | quote >>
+            digest: << inputs.bot_ts_image.digest | quote >>

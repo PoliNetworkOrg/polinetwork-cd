@@ -1,0 +1,34 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: deny-host-namespaces
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+        scope: Namespaced
+  validations:
+    - expression: >-
+        (!has(object.spec.hostNetwork) || !object.spec.hostNetwork) &&
+        (!has(object.spec.hostPID) || !object.spec.hostPID) &&
+        (!has(object.spec.hostIPC) || !object.spec.hostIPC)
+      message: Host namespaces are reserved for trusted kube-system components.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: deny-host-namespaces
+spec:
+  policyName: deny-host-namespaces
+  validationActions: [Deny]
+  matchResources:
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values:
+            - kube-system

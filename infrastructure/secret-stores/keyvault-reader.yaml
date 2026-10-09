@@ -1,0 +1,12 @@
+# The only subject federated with id-k3s-eso (Terraform: workload_identity.tf).
+# No Pod may run as it (infrastructure/security); ESO requests its tokens
+# through the TokenRequest API.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: keyvault-reader
+  namespace: external-secrets
+  annotations:
+    azure.workload.identity/client-id: 3ac4dfe7-0801-43d2-bd9e-385102ac3a0b
+    azure.workload.identity/tenant-id: 7f8cafc8-4314-4070-9744-fe02f91bcb21
+automountServiceAccountToken: false

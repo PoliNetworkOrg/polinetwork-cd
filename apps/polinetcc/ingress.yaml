@@ -1,0 +1,20 @@
+# Cloudflare Tunnel sends every HTTP hostname to Traefik, which routes by host.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: polinetcc
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: polinet.cc
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: polinetcc-service
+                port:
+                  number: 6111

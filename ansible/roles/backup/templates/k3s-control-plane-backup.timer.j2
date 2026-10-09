@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily K3s control-plane backup
+
+[Timer]
+OnCalendar=*-*-* 02:15:00 UTC
+RandomizedDelaySec=15m
+Persistent=true
+Unit=k3s-control-plane-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,92 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  name: grafana-pvc
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: grafana
+  name: grafana
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      securityContext:
+        fsGroup: 472
+        supplementalGroups:
+          - 0
+      containers:
+        - name: grafana
+          image: grafana/grafana@sha256:2d1f9ae67c1778d33e291d4c3c759cd8b650e67491f02533499eb950e075eeb5
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http-grafana
+              protocol: TCP
+          env:
+            - name: GF_SERVER_ROOT_URL
+              value: "https://monitoring.polinetwork.org"
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /robots.txt
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 2
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "768Mi"
+            limits:
+              memory: "1Gi"
+          volumeMounts:
+            - mountPath: /var/lib/grafana
+              name: grafana-pv
+      volumes:
+        - name: grafana-pv
+          persistentVolumeClaim:
+            claimName: grafana-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+  labels:
+    app: grafana
+spec:
+  ports:
+    - port: 3000
+      protocol: TCP
+      targetPort: http-grafana
+  selector:
+    app: grafana

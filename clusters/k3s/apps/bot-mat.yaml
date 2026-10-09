@@ -1,0 +1,40 @@
+# Generates the bot-mat Kustomization with the current digest of
+# ghcr.io/polinetworkorg/bot-maintenance:latest (provider bot-mat-image).
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSet
+metadata:
+  name: bot-mat
+  namespace: flux-system
+spec:
+  inputStrategy:
+    name: Permute
+  inputsFrom:
+    - kind: ResourceSetInputProvider
+      name: bot-mat-image
+  resources:
+    - apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: bot-mat
+        namespace: flux-system
+        annotations:
+          # Never garbage-collect the app if the provider exports no inputs.
+          fluxcd.controlplane.io/prune: disabled
+      spec:
+        dependsOn:
+          - name: infrastructure-secret-stores
+          - name: infrastructure-storage
+          - name: infrastructure-traefik
+        interval: 30m
+        retryInterval: 1m
+        timeout: 5m
+        prune: true
+        wait: true
+        sourceRef:
+          kind: GitRepository
+          name: flux-system
+        path: ./apps/bot-mat
+        images:
+          - name: ghcr.io/polinetworkorg/bot-maintenance
+            newTag: << inputs.bot_mat_image.tag | quote >>
+            digest: << inputs.bot_mat_image.digest | quote >>

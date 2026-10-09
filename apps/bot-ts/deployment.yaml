@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-ts-redis
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bot-ts-redis
+  template:
+    metadata:
+      labels:
+        app: bot-ts-redis
+    spec:
+      initContainers:
+        - name: init-redis-data-permissions
+          image: redis@sha256:1f073813b641755b70b0200da64131bbeeb4ec5b633ca67772229b49820caafa
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - chown -R 999:999 /data
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          volumeMounts:
+            - name: redis-pvc
+              mountPath: /data
+      containers:
+        - name: bot-ts-redis
+          image: redis@sha256:1f073813b641755b70b0200da64131bbeeb4ec5b633ca67772229b49820caafa
+          imagePullPolicy: IfNotPresent
+          args:
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - everysec
+            - --maxmemory
+            - 320mb
+            - --maxmemory-policy
+            - noeviction
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: redis-pvc
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            limits:
+              memory: "400Mi"
+            requests:
+              cpu: "50m"
+              memory: "400Mi"
+      volumes:
+        - name: redis-pvc
+          persistentVolumeClaim:
+            claimName: redis-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bot-ts-redis-service
+spec:
+  selector:
+    app: bot-ts-redis # Match the labels of your Redis deployment
+  ports:
+    - protocol: TCP
+      port: 6379 # The port the service exposes
+      targetPort: 6379 # The port Redis is listening on inside the container
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  name: redis-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-ts
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bot-ts
+  template:
+    metadata:
+      labels:
+        app: bot-ts
+    spec:
+      terminationGracePeriodSeconds: 90
+      containers:
+        - name: bot-ts
+          image: ghcr.io/polinetworkorg/telegram:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Europe/Rome"
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: bot-token
+            - name: BACKEND_URL
+              value: "backend-service.backend.svc.cluster.local:3000"
+            - name: REDIS_HOST
+              value: "bot-ts-redis-service.bot-ts.svc.cluster.local"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: INFLUXDB_URL
+              value: "http://influxdb-service.influxdb.svc.cluster.local:8086"
+            - name: INFLUXDB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: influxdb-token
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: openai-api-key
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "200Mi"
+            limits:
+              memory: "200Mi"

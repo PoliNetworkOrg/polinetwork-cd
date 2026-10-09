@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-mat-maintenance
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: bot-mat-maintenance
+  template:
+    metadata:
+      labels:
+        app: bot-mat-maintenance
+    spec:
+      securityContext:
+        runAsUser: 7999
+        runAsGroup: 7999
+        fsGroup: 7999
+        fsGroupChangePolicy: "OnRootMismatch"
+      containers:
+        - name: bot-mat-maintenance
+          image: ghcr.io/polinetworkorg/bot-maintenance:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: bot-token
+          # Telegram long-polling worker: no HTTP endpoint to probe; a crash
+          # exits the container and Kubernetes restarts it. Sized from AKS
+          # usage (about 1m CPU, 26Mi).
+          resources:
+            requests:
+              cpu: 10m
+              memory: 48Mi
+            limits:
+              memory: 128Mi

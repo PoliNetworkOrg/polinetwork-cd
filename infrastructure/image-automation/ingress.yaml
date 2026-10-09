@@ -1,0 +1,22 @@
+# Publishes only the notification-controller webhook paths. No Cloudflare
+# Access: GitHub cannot log in, so the Receiver's HMAC check authenticates.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flux-webhook
+  namespace: flux-system
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: flux-webhook.polinetwork.org
+      http:
+        paths:
+          - path: /hook/
+            pathType: Prefix
+            backend:
+              service:
+                name: webhook-receiver
+                port:
+                  number: 80

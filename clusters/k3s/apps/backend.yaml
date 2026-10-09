@@ -1,0 +1,42 @@
+# Generates the backend Kustomization with the current digest of
+# ghcr.io/polinetworkorg/backend:latest (provider backend-image).
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSet
+metadata:
+  name: backend
+  namespace: flux-system
+spec:
+  inputStrategy:
+    name: Permute
+  inputsFrom:
+    - kind: ResourceSetInputProvider
+      name: backend-image
+  resources:
+    - apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: backend
+        namespace: flux-system
+        annotations:
+          # Never garbage-collect the app if the provider exports no inputs.
+          fluxcd.controlplane.io/prune: disabled
+      spec:
+        dependsOn:
+          - name: infrastructure-secret-stores
+          - name: infrastructure-storage
+          - name: infrastructure-traefik
+          - name: postgres
+          - name: redis
+        interval: 30m
+        retryInterval: 1m
+        timeout: 5m
+        prune: true
+        wait: true
+        sourceRef:
+          kind: GitRepository
+          name: flux-system
+        path: ./apps/backend
+        images:
+          - name: ghcr.io/polinetworkorg/backend
+            newTag: << inputs.backend_image.tag | quote >>
+            digest: << inputs.backend_image.digest | quote >>

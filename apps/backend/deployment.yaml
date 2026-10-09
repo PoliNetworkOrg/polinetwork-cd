@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  selector:
+    app: backend
+  ports:
+    - name: backend
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/polinetworkorg/backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Europe/Rome"
+            - name: PUBLIC_URL
+              value: "https://api.polinetwork.org"
+            - name: TRUSTED_ORIGINS
+              value: "https://polinetwork.org,https://admin.polinetwork.org,http://localhost:3001,http://localhost:3002"
+            - name: DB_NAME
+              value: "polinetwork_backend"
+            - name: DB_HOST
+              value: "postgres-service.postgres.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-user
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-pass
+            - name: REDIS_HOST
+              value: "redis-service.redis.svc.cluster.local"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: encryption-key
+            - name: BETTER_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: auth-secret
+            - name: GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: auth-github-id
+            - name: GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: auth-github-secret
+            - name: AZURE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: azure-client-id
+            - name: AZURE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: azure-client-secret
+            - name: AZURE_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: azure-tenant-id
+          startupProbe:
+            tcpSocket:
+              port: 3000
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: 3000
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "20m"
+              memory: "256Mi"
+            limits:
+              memory: "512Mi"
