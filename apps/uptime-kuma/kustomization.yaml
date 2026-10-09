@@ -6,3 +6,4 @@ namespace: uptime-kuma
 resources:
   - namespace.yaml
   - deployment.yaml
+  - ingress.yaml

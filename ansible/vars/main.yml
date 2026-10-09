@@ -28,3 +28,7 @@ backup_storage_account: polinetworkbackups
 backup_storage_container: backups
 backup_identity_client_id: 50a10002-28f0-4a85-9e46-62fdfed166bd
 backup_local_retention_days: 7
+
+# Cloudflare Access for Infrastructure signs short-lived SSH certificates whose
+# principal is the Unix user allowed by the "k3s01 SSH" Access policy.
+cloudflare_ssh_ca_public_key: "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOnuhZ5WRX8CPI7gEI2NZFpG93o68haN866tBdmgW9JdMkwowj0HlzlwEAjEzrczpz23bbIUdbiGTw4osF6YXJk= open-ssh-ca@cloudflareaccess.org"

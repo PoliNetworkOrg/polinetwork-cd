@@ -6,3 +6,4 @@ namespace: web
 resources:
   - namespace.yaml
   - deployment.yaml
+  - ingress.yaml

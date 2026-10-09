@@ -6,3 +6,4 @@ resources:
   - infrastructure-traefik.yaml
   - infrastructure-external-secrets.yaml
   - infrastructure-secret-stores.yaml
+  - infrastructure-cloudflared.yaml

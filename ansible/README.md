@@ -46,6 +46,8 @@ seven days of local staging copies. `verify.yml` forces a fresh upload and check
 that its SQLite database and custody files can be restored locally. A clean-VM
 off-host restore remains mandatory before application cutover.
 
-The currently approved daily SSH design remains Cloudflare Access. This role
-only applies transport-independent SSH hardening; Cloudflare CA configuration is
-deferred until its Access application, hostname, and CA material are finalized.
+Daily SSH uses Cloudflare Access for Infrastructure: WARP routes 10.43.1.4/32
+through the `k3s01` tunnel, the "k3s01 SSH" Access application admits the
+Direttivo Entra group as `pnadmin`, and sshd trusts the account's short-lived
+certificate authority (`cloudflare_ssh_ca_public_key`). Azure Run Command and
+Serial Console remain the break-glass path.

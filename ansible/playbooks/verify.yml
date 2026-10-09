@@ -100,6 +100,20 @@
           - listening_tcp_ports.stdout is not search(':(80|443)\\s')
         fail_msg: SSH and K3s API must listen, while Traefik must not expose host ports 80/443.
 
+    - name: Read the effective SSH daemon configuration
+      ansible.builtin.command:
+        argv: [/usr/sbin/sshd, -T]
+      register: sshd_effective_config
+      changed_when: false
+
+    - name: Assert SSH accepts only keys and Cloudflare Access certificates
+      ansible.builtin.assert:
+        that:
+          - sshd_effective_config.stdout is search('(?m)^permitrootlogin no$')
+          - sshd_effective_config.stdout is search('(?m)^passwordauthentication no$')
+          - sshd_effective_config.stdout is search('(?m)^trustedusercakeys /etc/ssh/cloudflare-access-ca.pub$')
+        fail_msg: sshd must deny root and passwords and trust the Cloudflare Access CA.
+
     - name: Wait for the node to report Ready
       ansible.builtin.command:
         argv:
@@ -193,6 +207,7 @@
         - infrastructure-traefik
         - infrastructure-external-secrets
         - infrastructure-secret-stores
+        - infrastructure-cloudflared
       changed_when: false
 
     - name: Read the service-account issuer advertised by the API server

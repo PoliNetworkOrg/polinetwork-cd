@@ -8,6 +8,15 @@
     mode: "0644"
   notify: Reload sysctl
 
+- name: Trust the Cloudflare Access SSH certificate authority
+  ansible.builtin.copy:
+    dest: /etc/ssh/cloudflare-access-ca.pub
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ cloudflare_ssh_ca_public_key }}\n"
+  notify: Reload SSH
+
 - name: Install SSH hardening drop-in
   ansible.builtin.template:
     src: 90-polinetwork-hardening.conf.j2

@@ -1,0 +1,20 @@
+# Cloudflare Tunnel sends every HTTP hostname to Traefik, which routes by host.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: influxdb
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: influx.polinetwork.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: influxdb-service
+                port:
+                  number: 8086
