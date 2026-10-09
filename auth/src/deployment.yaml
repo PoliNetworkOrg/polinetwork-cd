@@ -97,7 +97,7 @@ spec:
     spec:
       containers:
         - name: auth
-          image: ghcr.io/polinetworkorg/auth@sha256:89adcd123b3238802123d1d867654a1f35f382d58037471032a55e828b0239f2
+          image: ghcr.io/polinetworkorg/auth@sha256:dfe4c1126fe48126e3a0a5c6258cdc3054e0ecd3cfb356e34b783c1f08e0e0e1
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
