@@ -55,7 +55,7 @@ kind: Deployment
 metadata:
   name: polinetcc
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: RollingUpdate
     rollingUpdate:
