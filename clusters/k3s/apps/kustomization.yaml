@@ -2,4 +2,5 @@
 # that workload's cutover, so nothing runs on AKS and K3s at the same time.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-resources: []
+resources:
+  - bot-mat.yaml
