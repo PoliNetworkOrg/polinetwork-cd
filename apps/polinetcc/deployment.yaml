@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: polinetcc-service
+spec:
+  selector:
+    app: polinetcc
+  ports:
+    - name: polinetcc
+      port: 6111
+      targetPort: 6111
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: polinetcc
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: polinetcc
+  template:
+    metadata:
+      labels:
+        app: polinetcc
+    spec:
+      containers:
+        - name: polinetcc
+          image: ghcr.io/polinetworkorg/polinet.cc:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6111
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Europe/Rome"
+            - name: DB_NAME
+              value: "url_shortner"
+            - name: DB_HOST
+              value: "postgres-service.postgres.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-user
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-pass
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: session-secret
+            - name: OIDC_URL
+              value: "https://auth.polinetwork.org/api/auth"
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oidc-client-id
+            - name: OIDC_SCOPE
+              value: "openid profile email polinetwork:identity"
+            - name: ROLES_CLAIM
+              value: "polinetwork_permissions"
+            - name: ROLE_ADMIN
+              value: "polinetcc:write"
+            - name: ROLE_VIEWER
+              value: "polinetcc:read"
+          startupProbe:
+            tcpSocket:
+              port: 6111
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: 6111
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 6111
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "160Mi"
+            limits:
+              memory: "320Mi"
