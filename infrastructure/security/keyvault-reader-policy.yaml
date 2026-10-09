@@ -1,0 +1,28 @@
+# Only the ESO controller may use keyvault-reader, and only through the
+# TokenRequest API; a Pod running as it could read every Key Vault secret.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: deny-keyvault-reader-pods
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+        scope: Namespaced
+  validations:
+    - expression: >-
+        !has(object.spec.serviceAccountName) ||
+        object.spec.serviceAccountName != "keyvault-reader"
+      message: The keyvault-reader service account is reserved for External Secrets token requests.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: deny-keyvault-reader-pods
+spec:
+  policyName: deny-keyvault-reader-pods
+  validationActions: [Deny]

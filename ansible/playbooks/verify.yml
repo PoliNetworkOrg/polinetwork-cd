@@ -182,8 +182,40 @@
           - --timeout=300s
       loop:
         - infrastructure-security
+        - infrastructure-storage
         - infrastructure-traefik
+        - infrastructure-external-secrets
+        - infrastructure-secret-stores
       changed_when: false
+
+    - name: Read the service-account issuer advertised by the API server
+      ansible.builtin.command:
+        argv: [/usr/local/bin/k3s, kubectl, get, --raw, /.well-known/openid-configuration]
+      register: cluster_oidc_discovery
+      changed_when: false
+
+    - name: Read the cluster service-account signing keys
+      ansible.builtin.command:
+        argv: [/usr/local/bin/k3s, kubectl, get, --raw, /openid/v1/jwks]
+      register: cluster_oidc_jwks
+      changed_when: false
+
+    - name: Read the published workload identity JWKS
+      ansible.builtin.uri:
+        url: "{{ k3s_service_account_issuer }}/openid/v1/jwks"
+        return_content: true
+      register: published_oidc_jwks
+
+    # A rebuilt cluster with a new signing key breaks ESO until Terraform
+    # republishes k3s-service-account-jwks.json.
+    - name: Assert workload identity trusts the current signing key
+      ansible.builtin.assert:
+        that:
+          - (cluster_oidc_discovery.stdout | from_json).issuer == k3s_service_account_issuer
+          - (cluster_oidc_jwks.stdout | from_json) == (published_oidc_jwks.content | from_json)
+        fail_msg: >-
+          The API server issuer or signing key does not match the published
+          workload identity documents; update the Terraform JWKS file.
 
     - name: Verify Pod traffic is denied access to Azure IMDS
       ansible.builtin.command:

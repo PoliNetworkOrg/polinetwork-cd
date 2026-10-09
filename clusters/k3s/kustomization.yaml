@@ -4,3 +4,5 @@ resources:
   - infrastructure-security.yaml
   - infrastructure-storage.yaml
   - infrastructure-traefik.yaml
+  - infrastructure-external-secrets.yaml
+  - infrastructure-secret-stores.yaml

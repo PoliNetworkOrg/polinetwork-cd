@@ -1,0 +1,41 @@
+# The controller itself holds no Azure credentials: ClusterSecretStores request
+# a short-lived token for the federated keyvault-reader service account.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: external-secrets
+  namespace: external-secrets
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: external-secrets
+      version: 2.12.0
+      sourceRef:
+        kind: HelmRepository
+        name: external-secrets
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
+  values:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
+    webhook:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 128Mi
+    certController:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 128Mi
