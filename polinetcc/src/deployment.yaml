@@ -71,7 +71,7 @@ spec:
     spec:
       containers:
         - name: polinetcc
-          image: ghcr.io/polinetworkorg/polinet.cc@sha256:66d94c761ba17bdafbb14d05b891d459dfd0fe6a7a6bf824ddb3dd1b8044562d
+          image: ghcr.io/polinetworkorg/polinet.cc@sha256:aa43e2a8645b824b713ccb65191ecc1c3fcce2391782e5f61333ebfcd10c5457
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 6111

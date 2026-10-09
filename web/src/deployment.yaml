@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ghcr.io/polinetworkorg/web@sha256:015fb7f53ac370b79df1496b0dd64819c679a482e07bc2c93967879555f5216e
+          image: ghcr.io/polinetworkorg/web@sha256:715f7a71aebe9a4dda934f4f3126782c765d14dacdd266cf6691bfb269e5654b
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000

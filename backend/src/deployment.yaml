@@ -96,7 +96,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: ghcr.io/polinetworkorg/backend@sha256:9243dbab3bc0834a04ac1005b8c69f8797ef74e66531a0485c2188f24499f445
+          image: ghcr.io/polinetworkorg/backend@sha256:5f59b0766f9ae983719abeaa1b5fef67c52c6ff82e77cebc65b0d4d717521577
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000

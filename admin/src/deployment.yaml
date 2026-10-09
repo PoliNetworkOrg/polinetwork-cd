@@ -31,7 +31,7 @@ spec:
     spec:
       containers:
         - name: admin
-          image: ghcr.io/polinetworkorg/admin@sha256:5203481bdc4682902c9c07276239924eb42ce3d505d1c0e7c578eec97f41c0df
+          image: ghcr.io/polinetworkorg/admin@sha256:bb46df0d0aab7f4e0885c7ffa98f6bb5c52ed9be727d5e7b12e6fc69ad1d9c89
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3001
