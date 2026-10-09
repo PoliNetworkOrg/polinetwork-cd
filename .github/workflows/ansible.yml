@@ -67,6 +67,7 @@ jobs:
         run: |
           go run sigs.k8s.io/kustomize/kustomize/v5@v5.7.1 build clusters/k3s >/dev/null
           go run sigs.k8s.io/kustomize/kustomize/v5@v5.7.1 build infrastructure/security >/dev/null
+          go run sigs.k8s.io/kustomize/kustomize/v5@v5.7.1 build infrastructure/storage >/dev/null
           go run sigs.k8s.io/kustomize/kustomize/v5@v5.7.1 build infrastructure/traefik >/dev/null
           go run sigs.k8s.io/kustomize/kustomize/v5@v5.7.1 build monitoring/src >/dev/null
 
