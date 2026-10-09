@@ -65,19 +65,26 @@
           - installed_k3s_version_token == k3s_version
         fail_msg: "Expected {{ k3s_version }}, got {{ installed_k3s_version.stdout }}"
 
-    - name: Collect service state
-      ansible.builtin.service_facts:
-
-    - name: Verify required services are active and enabled
-      ansible.builtin.assert:
-        that:
-          - ansible_facts.services[item].status == "enabled"
-          - ansible_facts.services[item].state == "running"
-        fail_msg: "{{ item }} is not active and enabled."
-      loop:
+    # service_facts omits timers and reports active oneshots as stopped, so ask
+    # systemd directly.
+    - name: Verify required units are enabled
+      ansible.builtin.command:
+        argv: [systemctl, is-enabled, "{{ item }}"]
+      register: required_unit_enabled
+      changed_when: false
+      failed_when: required_unit_enabled.stdout != "enabled"
+      loop: &required_units
         - k3s.service
         - polinetwork-firewall.service
         - k3s-control-plane-backup.timer
+
+    - name: Verify required units are active
+      ansible.builtin.command:
+        argv: [systemctl, is-active, "{{ item }}"]
+      register: required_unit_active
+      changed_when: false
+      failed_when: required_unit_active.stdout != "active"
+      loop: *required_units
 
     - name: Read listening TCP ports
       ansible.builtin.command:
