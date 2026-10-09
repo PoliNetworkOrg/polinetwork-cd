@@ -23,6 +23,8 @@ write_backup_metrics() {
         printf '# TYPE polinetwork_backup_last_size_bytes gauge\n'
         printf 'polinetwork_backup_last_size_bytes{backup="%s"} %s\n' "$name" "$(stat -c %s "$archive")"
     } > "${file}.tmp"
+    # node-exporter runs as nobody; the script umask would hide the file.
+    chmod 0644 "${file}.tmp"
     mv -- "${file}.tmp" "$file"
 }
 
