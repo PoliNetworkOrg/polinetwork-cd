@@ -21,7 +21,7 @@ flux_operator_url: https://github.com/controlplaneio-fluxcd/flux-operator/releas
 flux_operator_sha256: d674546f8cd6c9a09c55a279b119c880ae6d79c726ff7c57ec4d92b26827a04d
 flux_distribution_version: 2.9.4
 flux_repository_url: https://github.com/PoliNetworkOrg/polinetwork-cd.git
-flux_repository_ref: refs/heads/k3s-flux
+flux_repository_ref: refs/heads/main
 flux_repository_path: clusters/k3s
 
 backup_storage_account: polinetworkbackups
