@@ -37,8 +37,7 @@ receivers:
   - name: telegram
     telegram_configs:
       - bot_token_file: /mnt/secrets-store/monitoring-telegram-bot-token
-        # TODO: replace with the Telegram chat id (group ids are negative, e.g. -1001234567890)
-        chat_id: 0
+        chat_id: -1003710255282
         parse_mode: HTML
         send_resolved: true
         message: '{{ template "telegram.message" . }}'
