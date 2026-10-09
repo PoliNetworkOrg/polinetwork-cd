@@ -1,0 +1,39 @@
+# fluxcd-ui (https://github.com/mycroft/fluxcd-ui), a second Flux UI next to
+# flux.polinetwork.org. Upstream only publishes amd64 images, so the image is
+# rebuilt for arm64 by .github/workflows/fluxcd-ui-image.yml; keep the two
+# versions in step.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: fluxcd-ui
+spec:
+  interval: 24h
+  url: oci://registry.mkz.me/mycroft/charts/fluxcd-ui
+  ref:
+    # 0.5.0
+    digest: sha256:bcdf4f4c6bcf80026881a1d87d4dde69aee6b4b94d31734ec62e1f544892817b
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: fluxcd-ui
+spec:
+  interval: 30m
+  releaseName: fluxcd-ui
+  chartRef:
+    kind: OCIRepository
+    name: fluxcd-ui
+  values:
+    image:
+      repository: ghcr.io/polinetworkorg/fluxcd-ui
+      tag: "0.5.0"
+    # Only oauth2-proxy reaches the UI (network-policy.yaml), and it admits
+    # only the Direttivo, who already administer Flux on flux.polinetwork.org.
+    actions:
+      enabled: true
+    auth:
+      userHeader: X-Forwarded-User
+      signOutURL: /oauth2/sign_out

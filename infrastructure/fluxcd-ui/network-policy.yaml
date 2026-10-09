@@ -1,0 +1,40 @@
+# fluxcd-ui trusts X-Forwarded-User and can reconcile and suspend anything, so
+# only oauth2-proxy may reach it, and only Traefik may reach oauth2-proxy.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: fluxcd-ui-from-oauth2-proxy
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: fluxcd-ui
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: oauth2-proxy
+      ports:
+        - port: 8080
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: oauth2-proxy-from-traefik
+spec:
+  podSelector:
+    matchLabels:
+      app: oauth2-proxy
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 4180
+          protocol: TCP
