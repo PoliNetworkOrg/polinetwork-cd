@@ -1,4 +1,4 @@
-# GitHub repository webhooks (event "package") on the image repositories call
+# The PoliNetworkOrg organization webhook (event "package") calls
 # this Receiver; the HMAC signature is its only authentication.
 apiVersion: notification.toolkit.fluxcd.io/v1
 kind: Receiver
