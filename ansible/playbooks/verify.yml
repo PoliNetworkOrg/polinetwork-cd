@@ -209,6 +209,7 @@
         - infrastructure-secret-stores
         - infrastructure-cloudflared
         - infrastructure-image-automation
+        - infrastructure-flux-web
       changed_when: false
 
     - name: Read the service-account issuer advertised by the API server

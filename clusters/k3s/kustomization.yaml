@@ -9,4 +9,5 @@ resources:
   - infrastructure-cloudflared.yaml
   - infrastructure-image-automation.yaml
   - infrastructure-node-exporter.yaml
+  - infrastructure-flux-web.yaml
   - apps
