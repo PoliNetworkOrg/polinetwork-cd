@@ -135,11 +135,18 @@
       register: kubernetes_pod_names
       changed_when: false
 
+    - name: Read kube-system pod names
+      ansible.builtin.command:
+        argv: [/usr/local/bin/k3s, kubectl, get, pods, --namespace=kube-system, --output=name]
+      register: kube_system_pod_names
+      changed_when: false
+
     - name: Verify ServiceLB and bundled local-storage are absent
       ansible.builtin.assert:
         that:
           - kubernetes_pod_names.stdout is not search('/svclb-')
-          - kubernetes_pod_names.stdout is not search('local-path-provisioner')
+          # Flux runs its own provisioner in local-path-storage.
+          - kube_system_pod_names.stdout is not search('local-path-provisioner')
         fail_msg: ServiceLB or the bundled local-storage provisioner is still running.
 
     - name: Verify Traefik is a ClusterIP service
