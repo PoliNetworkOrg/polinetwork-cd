@@ -4,7 +4,14 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - admin.yaml
+  - auth.yaml
+  - backend.yaml
   - bot-mat.yaml
+  - bot-ts.yaml
+  - influxdb.yaml
+  - monitoring.yaml
+  - polinetcc.yaml
   - postgres.yaml
   - redis.yaml
+  - uptime-kuma.yaml
   - web.yaml
