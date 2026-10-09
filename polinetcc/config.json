@@ -1,6 +1,0 @@
-{
-  "image": {
-    "image_list": "ghcr.io/polinetworkorg/polinet.cc:latest",
-    "update_strategy": "digest"
-  }
-}
