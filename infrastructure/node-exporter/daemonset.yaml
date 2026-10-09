@@ -25,6 +25,8 @@ spec:
             - --path.sysfs=/host/sys
             - --path.rootfs=/host/root
             - --web.listen-address=:9100
+            # Backup freshness written by the host backup timers.
+            - --collector.textfile.directory=/host/root/var/lib/node_exporter/textfile_collector
             - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
             - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|mqueue|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|sysfs|tracefs)$
           ports:

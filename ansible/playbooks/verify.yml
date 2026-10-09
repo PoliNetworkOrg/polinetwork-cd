@@ -386,7 +386,7 @@
     - name: Find the newest local backup archive
       ansible.builtin.shell: |
         set -o pipefail
-        find /srv/standard/backups/k3s-control-plane -maxdepth 1 -type f -name '*.tar.gz' -printf '%T@ %p\n' \
+        find /srv/standard/backups/k3s-control-plane -maxdepth 1 -type f -name '*.tar.gz.age' -printf '%T@ %p\n' \
           | sort --numeric-sort --reverse \
           | head --lines=1 \
           | cut --delimiter=' ' --fields=2-
@@ -396,56 +396,25 @@
       changed_when: false
       failed_when: newest_backup_archive.stdout | trim == ""
 
-    - name: Create temporary restore verification directory
-      ansible.builtin.tempfile:
-        state: directory
-        prefix: k3s-restore-verification.
-      register: restore_verification_directory
+    # The backup script checks SQLite integrity and the custody files before
+    # encrypting; restore drills decrypt with backup-age-identity from kv-pn-infra.
+    - name: Verify the control-plane backup is intact and age-encrypted
+      ansible.builtin.shell: |
+        set -o pipefail
+        sha256sum --check --status "{{ newest_backup_archive.stdout | trim }}.sha256"
+        head --bytes=21 "{{ newest_backup_archive.stdout | trim }}" | grep --quiet '^age-encryption.org/v1'
+      args:
+        executable: /bin/bash
+      changed_when: false
 
-    - name: Validate the newest backup can be restored
-      block:
-        - name: Verify the local backup checksum
-          ansible.builtin.command:
-            argv:
-              - sha256sum
-              - --check
-              - "{{ newest_backup_archive.stdout | trim }}.sha256"
-          changed_when: false
-
-        - name: Extract the newest backup archive
-          ansible.builtin.unarchive:
-            src: "{{ newest_backup_archive.stdout | trim }}"
-            dest: "{{ restore_verification_directory.path }}"
-            remote_src: true
-
-        - name: Verify restored SQLite integrity
-          ansible.builtin.command:
-            argv:
-              - sqlite3
-              - "{{ restore_verification_directory.path }}/state.db"
-              - PRAGMA integrity_check;
-          register: restored_sqlite_integrity
-          changed_when: false
-          failed_when: restored_sqlite_integrity.stdout | trim != "ok"
-
-        - name: Verify restored control-plane custody files
-          ansible.builtin.stat:
-            path: "{{ restore_verification_directory.path }}/{{ item }}"
-          loop:
-            - server-token
-            - config.yaml
-          register: restored_custody_files
-
-        - name: Assert restored custody files are non-empty
-          ansible.builtin.assert:
-            that:
-              - item.stat.isreg
-              - item.stat.size > 0
-          loop: "{{ restored_custody_files.results }}"
-          loop_control:
-            label: "{{ item.item }}"
-      always:
-        - name: Remove temporary restore verification directory
-          ansible.builtin.file:
-            path: "{{ restore_verification_directory.path }}"
-            state: absent
+    - name: Verify both backups report a recent success to Prometheus
+      ansible.builtin.shell: |
+        set -o pipefail
+        now=$(date +%s)
+        for backup in control-plane applications; do
+          ts=$(awk '/^polinetwork_backup_last_success_timestamp_seconds/ {print $2}' "/var/lib/node_exporter/textfile_collector/backup-${backup}.prom")
+          [ $((now - ts)) -lt 3600 ]
+        done
+      args:
+        executable: /bin/bash
+      changed_when: false

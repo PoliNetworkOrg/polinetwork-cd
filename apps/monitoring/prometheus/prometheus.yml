@@ -99,3 +99,49 @@ scrape_configs:
           - __name__
         regex: 'kubelet_volume_stats_(used|capacity|available)_bytes'
         action: keep
+
+  # Flux Operator: flux_resource_info reports readiness of every Flux object.
+  - job_name: 'flux-operator'
+    static_configs:
+      - targets:
+          - 'flux-operator.flux-system.svc:8080'
+
+  # External Secrets controller: ExternalSecret and SecretStore conditions.
+  - job_name: 'external-secrets'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - external-secrets
+    relabel_configs:
+      - source_labels:
+          - __meta_kubernetes_pod_label_app_kubernetes_io_name
+        regex: external-secrets
+        action: keep
+      - source_labels:
+          - __meta_kubernetes_pod_ip
+        target_label: __address__
+        replacement: '${1}:8080'
+      - source_labels:
+          - __meta_kubernetes_pod_name
+        target_label: pod
+
+  # cloudflared: one target per replica, so a single dead connector shows up.
+  - job_name: 'cloudflared'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - cloudflared
+    relabel_configs:
+      - source_labels:
+          - __meta_kubernetes_pod_label_app
+        regex: cloudflared
+        action: keep
+      - source_labels:
+          - __meta_kubernetes_pod_ip
+        target_label: __address__
+        replacement: '${1}:2000'
+      - source_labels:
+          - __meta_kubernetes_pod_name
+        target_label: pod

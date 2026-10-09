@@ -8,8 +8,23 @@ readonly timestamp
 hostname="$(hostname -s)"
 readonly hostname
 readonly work_dir="${backup_root}/.${timestamp}"
-readonly archive="${backup_root}/${hostname}-${timestamp}.tar.gz"
-readonly blob_url="https://{{ backup_storage_account }}.blob.core.windows.net/{{ backup_storage_container }}/k3s-control-plane/${hostname}/${hostname}-${timestamp}.tar.gz"
+readonly archive="${backup_root}/${hostname}-${timestamp}.tar.gz.age"
+readonly blob_url="https://{{ backup_storage_account }}.blob.core.windows.net/{{ backup_storage_container }}/k3s-control-plane/${hostname}/${hostname}-${timestamp}.tar.gz.age"
+
+# Backup freshness for Prometheus (node-exporter textfile collector).
+readonly metrics_dir=/var/lib/node_exporter/textfile_collector
+write_backup_metrics() {
+    local name="$1" file="${metrics_dir}/backup-$1.prom"
+    {
+        printf '# HELP polinetwork_backup_last_success_timestamp_seconds Unix time of the last successful backup upload.\n'
+        printf '# TYPE polinetwork_backup_last_success_timestamp_seconds gauge\n'
+        printf 'polinetwork_backup_last_success_timestamp_seconds{backup="%s"} %s\n' "$name" "$(date +%s)"
+        printf '# HELP polinetwork_backup_last_size_bytes Size of the last uploaded encrypted backup.\n'
+        printf '# TYPE polinetwork_backup_last_size_bytes gauge\n'
+        printf 'polinetwork_backup_last_size_bytes{backup="%s"} %s\n' "$name" "$(stat -c %s "$archive")"
+    } > "${file}.tmp"
+    mv -- "${file}.tmp" "$file"
+}
 
 cleanup() {
     exit_code=$?
@@ -25,7 +40,13 @@ mkdir -p -- "$work_dir"
 sqlite3 "{{ k3s_data_dir }}/server/db/state.db" ".timeout 30000" ".backup '${work_dir}/state.db'"
 install -m 0600 "{{ k3s_data_dir }}/server/token" "${work_dir}/server-token"
 install -m 0600 /etc/rancher/k3s/config.yaml "${work_dir}/config.yaml"
-tar --create --gzip --file "$archive" --directory "$work_dir" .
+
+# The VM cannot decrypt the archive, so validate the contents before encrypting.
+[ "$(sqlite3 "${work_dir}/state.db" 'PRAGMA integrity_check;')" = ok ]
+[ -s "${work_dir}/server-token" ] && [ -s "${work_dir}/config.yaml" ]
+
+# Only the age identity in kv-pn-infra can decrypt the archive.
+tar -C "$work_dir" -cf - . | gzip | age --recipient "{{ backup_age_recipient }}" > "$archive"
 sha256sum "$archive" > "${archive}.sha256"
 archive_sha256="$(sha256sum "$archive" | cut -d ' ' -f 1)"
 
@@ -46,8 +67,10 @@ curl --fail --silent --show-error \
   --header "x-ms-version: 2023-11-03" \
   --header "x-ms-blob-type: BlockBlob" \
   --header "x-ms-meta-sha256: ${archive_sha256}" \
-  --header "Content-Type: application/gzip" \
+  --header "Content-Type: application/octet-stream" \
   --data-binary "@${archive}" \
   "$blob_url"
+
+write_backup_metrics control-plane
 
 unset archive_sha256

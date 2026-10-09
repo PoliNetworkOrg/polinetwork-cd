@@ -45,7 +45,7 @@ groups:
           summary: 'RAM at {{ $value | printf "%.0f" }}% on {{ $labels.node }}'
 
       - alert: NodeDiskHigh
-        expr: 100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"}) > 80
+        expr: 100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"}) > 70
         for: 15m
         labels:
           severity: warning
@@ -53,7 +53,7 @@ groups:
           summary: 'Disk {{ $labels.mountpoint }} at {{ $value | printf "%.0f" }}% on {{ $labels.node }}'
 
       - alert: NodeDiskHigh
-        expr: 100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"}) > 90
+        expr: 100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs|squashfs|overlay"}) > 85
         for: 5m
         labels:
           severity: critical
@@ -157,3 +157,79 @@ groups:
           severity: warning
         annotations:
           summary: 'Prometheus cannot scrape {{ $labels.job }} ({{ $labels.instance }})'
+
+  - name: platform
+    rules:
+      - alert: NodeInodesLow
+        expr: 100 * node_filesystem_files_free{fstype!~"tmpfs|ramfs|squashfs|overlay"} / node_filesystem_files{fstype!~"tmpfs|ramfs|squashfs|overlay"} < 15
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Only {{ $value | printf "%.0f" }}% inodes free on {{ $labels.mountpoint }}'
+
+      # Application data is backed up every 6 hours, the control plane daily.
+      - alert: BackupStale
+        expr: time() - polinetwork_backup_last_success_timestamp_seconds{backup="applications"} > 7 * 3600
+        labels:
+          severity: critical
+          backup: applications
+        annotations:
+          summary: 'No successful application backup for {{ $value | humanizeDuration }}'
+
+      - alert: BackupStale
+        expr: time() - polinetwork_backup_last_success_timestamp_seconds{backup="control-plane"} > 26 * 3600
+        labels:
+          severity: critical
+          backup: control-plane
+        annotations:
+          summary: 'No successful control-plane backup for {{ $value | humanizeDuration }}'
+
+      - alert: BackupMetricsMissing
+        expr: absent(polinetwork_backup_last_success_timestamp_seconds{backup="applications"}) or absent(polinetwork_backup_last_success_timestamp_seconds{backup="control-plane"})
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Backup freshness metrics are missing; backups may not be running'
+
+      - alert: FluxResourceNotReady
+        expr: flux_resource_info{ready!="True", suspended="False"} == 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Flux {{ $labels.kind }} {{ $labels.exported_namespace }}/{{ $labels.name }} is not Ready ({{ $labels.reason }})'
+
+      - alert: ExternalSecretNotReady
+        expr: externalsecret_status_condition{condition="Ready", status="False"} == 1
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'ExternalSecret {{ $labels.namespace }}/{{ $labels.name }} cannot sync from Key Vault'
+
+      - alert: SecretStoreNotReady
+        expr: clustersecretstore_status_condition{condition="Ready", status="False"} == 1
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'ClusterSecretStore {{ $labels.name }} cannot reach Key Vault'
+
+      # Alerts still reach Telegram: Alertmanager only needs outbound access.
+      - alert: CloudflareTunnelDown
+        expr: sum(cloudflared_tunnel_ha_connections) < 1 or absent(cloudflared_tunnel_ha_connections)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'The k3s01 Cloudflare tunnel has no connections: public hostnames are down'
+
+      - alert: CloudflareConnectorDegraded
+        expr: cloudflared_tunnel_ha_connections < 2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'cloudflared {{ $labels.pod }} has only {{ $value }} tunnel connections'

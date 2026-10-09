@@ -4,6 +4,14 @@
     name: age
     state: present
 
+- name: Create the node-exporter textfile directory for backup metrics
+  ansible.builtin.file:
+    path: /var/lib/node_exporter/textfile_collector
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Create control-plane backup directory
   ansible.builtin.file:
     path: /srv/standard/backups/k3s-control-plane

@@ -15,6 +15,21 @@ readonly volumes=/srv/standard/volumes
 # ProtectHome hides ~/.kube, so keep the discovery cache in the private /tmp.
 kubectl() { /usr/local/bin/k3s kubectl --cache-dir=/tmp/kube-cache "$@"; }
 
+# Backup freshness for Prometheus (node-exporter textfile collector).
+readonly metrics_dir=/var/lib/node_exporter/textfile_collector
+write_backup_metrics() {
+    local name="$1" file="${metrics_dir}/backup-$1.prom"
+    {
+        printf '# HELP polinetwork_backup_last_success_timestamp_seconds Unix time of the last successful backup upload.\n'
+        printf '# TYPE polinetwork_backup_last_success_timestamp_seconds gauge\n'
+        printf 'polinetwork_backup_last_success_timestamp_seconds{backup="%s"} %s\n' "$name" "$(date +%s)"
+        printf '# HELP polinetwork_backup_last_size_bytes Size of the last uploaded encrypted backup.\n'
+        printf '# TYPE polinetwork_backup_last_size_bytes gauge\n'
+        printf 'polinetwork_backup_last_size_bytes{backup="%s"} %s\n' "$name" "$(stat -c %s "$archive")"
+    } > "${file}.tmp"
+    mv -- "${file}.tmp" "$file"
+}
+
 cleanup() {
     exit_code=$?
     rm -rf -- "$work_dir"
@@ -84,3 +99,5 @@ curl --fail --silent --show-error \
   --header "Content-Type: application/octet-stream" \
   --data-binary "@${archive}" \
   "$blob_url"
+
+write_backup_metrics applications
