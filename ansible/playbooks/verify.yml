@@ -349,6 +349,35 @@
               - --wait=true
           changed_when: false
 
+    - name: Execute and upload a fresh application backup
+      ansible.builtin.systemd_service:
+        name: k3s-application-backup.service
+        state: restarted
+
+    - name: Find the newest application backup archive
+      ansible.builtin.shell: |
+        set -o pipefail
+        find /srv/standard/backups/k3s-applications -maxdepth 1 -type f -name '*.tar.gz.age' -printf '%T@ %p\n' \
+          | sort --numeric-sort --reverse \
+          | head --lines=1 \
+          | cut --delimiter=' ' --fields=2-
+      args:
+        executable: /bin/bash
+      register: newest_application_backup
+      changed_when: false
+      failed_when: newest_application_backup.stdout | trim == ""
+
+    # The VM cannot decrypt it by design; restore drills use backup-age-identity
+    # from kv-pn-infra.
+    - name: Verify the application backup is intact and age-encrypted
+      ansible.builtin.shell: |
+        set -o pipefail
+        sha256sum --check --status "{{ newest_application_backup.stdout | trim }}.sha256"
+        head --bytes=21 "{{ newest_application_backup.stdout | trim }}" | grep --quiet '^age-encryption.org/v1'
+      args:
+        executable: /bin/bash
+      changed_when: false
+
     - name: Execute and upload a fresh control-plane backup
       ansible.builtin.systemd_service:
         name: k3s-control-plane-backup.service

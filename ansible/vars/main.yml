@@ -28,6 +28,9 @@ backup_storage_account: polinetworkbackups
 backup_storage_container: backups
 backup_identity_client_id: 50a10002-28f0-4a85-9e46-62fdfed166bd
 backup_local_retention_days: 7
+# age recipient for application backups; the identity is backup-age-identity
+# in kv-pn-infra and never lives on the VM.
+backup_age_recipient: age18pgr4ts66yhcdjwprdwd36tyr5nu3u0z2glfurd4lldegzyt5cjsxgtwks
 
 # Cloudflare Access for Infrastructure signs short-lived SSH certificates whose
 # principal is the Unix user allowed by the "k3s01 SSH" Access policy.
