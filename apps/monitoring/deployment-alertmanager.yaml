@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  labels:
+    app: alertmanager
+spec:
+  replicas: 1
+
+  strategy:
+    type: Recreate
+
+  selector:
+    matchLabels:
+      app: alertmanager
+
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+
+    spec:
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a
+
+          args:
+            - "--config.file=/etc/alertmanager/alertmanager.yml"
+            - "--storage.path=/alertmanager"
+
+          ports:
+            - containerPort: 9093
+
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9093
+            periodSeconds: 10
+            timeoutSeconds: 2
+
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9093
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "32Mi"
+            limits:
+              memory: "64Mi"
+
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/alertmanager
+
+            - name: storage
+              mountPath: /alertmanager
+
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
+
+      volumes:
+        - name: config-volume
+          configMap:
+            name: alertmanager-conf
+
+        # Silences and notification state are lost on restart; alerts still firing are re-sent.
+        - name: storage
+          emptyDir: {}
+
+        # Same filename the AKS CSI mount produced (alertmanager.yml bot_token_file).
+        - name: secrets-store
+          secret:
+            secretName: alertmanager-telegram
+            items:
+              - key: monitoring-telegram-bot-token
+                path: monitoring-telegram-bot-token
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  labels:
+    app: alertmanager
+spec:
+  selector:
+    app: alertmanager
+  ports:
+    - protocol: TCP
+      port: 9093
+      targetPort: 9093

@@ -8,4 +8,5 @@ resources:
   - infrastructure-secret-stores.yaml
   - infrastructure-cloudflared.yaml
   - infrastructure-image-automation.yaml
+  - infrastructure-node-exporter.yaml
   - apps
