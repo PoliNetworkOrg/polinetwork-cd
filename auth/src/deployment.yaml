@@ -144,9 +144,13 @@ spec:
                   name: azure-kv
                   key: entra-client-secret
             - name: PN_ENTRA_TENANT_ID
-              value: "7f8cafc8-4314-4070-9744-fe02f91bcb21"
+              value: "7f8cafc8-4314-4070-9744-fe02f91bcb21" # PoliNetwork APS
             - name: PN_ENTRA_MEMBER_GROUP_ID
-              value: "1c68dbb8-4ac3-4569-a886-283b5a825cbd"
+              value: "1c68dbb8-4ac3-4569-a886-283b5a825cbd" # soci
+            - name: PN_ENTRA_DIRETTIVO_GROUP_ID
+              value: "5f9d5005-6e4d-49f7-8d09-70928477e9d1" # direttivo
+            - name: PN_ENTRA_OIDC_ADMIN_GROUP_ID
+              value: "0f83b541-3167-4e14-aeb6-30ba96c08668" # it-owners
             - name: PN_ENTRA_MEMBER_REFRESH_HOURS
               value: "24"
             - name: GOOGLE_CLIENT_ID
