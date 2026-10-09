@@ -7,3 +7,5 @@ resources:
   - infrastructure-external-secrets.yaml
   - infrastructure-secret-stores.yaml
   - infrastructure-cloudflared.yaml
+  - infrastructure-image-automation.yaml
+  - apps

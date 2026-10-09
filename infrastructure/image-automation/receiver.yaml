@@ -1,0 +1,36 @@
+# GitHub repository webhooks (event "package") on the image repositories call
+# this Receiver; the HMAC signature is its only authentication.
+apiVersion: notification.toolkit.fluxcd.io/v1
+kind: Receiver
+metadata:
+  name: polinetwork-packages
+  namespace: flux-system
+spec:
+  type: github
+  events:
+    - ping
+    - package
+  secretRef:
+    name: github-package-webhook
+  resources:
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: admin-image
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: auth-image
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: backend-image
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: bot-mat-image
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: bot-ts-image
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: polinetcc-image
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
+      name: web-image
