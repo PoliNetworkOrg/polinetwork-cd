@@ -1,4 +1,4 @@
-# Flux Web UI; sign-in through auth.polinetwork.org, Direttivo only.
+# Flux Web UI; sign-in through auth.polinetwork.org, flux:access permission only.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
