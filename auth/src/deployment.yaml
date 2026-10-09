@@ -133,9 +133,9 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: auth-secret
-            - name: OAUTH_BACKEND_RESOURCE_URL
+            - name: OAUTH_BACKEND_RESOURCE_URI
               value: "https://backend.internal.polinetwork.org" # must not change, does not need to resolve
-            - name: OAUTH_INTERNAL_RESOURCE_URL
+            - name: OAUTH_INTERNAL_RESOURCE_URI
               value: "https://auth.polinetwork.org/api/internal" # must not change
             # - name: OAUTH_BACKEND_CLIENT_ID
             #   value: ""
