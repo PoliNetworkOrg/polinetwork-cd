@@ -29,3 +29,12 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: bot-token
+          # Telegram long-polling worker: no HTTP endpoint to probe; a crash
+          # exits the container and Kubernetes restarts it. Sized from AKS
+          # usage (about 1m CPU, 26Mi).
+          resources:
+            requests:
+              cpu: 10m
+              memory: 48Mi
+            limits:
+              memory: 128Mi
