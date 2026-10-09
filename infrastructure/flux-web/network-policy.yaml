@@ -8,7 +8,7 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: flux-operator
+      app.kubernetes.io/name: flux-web
   policyTypes: [Ingress]
   ingress:
     - from:

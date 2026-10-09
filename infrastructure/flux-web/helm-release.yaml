@@ -1,0 +1,41 @@
+# Standalone Flux Web UI (UI-only release of the Flux Operator chart, same
+# version as the Ansible-installed operator). Users sign in through
+# auth.polinetwork.org; the config is rendered by ESO into flux-web-config.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: flux-web
+  namespace: flux-system
+spec:
+  interval: 24h
+  url: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator
+  ref:
+    tag: 0.58.1
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: flux-web
+  namespace: flux-system
+spec:
+  interval: 30m
+  releaseName: flux-web
+  chartRef:
+    kind: OCIRepository
+    name: flux-web
+  values:
+    nameOverride: flux-web
+    fullnameOverride: flux-web
+    installCRDs: false
+    web:
+      serverOnly: true
+      configSecretName: flux-web-config
+      # The operator install already provides flux-web-admin/flux-web-user,
+      # and network-policy.yaml admits only Traefik.
+      rbac:
+        createRoles: false
+      networkPolicy:
+        create: false

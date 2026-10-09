@@ -1,5 +1,4 @@
-# Flux Operator Web UI, read-only (anonymous mode: no Secrets, ConfigMaps or
-# actions). Cloudflare Access app "Flux" admits only the Direttivo group.
+# Flux Web UI; sign-in through auth.polinetwork.org, Direttivo only.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -17,6 +16,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: flux-operator
+                name: flux-web
                 port:
                   name: http-web
