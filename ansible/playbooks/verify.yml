@@ -248,6 +248,15 @@
       changed_when: false
       failed_when: "'169.254.169.254' not in imds_firewall.stdout or 'drop' not in imds_firewall.stdout"
 
+    - name: Verify SSH is accepted only from private sources
+      ansible.builtin.command:
+        argv: [nft, list, chain, inet, polinetwork, input]
+      register: input_firewall
+      changed_when: false
+      failed_when: >-
+        input_firewall.stdout is search('(?m)^\s*tcp dport 22 accept')
+        or input_firewall.stdout is not search('ip saddr ' ~ (azure_vnet_cidr | regex_escape) ~ ' tcp dport 22 accept')
+
     - name: Remove a stale host-namespace admission probe
       ansible.builtin.command:
         argv:

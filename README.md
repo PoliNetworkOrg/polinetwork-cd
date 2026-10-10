@@ -19,8 +19,8 @@ bot-prod/ bot-rooms/ mariadb/   legacy AKS folders, disabled
 
 ## How it works
 
-- **Traffic:** Cloudflare Tunnel → Traefik (`ClusterIP`) → Ingress. The VM has
-  no public IP.
+- **Traffic:** Cloudflare Tunnel → Traefik (`ClusterIP`) → Ingress. The NSG
+  denies all inbound traffic, so a public IP on the VM is outbound-only.
 - **Secrets:** `ExternalSecret`s sync from Azure Key Vault (`kv-pn-apps`,
   `kv-pn-infra`). No secrets live in Git.
 - **Images:** PoliNetwork apps run `ghcr.io/polinetworkorg/<app>:latest`. The

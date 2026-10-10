@@ -10,9 +10,10 @@ table inet polinetwork {
         ip protocol icmp accept
         udp sport 67 udp dport 68 accept
 
-        # Azure NSG remains the external boundary; SSH is reachable only over an
-        # approved private path because the VM has no public IP.
-        tcp dport 22 accept
+        # Azure NSG is the external boundary. SSH is also limited to private
+        # sources here, so the NIC's public IP never exposes it. WARP sessions
+        # arrive from the cloudflared Pods (cluster CIDR, below).
+        ip saddr {{ azure_vnet_cidr }} tcp dport 22 accept
         ip saddr {{ node_private_ip }} accept
         ip saddr {{ azure_vnet_cidr }} tcp dport 6443 accept
         ip saddr {{ k3s_cluster_cidr }} accept

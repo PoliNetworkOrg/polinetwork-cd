@@ -18,8 +18,11 @@ control-plane backup. Flux owns resources inside Kubernetes after bootstrap.
   namespaces outside trusted `kube-system`. Host backups select only the
   dedicated backup managed identity and upload to the private `backups` Blob
   container.
-- SSH root/password authentication is disabled. The VM remains private-only;
-  Azure Run Command or Serial Console is the break-glass path.
+- SSH root/password authentication is disabled, and the host firewall accepts
+  SSH only from private ranges (the VNet and the cluster CIDRs; WARP sessions
+  arrive from the cloudflared Pods). The NSG denies all inbound traffic, so a
+  public IP on the NIC is outbound-only. Azure Run Command or Serial Console is
+  the break-glass path.
 
 ## Run
 
