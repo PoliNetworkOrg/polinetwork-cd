@@ -40,10 +40,30 @@ spec:
               value: "production"
             - name: TZ
               value: "Europe/Rome"
-            - name: PUBLIC_URL
+            - name: APP_URL
               value: "https://admin.polinetwork.org"
             - name: BACKEND_URL
               value: "http://backend-service.backend.svc.cluster.local:3000"
+            - name: IDP_URL
+              value: "https://auth.polinetwork.org"
+            - name: IDP_INTERNAL_URL
+              value: "http://auth-service.auth.svc.cluster.local:3000"
+            - name: OIDC_CLIENT_ID
+              value: "QSUjobfumaoqkeKmXJUvFINzXOOEheYJ"
+            - name: OIDC_CLIENT_PRIVATE_JWK
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oauth-private-jwk
+            - name: SESSSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: session-secret
+            - name: BACKEND_RESOURCE
+              value: "https://backend.internal.polinetwork.org" # must not change, doesn't need to resolve
+            - name: REDIS_URL
+              value: "redis://admin-redis-service.admin.svc.cluster.local:6379"
             - name: ADMIN_ORG_EMAIL
               value: "adminorg@polinetwork.org"
           startupProbe:
@@ -69,3 +89,106 @@ spec:
               memory: "128Mi"
             limits:
               memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-redis-service
+spec:
+  selector:
+    app: amin-redids # Match the labels of your Redis deployment
+  ports:
+    - protocol: TCP
+      port: 6379 # The port the service exposes
+      targetPort: 6379 # The port Redis is listening on inside the container
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  name: redis-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-redis
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: admin-redis
+  template:
+    metadata:
+      labels:
+        app: admin-redis
+    spec:
+      initContainers:
+        - name: init-redis-data-permissions
+          image: redis@sha256:1f073813b641755b70b0200da64131bbeeb4ec5b633ca67772229b49820caafa
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - chown -R 999:999 /data
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          volumeMounts:
+            - name: redis-pvc
+              mountPath: /data
+      containers:
+        - name: admin-redis
+          image: redis@sha256:1f073813b641755b70b0200da64131bbeeb4ec5b633ca67772229b49820caafa
+          imagePullPolicy: IfNotPresent
+          args:
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - everysec
+            - --maxmemory
+            - 320mb
+            - --maxmemory-policy
+            - noeviction
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: redis-pvc
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            limits:
+              memory: "400Mi"
+            requests:
+              cpu: "50m"
+              memory: "400Mi"
+      volumes:
+        - name: redis-pvc
+          persistentVolumeClaim:
+            claimName: redis-pvc
