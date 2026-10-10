@@ -254,8 +254,8 @@
       register: input_firewall
       changed_when: false
       failed_when: >-
-        input_firewall.stdout is search('(?m)^\s*tcp dport 22 accept')
-        or input_firewall.stdout is not search('ip saddr ' ~ (azure_vnet_cidr | regex_escape) ~ ' tcp dport 22 accept')
+        input_firewall.stdout_lines | map('trim') | select('search', '\\bdport\\b.*\\b22\\b') | list
+        != ['ip saddr ' ~ azure_vnet_cidr ~ ' tcp dport 22 accept']
 
     - name: Remove a stale host-namespace admission probe
       ansible.builtin.command:
