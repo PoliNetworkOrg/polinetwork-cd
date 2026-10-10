@@ -58,6 +58,8 @@ spec:
                   key: db-pass
             - name: BETTER_AUTH_URL
               value: "https://auth.polinetwork.org"
+            - name: AUTH_CLIENT_IP_HEADER
+              value: "cf-connecting-ip"
             - name: BETTER_AUTH_SECRET
               valueFrom:
                 secretKeyRef:
