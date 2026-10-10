@@ -14,4 +14,5 @@ resources:
   - postgres.yaml
   - redis.yaml
   - uptime-kuma.yaml
+  - vaultwarden.yaml
   - web.yaml

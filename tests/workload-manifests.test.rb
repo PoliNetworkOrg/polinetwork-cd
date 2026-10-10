@@ -64,6 +64,18 @@ raise "PostgreSQL must keep a single writer during rollout" unless postgres_depl
 raise "PostgreSQL must report database readiness" unless postgres.dig("readinessProbe", "exec", "command").last.include?("pg_isready")
 raise "Do not restart PostgreSQL automatically on probe failures" if postgres["livenessProbe"]
 
+vaultwarden_deployment = deployment("apps/vaultwarden/deployment.yaml", "vaultwarden")
+vaultwarden = container(vaultwarden_deployment, "vaultwarden")
+vaultwarden_env = vaultwarden["env"].to_h { |item| [item["name"], item] }
+raise "Vaultwarden image must be pinned" unless vaultwarden["image"].include?("@sha256:")
+raise "Vaultwarden must use Recreate with its single-writer PVC" unless vaultwarden_deployment.dig("spec", "strategy", "type") == "Recreate"
+raise "Vaultwarden must expose startup, readiness, and liveness probes" unless vaultwarden["startupProbe"] && vaultwarden["readinessProbe"] && vaultwarden["livenessProbe"]
+raise "Vaultwarden must declare resources" unless vaultwarden.dig("resources", "requests") && vaultwarden.dig("resources", "limits")
+raise "Vaultwarden must not allow open signups" unless vaultwarden_env.dig("SIGNUPS_ALLOWED", "value") == "false"
+raise "Vaultwarden must require SSO login" unless vaultwarden_env.dig("SSO_ENABLED", "value") == "true" && vaultwarden_env.dig("SSO_ONLY", "value") == "true"
+raise "Vaultwarden SSO must not create accounts for any auth user" unless vaultwarden_env.dig("SSO_SIGNUPS_ALLOWED", "value") == "false"
+raise "Vaultwarden must read its database URL from a secret" unless vaultwarden_env.dig("DATABASE_URL", "valueFrom", "secretKeyRef")
+
 claims = Dir.glob(File.join(ROOT, "apps/*/*.yaml")).flat_map do |path|
   YAML.load_stream(File.read(path)).compact.select { |doc| doc["kind"] == "PersistentVolumeClaim" }
 end

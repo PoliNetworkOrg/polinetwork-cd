@@ -1,0 +1,153 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  name: vaultwarden-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vaultwarden-service
+  labels:
+    app: vaultwarden
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: vaultwarden
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vaultwarden
+  template:
+    metadata:
+      labels:
+        app: vaultwarden
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: vaultwarden
+          image: vaultwarden/server:1.37.4@sha256:efb3cde962015fcc036b2ea625242248611943b27212ebf4392841fb30fad055
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: TZ
+              value: "Europe/Rome"
+            - name: DOMAIN
+              value: "https://vault.polinetwork.org"
+            # Unprivileged port, the container runs as non-root.
+            - name: ROCKET_PORT
+              value: "8080"
+            # Real client IP for logs and login rate limiting.
+            - name: IP_HEADER
+              value: "CF-Connecting-IP"
+            # Accounts only through invitations from the admin panel.
+            - name: SIGNUPS_ALLOWED
+              value: "false"
+            - name: INVITATIONS_ALLOWED
+              value: "true"
+            - name: INVITATION_ORG_NAME
+              value: "PoliNetwork"
+            - name: SHOW_PASSWORD_HINT
+              value: "false"
+            # Login only through auth.polinetwork.org. Vaultwarden cannot check
+            # permission claims, and anyone can sign in to auth with Google or
+            # Telegram, so SSO only binds to accounts invited from /admin.
+            # Redirect URI: https://vault.polinetwork.org/identity/connect/oidc-signin
+            - name: SSO_ENABLED
+              value: "true"
+            - name: SSO_ONLY
+              value: "true"
+            - name: SSO_SIGNUPS_ALLOWED
+              value: "false"
+            - name: SSO_AUTHORITY
+              value: "https://auth.polinetwork.org/api/auth"
+            - name: SSO_SCOPES
+              value: "email profile"
+            # Vaultwarden keeps its own sessions; auth is only asked at login,
+            # so clients are not logged out when the auth access token expires.
+            - name: SSO_AUTH_ONLY_NOT_SESSION
+              value: "true"
+            - name: SSO_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oidc-client-id
+            - name: SSO_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oidc-client-secret
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: database-url
+            - name: ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: admin-token
+          startupProbe:
+            httpGet:
+              path: /alive
+              port: 8080
+            periodSeconds: 2
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /alive
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: 8080
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "64Mi"
+            limits:
+              memory: "256Mi"
+          volumeMounts:
+            - name: vaultwarden-data
+              mountPath: /data
+      volumes:
+        - name: vaultwarden-data
+          persistentVolumeClaim:
+            claimName: vaultwarden-pvc

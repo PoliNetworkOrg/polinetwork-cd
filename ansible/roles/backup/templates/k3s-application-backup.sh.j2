@@ -74,6 +74,11 @@ sqlite_backup() {
 sqlite_backup "${volumes}/uptime-kuma/uptime-pvc" kuma.db uptime-kuma
 sqlite_backup "${volumes}/monitoring/grafana-pvc" grafana.db grafana
 
+# Vaultwarden: the vault itself is in the PostgreSQL dump; the volume keeps the
+# token signing key, attachments and Sends. Icons are a re-downloadable cache.
+tar -C "${volumes}/vaultwarden/vaultwarden-pvc" --exclude=./icon_cache \
+  --exclude=./tmp --exclude=./lost+found -cf "${work_dir}/vaultwarden-files.tar" .
+
 (cd "$work_dir" && sha256sum -- * > SHA256SUMS)
 
 # Only the age identity in kv-pn-infra can decrypt the archive.
