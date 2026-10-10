@@ -21,6 +21,12 @@ bot-prod/ bot-rooms/ mariadb/   legacy AKS folders, disabled
 
 - **Traffic:** Cloudflare Tunnel → Traefik (`ClusterIP`) → Ingress. The NSG
   denies all inbound traffic, so a public IP on the VM is outbound-only.
+  Auth uses `AUTH_CLIENT_IP_HEADER=cf-connecting-ip` for per-address rate limits.
+  Cloudflare supplies that header; Traefik's default handling of `X-Forwarded-For`
+  does not preserve the visitor address without trusted proxy configuration.
+  Keep Auth behind the tunnel and ensure Cloudflare does not remove the header.
+  Cluster-internal IdP calls carry no visitor address and share Auth's bounded
+  token budget of 60 requests per minute.
 - **Secrets:** `ExternalSecret`s sync from Azure Key Vault (`kv-pn-apps`,
   `kv-pn-infra`). No secrets live in Git.
 - **Images:** PoliNetwork apps run `ghcr.io/polinetworkorg/<app>:latest`. The
