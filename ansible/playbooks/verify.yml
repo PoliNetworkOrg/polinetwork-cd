@@ -248,14 +248,31 @@
       changed_when: false
       failed_when: "'169.254.169.254' not in imds_firewall.stdout or 'drop' not in imds_firewall.stdout"
 
-    - name: Verify SSH is accepted only from private sources
+    # Compare the whole chain: a pattern match on port 22 misses rules such as
+    # `tcp dport 20-30 accept`, a bare `accept`, or `policy accept`.
+    - name: Verify the input firewall accepts SSH only from private sources
       ansible.builtin.command:
         argv: [nft, list, chain, inet, polinetwork, input]
       register: input_firewall
       changed_when: false
+      vars:
+        expected_input_chain:
+          - type filter hook input priority filter; policy drop;
+          - iifname "lo" accept
+          - ct state established,related accept
+          - ct state invalid drop
+          - meta l4proto ipv6-icmp accept
+          - ip protocol icmp accept
+          - udp sport 67 udp dport 68 accept
+          - ip saddr {{ azure_vnet_cidr }} tcp dport 22 accept
+          - ip saddr {{ node_private_ip }} accept
+          - ip saddr {{ azure_vnet_cidr }} tcp dport 6443 accept
+          - ip saddr {{ k3s_cluster_cidr }} accept
+          - ip saddr {{ k3s_service_cidr }} accept
       failed_when: >-
-        input_firewall.stdout_lines | map('trim') | select('search', '\\bdport\\b.*\\b22\\b') | list
-        != ['ip saddr ' ~ azure_vnet_cidr ~ ' tcp dport 22 accept']
+        input_firewall.stdout_lines | map('trim') | reject('equalto', '')
+        | reject('in', ['table inet polinetwork {', 'chain input {', '}']) | list
+        != expected_input_chain
 
     - name: Remove a stale host-namespace admission probe
       ansible.builtin.command:
