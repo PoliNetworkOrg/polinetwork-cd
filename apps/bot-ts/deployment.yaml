@@ -150,6 +150,21 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: openai-api-key
+            - name: IDP_PUBLIC_URL
+              value: "https://auth.polinetwork.org"
+            - name: IDP_INTERNAL_URL
+              value: "http://auth-service.auth.svc.cluster.local:3000"
+            - name: OAUTH_BACKEND_RESOURCE_URI
+              value: "https://backend.internal.polinetwork.org" # must not change, doesn't need to resolve
+            - name: OAUTH_BOT_CLIENT_ID
+              value: "BpVpKudIaGgTalELuHTSgtOrTCGCvjsX"
+            - name: OAUTH_BOT_PRIVATE_JWK
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oauth-private-jwk
+            - name: IDP_DECISIONS
+              value: "shadow" # shadow: use legacy roles for decisions, enforce: use new IdP permissions
           resources:
             requests:
               cpu: "100m"
