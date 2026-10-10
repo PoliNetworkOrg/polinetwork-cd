@@ -44,6 +44,19 @@ spec:
               value: "https://beta.polinetwork.org"
             - name: BACKEND_URL
               value: "http://backend-service.backend.svc.cluster.local:3000"
+            - name: IDP_PUBLIC_URL
+              value: "https://auth.polinetwork.org"
+            - name: IDP_INTERNAL_URL
+              value: "http://auth-service.auth.svc.cluster.local:3000"
+            - name: OAUTH_BACKEND_RESOURCE_URI
+              value: "https://backend.internal.polinetwork.org"
+            - name: OAUTH_WEBSITE_CLIENT_ID
+              value: "bnuiObLGByzpfFDWUjxOPiWjEAqScQBr"
+            - name: OAUTH_WEBSITE_PRIVATE_JWK
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oauth-private-jwk
           startupProbe:
             tcpSocket:
               port: 3000

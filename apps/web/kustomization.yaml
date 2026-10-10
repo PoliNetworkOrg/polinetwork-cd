@@ -5,5 +5,6 @@ namespace: web
 
 resources:
   - namespace.yaml
+  - external-secret.yaml
   - deployment.yaml
   - ingress.yaml
