@@ -96,7 +96,7 @@ metadata:
   name: admin-redis-service
 spec:
   selector:
-    app: amin-redids # Match the labels of your Redis deployment
+    app: admin-redis # Match the labels of your Redis deployment
   ports:
     - protocol: TCP
       port: 6379 # The port the service exposes
