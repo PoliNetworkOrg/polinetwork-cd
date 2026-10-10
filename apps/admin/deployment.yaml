@@ -49,7 +49,7 @@ spec:
             - name: IDP_INTERNAL_URL
               value: "http://auth-service.auth.svc.cluster.local:3000"
             - name: OIDC_CLIENT_ID
-              value: "QSUjobfumaoqkeKmXJUvFINzXOOEheYJ"
+              value: "OuhShWGpgcwoWRzogbEftkoceOVbIpTt"
             - name: OIDC_CLIENT_PRIVATE_JWK
               valueFrom:
                 secretKeyRef:
