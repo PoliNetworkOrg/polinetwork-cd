@@ -109,6 +109,8 @@ spec:
               value: "https://auth.polinetwork.org/api/internal" # must not change
             - name: OAUTH_BACKEND_CLIENT_ID
               value: "cOLVzDyABDuChVIjNoKQlGhobVpklvEL"
+            - name: OAUTH_BOT_CLIENT_ID # to validate bot requests
+              value: "BpVpKudIaGgTalELuHTSgtOrTCGCvjsX"
             - name: OAUTH_BACKEND_PRIVATE_JWK
               valueFrom:
                 secretKeyRef:
