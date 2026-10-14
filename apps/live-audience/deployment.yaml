@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  name: live-audience-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: live-audience-service
+  labels:
+    app: live-audience
+spec:
+  ports:
+    - name: http
+      port: 8787
+      targetPort: 8787
+  selector:
+    app: live-audience
+---
+# Exactly one replica: state is a SQLite file and live updates go through an
+# in-process event bus, so two pods would split the audience.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: live-audience
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: live-audience
+  template:
+    metadata:
+      labels:
+        app: live-audience
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        # The image's "node" user.
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: live-audience
+          image: ghcr.io/polinetworkorg/live-audience:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8787
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Europe/Rome"
+            - name: PUBLIC_URL
+              value: "https://live.polinetwork.org"
+            - name: DATABASE_PATH
+              value: "/data/live-audience.db"
+            - name: OIDC_ISSUER
+              value: "https://auth.polinetwork.org/api/auth"
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oidc-client-id
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oidc-client-secret
+            - name: AUDIENCE_ROLE
+              value: "socio"
+            - name: ADMIN_PERMISSION
+              value: "live-audience:admin"
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 8787
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8787
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8787
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "96Mi"
+            limits:
+              memory: "256Mi"
+          volumeMounts:
+            - name: live-audience-data
+              mountPath: /data
+      volumes:
+        - name: live-audience-data
+          persistentVolumeClaim:
+            claimName: live-audience-pvc

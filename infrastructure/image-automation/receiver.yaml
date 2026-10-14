@@ -30,6 +30,9 @@ spec:
       name: bot-ts-image
     - apiVersion: fluxcd.controlplane.io/v1
       kind: ResourceSetInputProvider
+      name: live-audience-image
+    - apiVersion: fluxcd.controlplane.io/v1
+      kind: ResourceSetInputProvider
       name: polinetcc-image
     - apiVersion: fluxcd.controlplane.io/v1
       kind: ResourceSetInputProvider

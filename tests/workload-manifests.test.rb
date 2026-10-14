@@ -76,6 +76,16 @@ raise "Vaultwarden must require SSO login" unless vaultwarden_env.dig("SSO_ENABL
 raise "Vaultwarden SSO must not create accounts for any auth user" unless vaultwarden_env.dig("SSO_SIGNUPS_ALLOWED", "value") == "false"
 raise "Vaultwarden must read its database URL from a secret" unless vaultwarden_env.dig("DATABASE_URL", "valueFrom", "secretKeyRef")
 
+live_audience_deployment = deployment("apps/live-audience/deployment.yaml", "live-audience")
+live_audience = container(live_audience_deployment, "live-audience")
+live_audience_env = live_audience["env"].to_h { |item| [item["name"], item] }
+raise "Live Audience must run exactly one replica" unless live_audience_deployment.dig("spec", "replicas") == 1
+raise "Live Audience must use Recreate with its single-writer SQLite PVC" unless live_audience_deployment.dig("spec", "strategy", "type") == "Recreate"
+raise "Live Audience must expose startup, readiness, and liveness probes" unless live_audience["startupProbe"] && live_audience["readinessProbe"] && live_audience["livenessProbe"]
+raise "Live Audience must declare resources" unless live_audience.dig("resources", "requests") && live_audience.dig("resources", "limits")
+raise "Live Audience must never enable the fake dev login" if live_audience_env.key?("DEV_LOGIN")
+raise "Live Audience must read its OIDC client secret from a secret" unless live_audience_env.dig("OIDC_CLIENT_SECRET", "valueFrom", "secretKeyRef")
+
 claims = Dir.glob(File.join(ROOT, "apps/*/*.yaml")).flat_map do |path|
   YAML.load_stream(File.read(path)).compact.select { |doc| doc["kind"] == "PersistentVolumeClaim" }
 end
