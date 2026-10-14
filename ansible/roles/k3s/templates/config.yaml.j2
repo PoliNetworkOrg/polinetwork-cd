@@ -18,3 +18,8 @@ kube-apiserver-arg:
 kubelet-arg:
   - image-gc-high-threshold=70
   - image-gc-low-threshold=55
+  # Kubelet rotates container logs by size only. Smaller files rotate sooner, so
+  # the logs role can delete them after {{ log_retention_days }} days; each
+  # container still keeps up to 50Mi of history.
+  - container-log-max-size=5Mi
+  - container-log-max-files=10
