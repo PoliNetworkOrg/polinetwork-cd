@@ -1,0 +1,25 @@
+# Cloudflare Tunnel sends every HTTP hostname to Traefik, which routes by host.
+# Only Edge is public; Core is reached over the VPN (deployment-core.yaml).
+# TLS ends at Cloudflare, so Edge runs with the "no certificate" option in
+# Settings -> Certificates.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: defguard-edge
+  namespace: defguard
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    # Public enrollment and desktop-client API.
+    - host: wg.polinetwork.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: defguard-edge
+                port:
+                  number: 8080

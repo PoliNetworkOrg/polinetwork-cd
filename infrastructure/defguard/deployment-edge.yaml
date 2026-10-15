@@ -1,0 +1,113 @@
+# Edge (formerly Proxy) serves enrollment and the desktop-client API. Core
+# adopts it over gRPC and issues it a certificate from the internal CA; the
+# certificate and Core's client certificate live on this volume.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  name: defguard-edge-pvc
+  namespace: defguard
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: defguard-edge
+  namespace: defguard
+  labels:
+    app: defguard-edge
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+  selector:
+    app: defguard-edge
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: defguard-edge
+  namespace: defguard
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: defguard-edge
+  template:
+    metadata:
+      labels:
+        app: defguard-edge
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: defguard-edge
+          image: ghcr.io/defguard/defguard-proxy:2.1.0@sha256:8765a28e383e14c32991c50eba4bffbc597ba6efdd4a4e920f3932062de88384
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+            - containerPort: 50051
+          env:
+            - name: DEFGUARD_PROXY_HTTP_PORT
+              value: "8080"
+            - name: DEFGUARD_PROXY_GRPC_PORT
+              value: "50051"
+            - name: DEFGUARD_PROXY_CERT_DIR
+              value: /etc/defguard/certs
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "32Mi"
+            limits:
+              memory: "128Mi"
+          volumeMounts:
+            - name: defguard-edge-data
+              mountPath: /etc/defguard/certs
+      volumes:
+        - name: defguard-edge-data
+          persistentVolumeClaim:
+            claimName: defguard-edge-pvc

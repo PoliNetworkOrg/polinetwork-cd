@@ -1,0 +1,117 @@
+# Gateway is the WireGuard data plane. It owns wg0 and its nftables rules inside
+# the Pod's network namespace, so it needs NET_ADMIN but not the privileged mode
+# or SYS_MODULE of the upstream chart: Ansible loads the wireguard module on
+# the host. The Pod inherits the host's net.ipv4.ip_forward=1.
+#
+# Clients reach it at vpn.polinetwork.org:48726/udp, a DNS-only record for the
+# VM's public IP, through an NSG rule for that port. 48726 is outside the
+# NodePort range, so it is a hostPort: the CNI portmap plugin DNATs it to the
+# Pod and keeps the client address. The VPN Location must use port 48726, so
+# the in-Pod listener and the endpoint agree, and an MTU of at most 1370
+# because the Pod network (flannel VXLAN) is 1450.
+#
+# Core adopts it over gRPC; the issued certificates live on this volume.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  name: defguard-gateway-pvc
+  namespace: defguard
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: defguard-gateway
+  namespace: defguard
+  labels:
+    app: defguard-gateway
+spec:
+  ports:
+    - name: grpc
+      port: 50066
+      targetPort: 50066
+  selector:
+    app: defguard-gateway
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: defguard-gateway
+  namespace: defguard
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: defguard-gateway
+  template:
+    metadata:
+      labels:
+        app: defguard-gateway
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: defguard-gateway
+          image: ghcr.io/defguard/gateway:2.1.1@sha256:498d26d4dad7fdbdf0fd6ec583b219c6f3a5b8dbb18303daed2507ad2c263429
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 50066
+            - containerPort: 48726
+              hostPort: 48726
+              protocol: UDP
+          env:
+            - name: DEFGUARD_GRPC_PORT
+              value: "50066"
+            - name: DEFGUARD_GATEWAY_CERT_DIR
+              value: /etc/defguard/certs
+            - name: DEFGUARD_STATS_PERIOD
+              value: "30"
+            # Replies to VPN clients must come back through this Pod.
+            - name: DEFGUARD_MASQUERADE
+              value: "true"
+            - name: HEALTH_PORT
+              value: "55003"
+          # The health endpoint returns 503 until Core is connected, so an HTTP
+          # check would keep a not-yet-adopted Gateway unready and fail the
+          # Flux Kustomization. Only check that the process is serving.
+          readinessProbe:
+            tcpSocket:
+              port: 55003
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 55003
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+              add: [NET_ADMIN]
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "32Mi"
+            limits:
+              memory: "128Mi"
+          volumeMounts:
+            - name: defguard-gateway-data
+              mountPath: /etc/defguard/certs
+      volumes:
+        - name: defguard-gateway-data
+          persistentVolumeClaim:
+            claimName: defguard-gateway-pvc

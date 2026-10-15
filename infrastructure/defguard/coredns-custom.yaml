@@ -1,0 +1,17 @@
+# Private name for the Core dashboard, served by the K3s CoreDNS, which imports
+# *.server keys of this ConfigMap as extra zones. Only clients that use the
+# cluster DNS can resolve it: the VPN Location sets DNS to 10.53.0.10 and
+# includes 10.53.0.10/32 and 10.53.0.80/32 in its Allowed IPs.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  defguard.server: |
+    polinetwork.internal:53 {
+        errors
+        hosts {
+            10.53.0.80 defguard.polinetwork.internal
+        }
+    }

@@ -79,6 +79,14 @@ sqlite_backup "${volumes}/monitoring/grafana-pvc" grafana.db grafana
 tar -C "${volumes}/vaultwarden/vaultwarden-pvc" --exclude=./icon_cache \
   --exclude=./tmp --exclude=./lost+found -cf "${work_dir}/vaultwarden-files.tar" .
 
+# Defguard: Core state (users, devices, locations, the internal CA) is in the
+# PostgreSQL dump; the volumes hold the certificates Core issued to Edge and
+# Gateway at adoption. Without them, re-adopt both from Core after a restore.
+for component in edge gateway; do
+    tar -C "${volumes}/defguard/defguard-${component}-pvc" --exclude=./lost+found \
+      -cf "${work_dir}/defguard-${component}-files.tar" .
+done
+
 (cd "$work_dir" && sha256sum -- * > SHA256SUMS)
 
 # Only the age identity in kv-pn-infra can decrypt the archive.

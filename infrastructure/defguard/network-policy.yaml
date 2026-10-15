@@ -1,0 +1,74 @@
+# Edge and Gateway accept adoption from whoever connects first, and their gRPC
+# APIs carry VPN configuration, so only Core may reach those ports. Edge's web
+# port admits Traefik only; Core's admits VPN clients, which the Gateway
+# masquerades behind its own Pod address.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: defguard-core
+  namespace: defguard
+spec:
+  podSelector:
+    matchLabels:
+      app: defguard-core
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: defguard-gateway
+      ports:
+        - port: 8000
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: defguard-edge
+  namespace: defguard
+spec:
+  podSelector:
+    matchLabels:
+      app: defguard-edge
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 8080
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              app: defguard-core
+      ports:
+        - port: 50051
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: defguard-gateway
+  namespace: defguard
+spec:
+  podSelector:
+    matchLabels:
+      app: defguard-gateway
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: defguard-core
+      ports:
+        - port: 50066
+          protocol: TCP
+    # WireGuard from the internet through the hostPort.
+    - ports:
+        - port: 48726
+          protocol: UDP

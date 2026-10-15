@@ -20,8 +20,9 @@ control-plane backup. Flux owns resources inside Kubernetes after bootstrap.
   container.
 - SSH root/password authentication is disabled, and the host firewall accepts
   SSH only from private ranges (the VNet and the cluster CIDRs; WARP sessions
-  arrive from the cloudflared Pods). The NSG denies all inbound traffic, so a
-  public IP on the NIC is outbound-only. Azure Run Command or Serial Console is
+  arrive from the cloudflared Pods). The NSG denies all inbound traffic except
+  UDP 48726, the Defguard WireGuard hostPort; nftables does not see it because
+  the CNI portmap plugin DNATs it to the Pod before the input hook. Azure Run Command or Serial Console is
   the break-glass path.
 
 ## Run

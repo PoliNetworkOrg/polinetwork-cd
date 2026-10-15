@@ -86,6 +86,20 @@ raise "Live Audience must declare resources" unless live_audience.dig("resources
 raise "Live Audience must never enable the fake dev login" if live_audience_env.key?("DEV_LOGIN")
 raise "Live Audience must read its OIDC client secret from a secret" unless live_audience_env.dig("OIDC_CLIENT_SECRET", "valueFrom", "secretKeyRef")
 
+%w[core edge gateway].each do |component|
+  name = "defguard-#{component}"
+  resource = deployment("infrastructure/defguard/deployment-#{component}.yaml", name)
+  app = container(resource, name)
+  raise "#{name} image must be pinned" unless app["image"].include?("@sha256:")
+  raise "#{name} must use Recreate" unless resource.dig("spec", "strategy", "type") == "Recreate"
+  raise "#{name} must expose readiness and liveness probes" unless app["readinessProbe"] && app["livenessProbe"]
+  raise "#{name} must declare resources" unless app.dig("resources", "requests") && app.dig("resources", "limits")
+  raise "#{name} must drop all capabilities" unless app.dig("securityContext", "capabilities", "drop") == ["ALL"]
+end
+defguard_gateway = container(deployment("infrastructure/defguard/deployment-gateway.yaml", "defguard-gateway"), "defguard-gateway")
+raise "Defguard Gateway must not run privileged" if defguard_gateway.dig("securityContext", "privileged")
+raise "Defguard Gateway may only add NET_ADMIN" unless defguard_gateway.dig("securityContext", "capabilities", "add") == ["NET_ADMIN"]
+
 claims = Dir.glob(File.join(ROOT, "apps/*/*.yaml")).flat_map do |path|
   YAML.load_stream(File.read(path)).compact.select { |doc| doc["kind"] == "PersistentVolumeClaim" }
 end

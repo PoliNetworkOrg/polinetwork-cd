@@ -4,4 +4,5 @@
   loop:
     - overlay
     - br_netfilter
+    - wireguard
   changed_when: true
