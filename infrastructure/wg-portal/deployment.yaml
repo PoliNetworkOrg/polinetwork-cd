@@ -1,0 +1,153 @@
+# WireGuard Portal runs the web UI and owns the WireGuard interface in the same
+# Pod. It needs NET_ADMIN for the interface and its NAT rule, but not
+# privileged mode: Ansible loads the wireguard module on the host, and the Pod
+# inherits the host's net.ipv4.ip_forward=1. On restart it recreates the
+# interface from PostgreSQL (WG_PORTAL_CORE_RESTORE_STATE), so it has no volume.
+#
+# Clients reach it at vpn.polinetwork.org:48727/udp (the Defguard Gateway owns
+# 48726) through an NSG rule for that port. The interface created in the UI
+# must listen on 48727, so the hostPort and the endpoint agree, use an MTU of
+# at most 1370 because the Pod network (flannel VXLAN) is 1450, and use an
+# address in 10.61.0.0/24, the range masqueraded below.
+#
+# The UI has no public hostname: open http://wg-portal.polinetwork.internal
+# over a VPN whose Allowed IPs include 10.53.0.10/32 and 10.53.0.81/32
+# (infrastructure/defguard/coredns-custom.yaml).
+apiVersion: v1
+kind: Service
+metadata:
+  name: wg-portal
+  labels:
+    app: wg-portal
+spec:
+  clusterIP: 10.53.0.81
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8888
+  selector:
+    app: wg-portal
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wg-portal
+spec:
+  replicas: 1
+  # One owner of the hostPort and the interface at a time.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wg-portal
+  template:
+    metadata:
+      labels:
+        app: wg-portal
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: wg-portal
+          image: ghcr.io/h44z/wg-portal:v2.3.1@sha256:6f9d929c326caba36a3b483c410cb8c3fb633a6bb32499e816829ac0596fc274
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8888
+            - containerPort: 48727
+              hostPort: 48727
+              protocol: UDP
+          env:
+            - name: WG_PORTAL_WEB_EXTERNAL_URL
+              value: http://wg-portal.polinetwork.internal
+            - name: WG_PORTAL_WEB_SITE_COMPANY_NAME
+              value: PoliNetwork
+            # Passkeys need HTTPS; the UI is plain HTTP inside the VPN.
+            - name: WG_PORTAL_AUTH_WEBAUTHN_ENABLED
+              value: "false"
+            - name: WG_PORTAL_CORE_ADMIN_USER
+              value: admin
+            - name: WG_PORTAL_CORE_IMPORT_EXISTING
+              value: "false"
+            - name: WG_PORTAL_CORE_RESTORE_STATE
+              value: "true"
+            - name: WG_PORTAL_ADVANCED_START_LISTEN_PORT
+              value: "48727"
+            - name: WG_PORTAL_ADVANCED_START_CIDR_V4
+              value: 10.61.0.0/24
+            # The cluster network is IPv4 only.
+            - name: WG_PORTAL_ADVANCED_USE_IP_V6
+              value: "false"
+            # Privileged pings would need NET_RAW.
+            - name: WG_PORTAL_STATISTICS_USE_PING_CHECKS
+              value: "false"
+            - name: WG_PORTAL_DATABASE_TYPE
+              value: postgres
+            - name: WG_PORTAL_DATABASE_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: database-dsn
+            - name: WG_PORTAL_DATABASE_ENCRYPTION_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: encryption-passphrase
+            - name: WG_PORTAL_CORE_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: admin-password
+            - name: WG_PORTAL_WEB_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: session-secret
+            - name: WG_PORTAL_WEB_CSRF_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: csrf-secret
+          lifecycle:
+            # Replies to VPN clients must come back through this Pod.
+            postStart:
+              exec:
+                command:
+                  - nft
+                  - add table ip wg-portal-nat;
+                    add chain ip wg-portal-nat postrouting { type nat hook postrouting priority srcnat; };
+                    flush chain ip wg-portal-nat postrouting;
+                    add rule ip wg-portal-nat postrouting ip saddr 10.61.0.0/24 oifname "eth0" masquerade
+          readinessProbe:
+            tcpSocket:
+              port: 8888
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 8888
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+              add: [NET_ADMIN]
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "48Mi"
+            limits:
+              memory: "256Mi"
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+            - name: config
+              mountPath: /app/config
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: config
+          emptyDir: {}

@@ -20,8 +20,9 @@ bot-prod/ bot-rooms/ mariadb/   legacy AKS folders, disabled
 ## How it works
 
 - **Traffic:** Cloudflare Tunnel → Traefik (`ClusterIP`) → Ingress. The NSG
-  denies all inbound traffic except WireGuard on UDP 48726, which reaches the
-  Defguard Gateway through a hostPort; the tunnel cannot carry it.
+  denies all inbound traffic except WireGuard on UDP 48726 (Defguard Gateway)
+  and 48727 (WireGuard Portal), which reach their Pods through hostPorts; the
+  tunnel cannot carry them.
   Auth uses `AUTH_CLIENT_IP_HEADER=cf-connecting-ip` for per-address rate limits.
   Cloudflare supplies that header; Traefik's default handling of `X-Forwarded-For`
   does not preserve the visitor address without trusted proxy configuration.

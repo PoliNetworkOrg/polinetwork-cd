@@ -100,6 +100,18 @@ defguard_gateway = container(deployment("infrastructure/defguard/deployment-gate
 raise "Defguard Gateway must not run privileged" if defguard_gateway.dig("securityContext", "privileged")
 raise "Defguard Gateway may only add NET_ADMIN" unless defguard_gateway.dig("securityContext", "capabilities", "add") == ["NET_ADMIN"]
 
+wg_portal_deployment = deployment("infrastructure/wg-portal/deployment.yaml", "wg-portal")
+wg_portal = container(wg_portal_deployment, "wg-portal")
+wg_portal_env = wg_portal["env"].to_h { |item| [item["name"], item] }
+raise "WireGuard Portal image must be pinned" unless wg_portal["image"].include?("@sha256:")
+raise "WireGuard Portal must use Recreate with its hostPort" unless wg_portal_deployment.dig("spec", "strategy", "type") == "Recreate"
+raise "WireGuard Portal must not run privileged" if wg_portal.dig("securityContext", "privileged")
+raise "WireGuard Portal may only add NET_ADMIN" unless wg_portal.dig("securityContext", "capabilities", "add") == ["NET_ADMIN"]
+raise "WireGuard Portal must store its state in PostgreSQL" unless wg_portal_env.dig("WG_PORTAL_DATABASE_TYPE", "value") == "postgres"
+%w[WG_PORTAL_DATABASE_DSN WG_PORTAL_DATABASE_ENCRYPTION_PASSPHRASE WG_PORTAL_CORE_ADMIN_PASSWORD WG_PORTAL_WEB_SESSION_SECRET WG_PORTAL_WEB_CSRF_SECRET].each do |name|
+  raise "WireGuard Portal must read #{name} from a secret" unless wg_portal_env.dig(name, "valueFrom", "secretKeyRef")
+end
+
 claims = Dir.glob(File.join(ROOT, "apps/*/*.yaml")).flat_map do |path|
   YAML.load_stream(File.read(path)).compact.select { |doc| doc["kind"] == "PersistentVolumeClaim" }
 end

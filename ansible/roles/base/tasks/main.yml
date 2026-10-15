@@ -70,7 +70,8 @@
     content: |
       {{ admin_user }} ALL=(ALL:ALL) NOPASSWD: ALL
 
-# wireguard: the Defguard Gateway Pod has NET_ADMIN but cannot load modules.
+# wireguard: the Defguard Gateway and WireGuard Portal Pods have NET_ADMIN but
+# cannot load modules.
 - name: Load Kubernetes kernel modules at boot
   ansible.builtin.copy:
     dest: /etc/modules-load.d/k3s.conf
