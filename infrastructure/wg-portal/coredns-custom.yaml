@@ -1,0 +1,21 @@
+# Private name for the WireGuard Portal UI, served by the K3s CoreDNS, which
+# imports *.server keys of this ConfigMap as extra zones. Only clients that use
+# the cluster DNS can resolve it: peers get DNS 10.53.0.10 and include
+# 10.53.0.10/32 and 10.53.0.81/32 in their Allowed IPs. Never pruned, so moving
+# it between Flux Kustomizations cannot drop the zone. The key keeps its
+# original name: a second key for the same zone would stop CoreDNS.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+data:
+  defguard.server: |
+    polinetwork.internal:53 {
+        errors
+        hosts {
+            10.53.0.81 wg-portal.polinetwork.internal
+        }
+    }

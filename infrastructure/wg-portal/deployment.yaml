@@ -4,19 +4,22 @@
 # inherits the host's net.ipv4.ip_forward=1. On restart it recreates the
 # interface from PostgreSQL (WG_PORTAL_CORE_RESTORE_STATE), so it has no volume.
 #
-# Clients reach it at vpn.polinetwork.org:48727/udp (the Defguard Gateway owns
-# 48726) through an NSG rule for that port. The interface created in the UI
-# must listen on 48727, so the hostPort and the endpoint agree, use an MTU of
+# Clients reach it at vpn.polinetwork.org:48726/udp, a DNS-only record for the
+# VM's public IP, through an NSG rule for that port. 48726 is outside the
+# NodePort range, so it is a hostPort: the CNI portmap plugin DNATs it to the
+# Pod and keeps the client address. The interface created in the UI must
+# listen on 48726, so the hostPort and the endpoint agree, use an MTU of
 # at most 1370 because the Pod network (flannel VXLAN) is 1450, and use an
 # address in 10.61.0.0/24, the range masqueraded below.
 #
 # The UI has no public hostname: open http://wg-portal.polinetwork.internal
-# over a VPN whose Allowed IPs include 10.53.0.10/32 and 10.53.0.81/32
-# (infrastructure/defguard/coredns-custom.yaml).
+# over the VPN; peers need 10.53.0.10/32 and 10.53.0.81/32 in their Allowed
+# IPs (coredns-custom.yaml).
 apiVersion: v1
 kind: Service
 metadata:
   name: wg-portal
+  namespace: wg-portal
   labels:
     app: wg-portal
 spec:
@@ -32,6 +35,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wg-portal
+  namespace: wg-portal
 spec:
   replicas: 1
   # One owner of the hostPort and the interface at a time.
@@ -55,8 +59,8 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8888
-            - containerPort: 48727
-              hostPort: 48727
+            - containerPort: 48726
+              hostPort: 48726
               protocol: UDP
           env:
             - name: WG_PORTAL_WEB_EXTERNAL_URL
@@ -73,7 +77,7 @@ spec:
             - name: WG_PORTAL_CORE_RESTORE_STATE
               value: "true"
             - name: WG_PORTAL_ADVANCED_START_LISTEN_PORT
-              value: "48727"
+              value: "48726"
             - name: WG_PORTAL_ADVANCED_START_CIDR_V4
               value: 10.61.0.0/24
             # The cluster network is IPv4 only.

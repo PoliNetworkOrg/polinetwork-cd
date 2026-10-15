@@ -1,9 +1,9 @@
-# The UI admits VPN clients only: Defguard clients arrive masqueraded behind the
-# Gateway Pod, WireGuard Portal's own peers behind this Pod.
+# The UI admits VPN clients only; peers arrive masqueraded behind this Pod.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: wg-portal
+  namespace: wg-portal
 spec:
   podSelector:
     matchLabels:
@@ -11,12 +11,6 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: defguard
-          podSelector:
-            matchLabels:
-              app: defguard-gateway
         - podSelector:
             matchLabels:
               app: wg-portal
@@ -25,5 +19,5 @@ spec:
           protocol: TCP
     # WireGuard from the internet through the hostPort.
     - ports:
-        - port: 48727
+        - port: 48726
           protocol: UDP

@@ -1,7 +1,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Namespaces are set per resource: the CoreDNS zone lives in kube-system.
+# Not deployed: unlisted from clusters/k3s in favour of WireGuard Portal
+# (infrastructure/wg-portal). The namespace, its volumes and the defguard
+# database are kept; re-list infrastructure-defguard.yaml to bring it back,
+# after moving WireGuard Portal off UDP 48726.
 
 resources:
   - namespace.yaml
@@ -11,4 +14,3 @@ resources:
   - deployment-gateway.yaml
   - network-policy.yaml
   - ingress.yaml
-  - coredns-custom.yaml

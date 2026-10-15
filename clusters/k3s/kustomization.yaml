@@ -10,6 +10,5 @@ resources:
   - infrastructure-image-automation.yaml
   - infrastructure-node-exporter.yaml
   - infrastructure-flux-web.yaml
-  - infrastructure-defguard.yaml
   - infrastructure-wg-portal.yaml
   - apps
