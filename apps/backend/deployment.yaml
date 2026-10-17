@@ -99,6 +99,8 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: azure-tenant-id
+            - name: ESIGN_DRIVES
+              value: '[{"id":"direttivo","label":"Direttivo","driveId":"b!09ICEgnCtUGck5rmjWKeffoL7gZr2fBCoK6t5EEFazVGYKsrKc_mTZXCDtiHZ3U9"},{"id":"soci","label":"Soci","driveId":"b!RMzJseEYIEeB1qxAvIkAjQL94vWgCHNAvZ436eWgbLyhQQPc55YqS4svC-xBpWPu"}]'
             - name: IDP_PUBLIC_URL
               value: "https://auth.polinetwork.org"
             - name: IDP_INTERNAL_URL
