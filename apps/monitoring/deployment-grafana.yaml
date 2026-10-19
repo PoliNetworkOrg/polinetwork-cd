@@ -45,6 +45,11 @@ spec:
           env:
             - name: GF_SERVER_ROOT_URL
               value: "https://monitoring.polinetwork.org"
+            # Grafana does not set a Go memory limit, so the GC ignores the
+            # cgroup limit and a request burst can push the heap past it.
+            # Keep it below limits.memory to leave room for non-Go memory.
+            - name: GOMEMLIMIT
+              value: "1200MiB"
           readinessProbe:
             failureThreshold: 3
             httpGet:
@@ -68,7 +73,7 @@ spec:
               cpu: "25m"
               memory: "768Mi"
             limits:
-              memory: "1Gi"
+              memory: "1536Mi"
           volumeMounts:
             - mountPath: /var/lib/grafana
               name: grafana-pv
