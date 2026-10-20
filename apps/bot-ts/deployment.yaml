@@ -164,7 +164,7 @@ spec:
                   name: azure-kv
                   key: oauth-private-jwk
             - name: IDP_DECISIONS
-              value: "shadow" # shadow: use legacy roles for decisions, enforce: use new IdP permissions
+              value: "enforce" # shadow: use legacy roles for decisions, enforce: use new IdP permissions
           resources:
             requests:
               cpu: "100m"
