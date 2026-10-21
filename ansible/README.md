@@ -50,6 +50,14 @@ seven days of local staging copies. `verify.yml` forces a fresh upload and check
 that its SQLite database and custody files can be restored locally. A clean-VM
 off-host restore remains mandatory before application cutover.
 
+Technical logs are kept for at most 30 days (`log_retention_days`), as the
+privacy policy states. journald rotates daily and drops entries past the limit.
+Kubelet rotates container logs by size only (5Mi, 10 files), so the hourly
+`pod-log-retention` timer deletes rotated files under `/var/log/pods` and
+empties current files once they are older than the limit. A container that keeps
+logging but never fills 5Mi can still hold older lines in its current file
+until it rotates or restarts.
+
 Daily SSH uses Cloudflare Access for Infrastructure: WARP routes 10.43.1.4/32
 through the `k3s01` tunnel, the "k3s01 SSH" Access application admits the
 Direttivo Entra group as `pnadmin`, and sshd trusts the account's short-lived
