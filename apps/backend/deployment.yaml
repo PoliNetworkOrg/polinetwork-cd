@@ -40,10 +40,6 @@ spec:
               value: "production"
             - name: TZ
               value: "Europe/Rome"
-            - name: PUBLIC_URL
-              value: "https://api.polinetwork.org"
-            - name: TRUSTED_ORIGINS
-              value: "https://polinetwork.org,https://admin.polinetwork.org,http://localhost:3001,http://localhost:3002"
             - name: DB_NAME
               value: "polinetwork_backend"
             - name: DB_HOST
@@ -69,21 +65,6 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: encryption-key
-            - name: BETTER_AUTH_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: azure-kv
-                  key: auth-secret
-            - name: GITHUB_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: azure-kv
-                  key: auth-github-id
-            - name: GITHUB_CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: azure-kv
-                  key: auth-github-secret
             - name: AZURE_CLIENT_ID
               valueFrom:
                 secretKeyRef:
