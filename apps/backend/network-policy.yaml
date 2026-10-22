@@ -1,0 +1,43 @@
+# Only the in-cluster callers may reach the backend (RFC v3 §12): the admin
+# dashboard and the website (tRPC, esign agent proxy), the Telegram bot (tRPC
+# and its socket) and the IdP (access-changed events on /internal/events).
+# Nothing reaches it from outside the cluster since the Ingress was removed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-callers
+  namespace: backend
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: admin
+          podSelector:
+            matchLabels:
+              app: admin
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: web
+          podSelector:
+            matchLabels:
+              app: web
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: bot-ts
+          podSelector:
+            matchLabels:
+              app: bot-ts
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: auth
+          podSelector:
+            matchLabels:
+              app: auth
+      ports:
+        - port: 3000
+          protocol: TCP
