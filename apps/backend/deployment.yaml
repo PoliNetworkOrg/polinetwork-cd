@@ -99,8 +99,6 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: oauth-private-jwk
-            - name: LEGACY_ANONYMOUS
-              value: "deny"
           startupProbe:
             tcpSocket:
               port: 3000
