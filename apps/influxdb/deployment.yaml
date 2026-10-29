@@ -64,6 +64,9 @@ spec:
               value: "admin"
             - name: DOCKER_INFLUXDB_INIT_ORG
               value: "polinetwork"
+            # Init runs only on an empty volume. The telegram_bot bucket was
+            # created by hand; the privacy policy keeps it 90 days, set with
+            # `influx bucket update --retention 90d`.
             - name: DOCKER_INFLUXDB_INIT_BUCKET
               value: "home"
       volumes:
