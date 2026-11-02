@@ -184,6 +184,7 @@ route_middlewares = public_route.fetch("middlewares", []).map { |item| middlewar
 raise "The backend public route needs a body size limit" unless route_middlewares.any? { |spec| spec.dig("buffering", "maxRequestBodyBytes").to_i.between?(1, 10 * 1024 * 1024) }
 raise "The backend public route needs a per-visitor rate limit" unless route_middlewares.any? { |spec| spec.dig("rateLimit", "sourceCriterion", "requestHeaderName") == "Cf-Connecting-Ip" }
 raise "The backend public route needs a total rate limit" unless route_middlewares.any? { |spec| spec.dig("rateLimit", "sourceCriterion", "requestHost") }
+raise "The backend public route must stamp X-PoliNetwork-Ingress: public" unless route_middlewares.any? { |spec| spec.dig("headers", "customRequestHeaders") == { "X-PoliNetwork-Ingress" => "public" } }
 
 # The same whitelist Traefik evaluates (RE2 and Ruby agree on this pattern).
 public_path = Regexp.new(PUBLIC_RULE[/PathRegexp\(`(.+)`\)/, 1])

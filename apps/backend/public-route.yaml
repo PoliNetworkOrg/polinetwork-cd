@@ -8,7 +8,11 @@
 # "%" (encoded characters), empty segments and a trailing slash never match,
 # so /public/../api or /public/%2e%2e/api cannot reach another backend route.
 # The backend checks again, authenticates every route itself (GitHub HMAC) and
-# keeps its own body and rate limits.
+# keeps its own body and rate limits. Bun resolves ".." and "%2e%2e" before the
+# app sees the path, so the backend can't spot an escape from the path alone:
+# public-ingress-marker stamps every request from this route, overwriting any
+# client value, and the backend lets a stamped request reach only its declared
+# /public routes.
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -22,6 +26,7 @@ spec:
         - name: public-rate-limit-total
         - name: public-rate-limit-client
         - name: public-body-limit
+        - name: public-ingress-marker
       services:
         - name: backend-service
           port: 3000
@@ -63,3 +68,13 @@ spec:
     burst: 50
     sourceCriterion:
       requestHost: true
+---
+# Set, never appended: Traefik replaces whatever the client sent.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: public-ingress-marker
+spec:
+  headers:
+    customRequestHeaders:
+      X-PoliNetwork-Ingress: "public"
