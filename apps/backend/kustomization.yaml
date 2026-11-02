@@ -9,4 +9,5 @@ resources:
   - deployment.yaml
   - regulations-collab.yaml
   - ingress.yaml
+  - public-route.yaml
   - network-policy.yaml

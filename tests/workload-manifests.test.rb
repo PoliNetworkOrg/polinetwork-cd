@@ -150,12 +150,40 @@ raise "LaTeX worker namespace needs a LimitRange" unless worker_limits.any? { |d
 quota = worker_limits.find { |doc| doc["kind"] == "ResourceQuota" } || raise("LaTeX worker namespace needs a ResourceQuota")
 raise "LaTeX worker quota must cap CPU and memory limits" unless quota.dig("spec", "hard", "limits.cpu") && quota.dig("spec", "hard", "limits.memory")
 
-# The backend API stays in-cluster only (#28): Traefik never reaches the
-# backend Pod, and the namespace's only Ingress serves the collab websocket.
-backend_policy = network_policy("apps/backend/network-policy.yaml", "allow-callers")
-raise "Traefik must not reach the backend API" if backend_policy.dig("spec", "ingress").flat_map { |rule| rule["from"] }.include?(TRAEFIK)
-documents("apps/backend/ingress.yaml").flat_map { |ingress| ingress.dig("spec", "rules") }.flat_map { |rule| rule.dig("http", "paths") }.each do |path|
-  raise "The backend namespace may only publish the collab websocket" unless path.dig("backend", "service") == { "name" => "regulations-collab", "port" => { "number" => 4100 } }
+# The backend stays in-cluster only (#28) except its declared /public prefix
+# (regulations spec, "Public backend routes"). A NetworkPolicy cannot filter
+# paths, so the guard is routing: in the backend namespace (Ingresses and
+# IngressRoutes only reach Services in their own namespace) exactly one router
+# targets backend-service, with exactly this rule and these middlewares.
+PUBLIC_RULE = "Host(`api.polinetwork.org`) && PathPrefix(`/public/`) && PathRegexp(`^/public(/[A-Za-z0-9_-]+)+$`)".freeze
+backend_docs = Dir.glob(File.join(ROOT, "apps/backend/*.yaml")).flat_map { |path| YAML.load_stream(File.read(path)).compact }
+backend_docs.select { |doc| doc["kind"] == "Ingress" }.flat_map { |ingress| ingress.dig("spec", "rules") }.flat_map { |rule| rule.dig("http", "paths") }.each do |path|
+  raise "Ingresses in the backend namespace may only publish the collab websocket" unless path.dig("backend", "service") == { "name" => "regulations-collab", "port" => { "number" => 4100 } }
+end
+raise "Only Traefik CRDs this test understands may route in the backend namespace" if backend_docs.any? { |doc| %w[IngressRouteTCP IngressRouteUDP TraefikService].include?(doc["kind"]) }
+backend_routes = backend_docs.select { |doc| doc["kind"] == "IngressRoute" }.flat_map { |route| route.dig("spec", "routes") }
+raise "Exactly one route may reach the backend, its /public prefix" unless backend_routes.size == 1
+public_route = backend_routes.first
+raise "The backend public route must match only #{PUBLIC_RULE}" unless public_route["match"] == PUBLIC_RULE
+raise "The backend public route must target backend-service:3000" unless public_route["services"] == [{ "name" => "backend-service", "port" => 3000 }]
+middlewares = backend_docs.select { |doc| doc["kind"] == "Middleware" }.to_h { |doc| [doc.dig("metadata", "name"), doc["spec"]] }
+route_middlewares = public_route.fetch("middlewares", []).map { |item| middlewares.fetch(item["name"]) { raise "missing Middleware #{item["name"]}" } }
+raise "The backend public route needs a body size limit" unless route_middlewares.any? { |spec| spec.dig("buffering", "maxRequestBodyBytes").to_i.between?(1, 10 * 1024 * 1024) }
+raise "The backend public route needs a per-visitor rate limit" unless route_middlewares.any? { |spec| spec.dig("rateLimit", "sourceCriterion", "requestHeaderName") == "Cf-Connecting-Ip" }
+raise "The backend public route needs a total rate limit" unless route_middlewares.any? { |spec| spec.dig("rateLimit", "sourceCriterion", "requestHost") }
+
+# The same whitelist Traefik evaluates (RE2 and Ruby agree on this pattern).
+public_path = Regexp.new(PUBLIC_RULE[/PathRegexp\(`(.+)`\)/, 1])
+%w[/public/webhooks/github /public/a /public/a-b_c/D9].each do |path|
+  raise "#{path} must stay reachable" unless path.start_with?("/public/") && public_path.match?(path)
+end
+%w[
+  / /api/trpc /api/trpc/regulations.list /internal/events /trpc /public /public/ /publicx /publicx/a /PUBLIC/a
+  /public/../api/trpc /public/./a /public/a/.. /public/.. /public//a /public/a/ //public/a /x/public/a
+  /public/%2e%2e/api/trpc /public/%2E%2E%2Fapi%2Ftrpc /public/..%2fapi/trpc /public%2f..%2fapi /public/a%00
+  /public/a;x /public/a\\..\\api /public/webhooks/github.json /public/~a /public/a@b
+].each do |path|
+  raise "#{path} must not match the public route" if path.start_with?("/public/") && public_path.match?(path)
 end
 
 %w[core edge gateway].each do |component|

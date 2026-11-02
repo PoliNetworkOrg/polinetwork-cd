@@ -120,9 +120,15 @@ spec:
                   name: regulations
                   key: worker-secret
                   optional: true
-            # No webhook: the backend is in-cluster only (#28) and polls GitHub
-            # every 30 s while an emanation runs, so REGULATIONS_GITHUB_WEBHOOK_SECRET
-            # stays unset and the App's webhook stays inactive.
+            # GitHub App webhook: POST https://api.polinetwork.org/public/webhooks/github
+            # (public-route.yaml), verified with this secret. Polling is only a slow
+            # reconciliation for missed deliveries.
+            - name: REGULATIONS_GITHUB_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: regulations
+                  key: github-webhook-secret
+                  optional: true
             - name: REGULATIONS_GITHUB_APP_ID
               value: "" # TODO: GitHub App ID
             - name: REGULATIONS_GITHUB_PRIVATE_KEY

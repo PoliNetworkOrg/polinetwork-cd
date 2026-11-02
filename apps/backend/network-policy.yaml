@@ -2,8 +2,10 @@
 # dashboard and the website (tRPC, esign agent proxy), the Telegram bot (tRPC
 # and its socket), the IdP (access-changed events on /internal/events) and
 # Uptime Kuma (health monitoring).
-# Nothing reaches it from outside the cluster since the Ingress was removed;
-# the regulations-collab Ingress publishes only collab's websocket port.
+# From outside the cluster, Traefik reaches it only through the backend-public
+# IngressRoute (public-route.yaml), which matches the declared /public prefix
+# and nothing else; a NetworkPolicy cannot filter paths, so that route is the
+# guard. The regulations-collab Ingress publishes only collab's websocket port.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -46,6 +48,12 @@ spec:
           podSelector:
             matchLabels:
               app: uptime-kuma
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
       ports:
         - port: 3000
           protocol: TCP
