@@ -12,7 +12,9 @@ spec:
 ---
 # Compiles regulation drafts with xelatex for the backend and collab. It runs untrusted
 # LaTeX, so it has no network egress, no service account token, a read-only
-# root and a size-limited tmpfs workdir. One pod with a small internal pool:
+# root and a size-limited tmpfs workdir. The worker runs each xelatex in a clean
+# environment it builds itself: no shell escape, openin_any/openout_any paranoid,
+# caches under WORKER_TMP_DIR, and an address-space prlimit. One pod with a small internal pool:
 # warm per-draft workdirs (.aux) live in its memory, and the node has 2 vCPUs.
 apiVersion: apps/v1
 kind: Deployment
@@ -34,9 +36,13 @@ spec:
       enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
+        # A uid no other workload uses (not the image's 1000): the worker caps
+        # each xelatex with prlimit --nproc, and RLIMIT_NPROC counts every task
+        # of the uid on the node, so sharing 1000 with Bun and Node apps made
+        # xelatex unable to fork xdvipdfmx (tested: compiles fail at ~90 tasks).
+        runAsUser: 10200
+        runAsGroup: 10200
+        fsGroup: 10200
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -50,45 +56,44 @@ spec:
               value: "production"
             - name: TZ
               value: "Europe/Rome"
-            - name: PORT
+            - name: WORKER_PORT
               value: "4200"
             - name: WORKER_SECRET
               valueFrom:
                 secretKeyRef:
                   name: regulations
                   key: worker-secret
-            - name: WORKDIR
+            - name: WORKER_WORK_DIR
               value: "/work"
+            - name: WORKER_TMP_DIR
+              value: "/tmp"
             # Parallel xelatex runs; a third only contends for the same 1.5 CPUs.
             - name: WORKER_CONCURRENCY
               value: "2"
             - name: WORKER_TIMEOUT_MS
               value: "45000"
-            - name: HOME
-              value: "/tmp"
-            - name: TEXMFVAR
-              value: "/tmp/texmf-var"
-            # kpathsea reads these over texmf.cnf: paranoid file access and no
-            # shell escape, even if the worker forgets its own flags.
-            - name: openin_any
-              value: "p"
-            - name: openout_any
-              value: "p"
-            - name: shell_escape
-              value: "f"
+            # Per-xelatex prlimit; real usage is ~200Mi per run, see resources.
+            - name: WORKER_MEMORY_LIMIT_MB
+              value: "1024"
+            # Warm workdirs kept on /work (~8Mi each with the RRI).
+            - name: WORKER_MAX_WORKDIRS
+              value: "40"
           startupProbe:
-            tcpSocket:
+            httpGet:
+              path: /health
               port: 4200
             periodSeconds: 2
             failureThreshold: 30
           readinessProbe:
-            tcpSocket:
+            httpGet:
+              path: /health
               port: 4200
             periodSeconds: 5
             timeoutSeconds: 2
             failureThreshold: 3
           livenessProbe:
-            tcpSocket:
+            httpGet:
+              path: /health
               port: 4200
             periodSeconds: 10
             timeoutSeconds: 2

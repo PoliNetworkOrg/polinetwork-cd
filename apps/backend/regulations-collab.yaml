@@ -60,6 +60,15 @@ spec:
               value: "Europe/Rome"
             - name: TMPDIR
               value: "/tmp"
+            - name: COLLAB_PORT
+              value: "4100"
+            - name: COLLAB_INTERNAL_PORT
+              value: "4101"
+            # Match the worker's WORKER_CONCURRENCY: more would only queue there.
+            - name: REGULATIONS_COMPILE_CONCURRENCY
+              value: "2"
+            - name: COLLAB_SNAPSHOT_MINUTES
+              value: "10"
             - name: DB_NAME
               value: "polinetwork_backend"
             - name: DB_HOST
@@ -76,12 +85,12 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: db-pass
+            # Required: collab refuses to start without it.
             - name: REGULATIONS_INTERNAL_SECRET
               valueFrom:
                 secretKeyRef:
                   name: regulations
                   key: internal-secret
-                  optional: true
             - name: REGULATIONS_WORKER_URL
               value: "http://latex-worker.latex-worker.svc.cluster.local:4200"
             - name: REGULATIONS_WORKER_SECRET

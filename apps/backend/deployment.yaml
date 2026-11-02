@@ -120,6 +120,8 @@ spec:
                   name: regulations
                   key: worker-secret
                   optional: true
+            - name: REGULATIONS_GITHUB_MODE
+              value: "app"
             # GitHub App webhook: POST https://api.polinetwork.org/public/webhooks/github
             # (public-route.yaml), verified with this secret. Polling is only a slow
             # reconciliation for missed deliveries.
@@ -139,8 +141,10 @@ spec:
                   optional: true
             - name: REGULATIONS_GITHUB_REPO
               value: "PoliNetworkOrg/legal"
+            - name: REGULATIONS_GITHUB_BASE
+              value: "main"
             - name: REGULATIONS_LLM_PROVIDER
-              value: "" # TODO: "anthropic" once the key exists
+              value: "" # TODO: "anthropic" (the only provider implemented) once the key exists
             - name: REGULATIONS_LLM_MODEL
               value: "" # TODO
             - name: REGULATIONS_LLM_API_KEY

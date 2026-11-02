@@ -141,7 +141,20 @@ raise "LaTeX worker must declare CPU and memory requests and limits" unless %w[r
 work_mount = worker.fetch("volumeMounts", []).find { |mount| mount["mountPath"] == "/work" } || raise("LaTeX worker must mount a /work volume")
 work_volume = worker_deployment.dig("spec", "template", "spec", "volumes").find { |volume| volume["name"] == work_mount["name"] }
 raise "LaTeX worker /work must be a size-limited tmpfs" unless work_volume.dig("emptyDir", "medium") == "Memory" && work_volume.dig("emptyDir", "sizeLimit")
-raise "LaTeX worker must forbid shell escape and non-paranoid file access" unless worker_env.values_at("openin_any", "openout_any", "shell_escape") == %w[p p f]
+%w[WORKER_WORK_DIR WORKER_TMP_DIR].each do |name|
+  mount = worker.fetch("volumeMounts", []).find { |item| item["mountPath"] == worker_env[name] } || raise("LaTeX worker #{name} must be a mounted volume, not the read-only root")
+  volume = worker_deployment.dig("spec", "template", "spec", "volumes").find { |item| item["name"] == mount["name"] }
+  raise "LaTeX worker #{name} must be a size-limited tmpfs" unless volume.dig("emptyDir", "medium") == "Memory" && volume.dig("emptyDir", "sizeLimit")
+end
+collab_env = collab["env"].to_h { |item| [item["name"], item["value"]] }
+raise "Collab must not send more parallel compiles than the worker runs" unless collab_env["REGULATIONS_COMPILE_CONCURRENCY"].to_i.between?(1, worker_env["WORKER_CONCURRENCY"].to_i)
+# RLIMIT_NPROC (the worker's prlimit --nproc per xelatex) counts every task of
+# the uid on the node, so the worker's uid must be its own.
+worker_uid = worker_deployment.dig("spec", "template", "spec", "securityContext", "runAsUser")
+other_uids = Dir.glob(File.join(ROOT, "{apps,infrastructure}/**/*.yaml")).reject { |path| path.include?("apps/latex-worker/") }.flat_map do |path|
+  File.read(path).scan(/runAsUser:\s*(\d+)/).flatten.map(&:to_i)
+end
+raise "LaTeX worker must run as a uid no other workload or common image user (1000) uses" if worker_uid.to_i == 1000 || other_uids.include?(worker_uid.to_i)
 raise "LaTeX worker policy must cover every Pod in its namespace" unless worker_policy.dig("spec", "podSelector") == {}
 raise "LaTeX worker must restrict both ingress and egress" unless worker_policy.dig("spec", "policyTypes").sort == %w[Egress Ingress]
 raise "LaTeX worker must have no egress at all" unless worker_policy.dig("spec", "egress") == []
