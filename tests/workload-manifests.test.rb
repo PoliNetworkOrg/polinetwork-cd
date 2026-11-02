@@ -86,6 +86,78 @@ raise "Live Audience must declare resources" unless live_audience.dig("resources
 raise "Live Audience must never enable the fake dev login" if live_audience_env.key?("DEV_LOGIN")
 raise "Live Audience must read its OIDC client secret from a secret" unless live_audience_env.dig("OIDC_CLIENT_SECRET", "valueFrom", "secretKeyRef")
 
+def network_policy(path, name)
+  documents(path).find { |doc| doc["kind"] == "NetworkPolicy" && doc.dig("metadata", "name") == name } ||
+    raise("missing NetworkPolicy #{name}")
+end
+
+def hardened!(name, resource, app)
+  pod = resource.dig("spec", "template", "spec")
+  raise "#{name} must run as a numeric non-root user" unless pod.dig("securityContext", "runAsNonRoot") && pod.dig("securityContext", "runAsUser").to_i.positive?
+  raise "#{name} must use the RuntimeDefault seccomp profile" unless pod.dig("securityContext", "seccompProfile", "type") == "RuntimeDefault"
+  raise "#{name} must not mount a service account token" unless pod["automountServiceAccountToken"] == false
+  raise "#{name} must have a read-only root filesystem" unless app.dig("securityContext", "readOnlyRootFilesystem")
+  raise "#{name} must not allow privilege escalation" unless app.dig("securityContext", "allowPrivilegeEscalation") == false
+  raise "#{name} must drop all capabilities" unless app.dig("securityContext", "capabilities", "drop") == ["ALL"]
+end
+
+def from_pod?(peer, namespace, app)
+  peer.dig("namespaceSelector", "matchLabels") == { "kubernetes.io/metadata.name" => namespace } &&
+    peer.dig("podSelector", "matchLabels") == { "app" => app }
+end
+
+TRAEFIK = {
+  "namespaceSelector" => { "matchLabels" => { "kubernetes.io/metadata.name" => "kube-system" } },
+  "podSelector" => { "matchLabels" => { "app.kubernetes.io/name" => "traefik" } },
+}.freeze
+
+def peers(policy, port)
+  policy.dig("spec", "ingress").select { |rule| rule["ports"].any? { |item| item["port"] == port } }.flat_map { |rule| rule["from"] }
+end
+
+collab_deployment = deployment("apps/backend/regulations-collab.yaml", "regulations-collab")
+collab = container(collab_deployment, "regulations-collab")
+collab_policy = network_policy("apps/backend/network-policy.yaml", "regulations-collab")
+raise "Collab must run the backend image, so it ships with the backend's digest" unless collab["image"] == container(deployment("apps/backend/deployment.yaml", "backend"), "backend")["image"]
+raise "Collab must run exactly one replica" unless collab_deployment.dig("spec", "replicas") == 1
+raise "Collab must use Recreate so one process owns each open document" unless collab_deployment.dig("spec", "strategy", "type") == "Recreate"
+%w[startupProbe readinessProbe livenessProbe].each do |probe|
+  raise "Collab must have a TCP #{probe}" unless collab.dig(probe, "tcpSocket", "port") == 4100
+end
+raise "Collab must declare resource requests and limits" unless collab.dig("resources", "requests") && collab.dig("resources", "limits")
+hardened!("Collab", collab_deployment, collab)
+raise "Collab must restrict both ingress and egress" unless collab_policy.dig("spec", "policyTypes").sort == %w[Egress Ingress]
+raise "Only Traefik may reach the collab websocket" unless peers(collab_policy, 4100) == [TRAEFIK]
+raise "Only the backend may reach the collab internal API" unless peers(collab_policy, 4101) == [{ "podSelector" => { "matchLabels" => { "app" => "backend" } } }]
+raise "Collab exposes only ports 4100 and 4101" unless collab_policy.dig("spec", "ingress").flat_map { |rule| rule["ports"].map { |item| item["port"] } }.sort == [4100, 4101]
+
+worker_deployment = deployment("apps/latex-worker/deployment.yaml", "latex-worker")
+worker = container(worker_deployment, "latex-worker")
+worker_env = worker["env"].to_h { |item| [item["name"], item["value"]] }
+worker_policy = network_policy("apps/latex-worker/network-policy.yaml", "latex-worker")
+worker_limits = documents("apps/latex-worker/limits.yaml")
+hardened!("LaTeX worker", worker_deployment, worker)
+raise "LaTeX worker must declare CPU and memory requests and limits" unless %w[requests limits].all? { |kind| worker.dig("resources", kind, "cpu") && worker.dig("resources", kind, "memory") }
+work_mount = worker.fetch("volumeMounts", []).find { |mount| mount["mountPath"] == "/work" } || raise("LaTeX worker must mount a /work volume")
+work_volume = worker_deployment.dig("spec", "template", "spec", "volumes").find { |volume| volume["name"] == work_mount["name"] }
+raise "LaTeX worker /work must be a size-limited tmpfs" unless work_volume.dig("emptyDir", "medium") == "Memory" && work_volume.dig("emptyDir", "sizeLimit")
+raise "LaTeX worker must forbid shell escape and non-paranoid file access" unless worker_env.values_at("openin_any", "openout_any", "shell_escape") == %w[p p f]
+raise "LaTeX worker policy must cover every Pod in its namespace" unless worker_policy.dig("spec", "podSelector") == {}
+raise "LaTeX worker must restrict both ingress and egress" unless worker_policy.dig("spec", "policyTypes").sort == %w[Egress Ingress]
+raise "LaTeX worker must have no egress at all" unless worker_policy.dig("spec", "egress") == []
+raise "LaTeX worker may only be reached by the backend and collab" unless worker_policy.dig("spec", "ingress").flat_map { |rule| rule["from"] }.all? { |peer| from_pod?(peer, "backend", "backend") || from_pod?(peer, "backend", "regulations-collab") }
+raise "LaTeX worker namespace needs a LimitRange" unless worker_limits.any? { |doc| doc["kind"] == "LimitRange" }
+quota = worker_limits.find { |doc| doc["kind"] == "ResourceQuota" } || raise("LaTeX worker namespace needs a ResourceQuota")
+raise "LaTeX worker quota must cap CPU and memory limits" unless quota.dig("spec", "hard", "limits.cpu") && quota.dig("spec", "hard", "limits.memory")
+
+# The backend API stays in-cluster only (#28): Traefik never reaches the
+# backend Pod, and the namespace's only Ingress serves the collab websocket.
+backend_policy = network_policy("apps/backend/network-policy.yaml", "allow-callers")
+raise "Traefik must not reach the backend API" if backend_policy.dig("spec", "ingress").flat_map { |rule| rule["from"] }.include?(TRAEFIK)
+documents("apps/backend/ingress.yaml").flat_map { |ingress| ingress.dig("spec", "rules") }.flat_map { |rule| rule.dig("http", "paths") }.each do |path|
+  raise "The backend namespace may only publish the collab websocket" unless path.dig("backend", "service") == { "name" => "regulations-collab", "port" => { "number" => 4100 } }
+end
+
 %w[core edge gateway].each do |component|
   name = "defguard-#{component}"
   resource = deployment("infrastructure/defguard/deployment-#{component}.yaml", name)

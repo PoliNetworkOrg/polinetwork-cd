@@ -7,4 +7,6 @@ resources:
   - namespace.yaml
   - external-secret.yaml
   - deployment.yaml
+  - regulations-collab.yaml
+  - ingress.yaml
   - network-policy.yaml

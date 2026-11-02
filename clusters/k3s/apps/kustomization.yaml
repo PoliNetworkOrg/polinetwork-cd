@@ -9,6 +9,7 @@ resources:
   - bot-mat.yaml
   - bot-ts.yaml
   - influxdb.yaml
+  - latex-worker.yaml
   - live-audience.yaml
   - monitoring.yaml
   - polinetcc.yaml

@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: latex-worker
+
+resources:
+  - namespace.yaml
+  - limits.yaml
+  - external-secret.yaml
+  - deployment.yaml
+  - network-policy.yaml

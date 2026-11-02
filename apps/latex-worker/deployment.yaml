@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: latex-worker
+spec:
+  selector:
+    app: latex-worker
+  ports:
+    - name: http
+      port: 4200
+      targetPort: 4200
+---
+# Compiles regulation drafts with xelatex for the backend and collab. It runs untrusted
+# LaTeX, so it has no network egress, no service account token, a read-only
+# root and a size-limited tmpfs workdir. One pod with a small internal pool:
+# warm per-draft workdirs (.aux) live in its memory, and the node has 2 vCPUs.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: latex-worker
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: latex-worker
+  template:
+    metadata:
+      labels:
+        app: latex-worker
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: latex-worker
+          image: ghcr.io/polinetworkorg/latex-worker:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4200
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Europe/Rome"
+            - name: PORT
+              value: "4200"
+            - name: WORKER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: regulations
+                  key: worker-secret
+            - name: WORKDIR
+              value: "/work"
+            # Parallel xelatex runs; a third only contends for the same 1.5 CPUs.
+            - name: WORKER_CONCURRENCY
+              value: "2"
+            - name: WORKER_TIMEOUT_MS
+              value: "45000"
+            - name: HOME
+              value: "/tmp"
+            - name: TEXMFVAR
+              value: "/tmp/texmf-var"
+            # kpathsea reads these over texmf.cnf: paranoid file access and no
+            # shell escape, even if the worker forgets its own flags.
+            - name: openin_any
+              value: "p"
+            - name: openout_any
+              value: "p"
+            - name: shell_escape
+              value: "f"
+          startupProbe:
+            tcpSocket:
+              port: 4200
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: 4200
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 4200
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          # Measured on the RRI (19 pages) in this sandbox: a cold latexmk takes
+          # 1.8 s, a warm pass 0.4 s, 3 parallel passes peak at 650Mi including
+          # tmpfs. Memory-backed volumes count against the memory limit, so the
+          # limit covers a full 512Mi /work too. CPU stays below the node's
+          # 2 vCPUs so a compile burst cannot starve the other workloads.
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "768Mi"
+              ephemeral-storage: "64Mi"
+            limits:
+              cpu: "1500m"
+              memory: "1536Mi"
+              ephemeral-storage: "256Mi"
+          volumeMounts:
+            - name: work
+              mountPath: /work
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: work
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi

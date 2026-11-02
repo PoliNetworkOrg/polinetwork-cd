@@ -28,6 +28,10 @@ bot-prod/ bot-rooms/ mariadb/   legacy AKS folders, disabled
   Keep Auth behind the tunnel and ensure Cloudflare does not remove the header.
   Cluster-internal IdP calls carry no visitor address and share Auth's bounded
   token budget of 60 requests per minute.
+- **Regulations editor:** `regulations-collab` (backend image, `backend`
+  namespace) publishes only its websocket on `collab.polinetwork.org`; the
+  backend API stays in-cluster. `latex-worker` runs untrusted LaTeX with no
+  egress, a read-only root and a namespace quota.
 - **Secrets:** `ExternalSecret`s sync from Azure Key Vault (`kv-pn-apps`,
   `kv-pn-infra`). No secrets live in Git.
 - **Images:** PoliNetwork apps run `ghcr.io/polinetworkorg/<app>:latest`. The

@@ -1,0 +1,24 @@
+# The regulations editor's websocket, the only public path into this
+# namespace. Cloudflare Tunnel sends every HTTP hostname to Traefik, which
+# routes by host and passes the Upgrade through. Only the websocket port is
+# published; the backend API and collab's internal port stay in-cluster. No
+# Cloudflare Access: the single-use ticket authenticates each connection.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: regulations-collab
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: collab.polinetwork.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: regulations-collab
+                port:
+                  number: 4100
