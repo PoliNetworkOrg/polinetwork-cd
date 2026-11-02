@@ -2,7 +2,10 @@
 # dashboard and the website (tRPC, esign agent proxy), the Telegram bot (tRPC
 # and its socket), the IdP (access-changed events on /internal/events) and
 # Uptime Kuma (health monitoring).
-# Nothing reaches it from outside the cluster since the Ingress was removed.
+# From outside the cluster, Traefik reaches it only through the backend-public
+# IngressRoute (public-route.yaml), which matches the declared /public prefix
+# and nothing else; a NetworkPolicy cannot filter paths, so that route is the
+# guard. The regulations-collab Ingress publishes only collab's websocket port.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -45,6 +48,77 @@ spec:
           podSelector:
             matchLabels:
               app: uptime-kuma
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
       ports:
         - port: 3000
+          protocol: TCP
+---
+# regulations-collab faces the internet: Traefik reaches the websocket port
+# only, the backend the internal API, and collab itself may reach only DNS,
+# PostgreSQL and the LaTeX worker.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: regulations-collab
+  namespace: backend
+spec:
+  podSelector:
+    matchLabels:
+      app: regulations-collab
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 4100
+          protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              app: backend
+      ports:
+        - port: 4101
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: postgres
+          podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - port: 5432
+          protocol: TCP
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: latex-worker
+          podSelector:
+            matchLabels:
+              app: latex-worker
+      ports:
+        - port: 4200
           protocol: TCP

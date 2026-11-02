@@ -99,6 +99,72 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: oauth-private-jwk
+            # Regulations editor: every variable is optional and the feature
+            # stays off without them. Empty values (TODO) are pending from
+            # Lorenzo; the backend reads env with emptyStringAsUndefined.
+            - name: REGULATIONS_INTERNAL_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: regulations
+                  key: internal-secret
+                  optional: true
+            - name: REGULATIONS_COLLAB_PUBLIC_URL # handed to browsers in collab tickets
+              value: "wss://collab.polinetwork.org"
+            - name: REGULATIONS_COLLAB_INTERNAL_URL
+              value: "http://regulations-collab.backend.svc.cluster.local:4101"
+            - name: REGULATIONS_WORKER_URL
+              value: "http://latex-worker.latex-worker.svc.cluster.local:4200"
+            - name: REGULATIONS_WORKER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: regulations
+                  key: worker-secret
+                  optional: true
+            - name: REGULATIONS_GITHUB_MODE
+              value: "app"
+            # GitHub App webhook: POST https://api.polinetwork.org/public/webhooks/github
+            # (public-route.yaml), verified with this secret. Polling is only a slow
+            # reconciliation for missed deliveries.
+            - name: REGULATIONS_GITHUB_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: regulations
+                  key: github-webhook-secret
+                  optional: true
+            - name: REGULATIONS_GITHUB_APP_ID
+              value: "" # TODO: GitHub App ID
+            - name: REGULATIONS_GITHUB_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: regulations
+                  key: github-app-private-key
+                  optional: true
+            - name: REGULATIONS_GITHUB_REPO
+              value: "PoliNetworkOrg/legal"
+            - name: REGULATIONS_GITHUB_BASE
+              value: "main"
+            - name: REGULATIONS_LLM_PROVIDER
+              value: "" # TODO: "anthropic" (the only provider implemented) once the key exists
+            - name: REGULATIONS_LLM_MODEL
+              value: "" # TODO
+            - name: REGULATIONS_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: regulations
+                  key: llm-api-key
+                  optional: true
+            - name: REGULATIONS_TELEGRAM_CHAT_ID
+              value: "" # TODO: Soci group chat id
+            - name: REGULATIONS_TELEGRAM_TOPIC_ID
+              value: "" # TODO: Soci group topic id
+            - name: REGULATIONS_EMAIL_SENDER
+              value: "noreply@polinetwork.org" # TODO: confirm the final sender
+            - name: REGULATIONS_EMAIL_TO
+              value: "soci@polinetwork.org"
+            - name: REGULATIONS_EMAIL_REPLY_TO
+              value: "direttivo@polinetwork.org"
+            - name: REGULATIONS_DIRETTIVO_EMAIL
+              value: "direttivo@polinetwork.org"
           startupProbe:
             tcpSocket:
               port: 3000

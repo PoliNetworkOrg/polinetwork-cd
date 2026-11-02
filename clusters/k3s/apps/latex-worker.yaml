@@ -1,0 +1,39 @@
+# Generates the latex-worker Kustomization with the current digest of
+# ghcr.io/polinetworkorg/latex-worker:latest (provider latex-worker-image).
+# Nothing is deployed until the backend repository publishes that image.
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSet
+metadata:
+  name: latex-worker
+  namespace: flux-system
+spec:
+  inputStrategy:
+    name: Permute
+  inputsFrom:
+    - kind: ResourceSetInputProvider
+      name: latex-worker-image
+  resources:
+    - apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: latex-worker
+        namespace: flux-system
+        annotations:
+          # Never garbage-collect the app if the provider exports no inputs.
+          fluxcd.controlplane.io/prune: disabled
+      spec:
+        dependsOn:
+          - name: infrastructure-secret-stores
+        interval: 30m
+        retryInterval: 1m
+        timeout: 5m
+        prune: true
+        wait: true
+        sourceRef:
+          kind: GitRepository
+          name: flux-system
+        path: ./apps/latex-worker
+        images:
+          - name: ghcr.io/polinetworkorg/latex-worker
+            newTag: << inputs.latex_worker_image.tag | quote >>
+            digest: << inputs.latex_worker_image.digest | quote >>
