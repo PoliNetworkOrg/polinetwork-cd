@@ -1,0 +1,7 @@
+# Technical logs, including SSH client addresses, are kept for at most
+# {{ log_retention_days }} days. Journal files rotate daily and are vacuumed on
+# rotation once their newest entry is older than MaxRetentionSec, so an entry
+# can outlive it by up to two days.
+[Journal]
+MaxFileSec=1day
+MaxRetentionSec={{ log_retention_days - 2 }}day

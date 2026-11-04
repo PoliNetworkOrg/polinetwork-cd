@@ -15,6 +15,8 @@
       tags: [storage]
     - role: k3s
       tags: [k3s]
+    - role: logs
+      tags: [logs]
     - role: backup
       tags: [backup]
     - role: flux
