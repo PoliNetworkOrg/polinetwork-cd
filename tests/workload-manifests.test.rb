@@ -112,6 +112,50 @@ raise "WireGuard Portal must store its state in PostgreSQL" unless wg_portal_env
   raise "WireGuard Portal must read #{name} from a secret" unless wg_portal_env.dig(name, "valueFrom", "secretKeyRef")
 end
 
+sso_deployment = deployment("infrastructure/sso/deployment.yaml", "oauth2-proxy")
+sso = container(sso_deployment, "oauth2-proxy")
+sso_args = sso["args"]
+sso_env = sso["env"].to_h { |item| [item["name"], item] }
+raise "oauth2-proxy image must be pinned" unless sso["image"].include?("@sha256:")
+raise "oauth2-proxy must expose startup, readiness, and liveness probes" unless sso["startupProbe"] && sso["readinessProbe"] && sso["livenessProbe"]
+raise "oauth2-proxy must declare resources" unless sso.dig("resources", "requests") && sso.dig("resources", "limits")
+raise "oauth2-proxy must drop all capabilities" unless sso.dig("securityContext", "capabilities", "drop") == ["ALL"]
+%w[OAUTH2_PROXY_CLIENT_SECRET OAUTH2_PROXY_COOKIE_SECRET].each do |name|
+  raise "oauth2-proxy must read #{name} from a secret" unless sso_env.dig(name, "valueFrom", "secretKeyRef")
+end
+[
+  "--code-challenge-method=S256",
+  "--oidc-groups-claim=polinetwork_permission_list",
+  "--cookie-secure=true",
+  "--whitelist-domain=.polinetwork.org",
+  "--trusted-proxy-ip=10.52.0.0/16",
+].each do |arg|
+  raise "oauth2-proxy must run with #{arg}" unless sso_args.include?(arg)
+end
+raise "oauth2-proxy must refresh sessions before the 5-minute tokens expire" unless sso_args.include?("--cookie-refresh=4m")
+
+# Uptime Kuma runs with its own login disabled: socket.io logs anyone in as
+# admin, so the public status host may only list status page paths and the
+# dashboard host must go through the SSO gateway.
+uptime_ingresses = documents("apps/uptime-kuma/ingress.yaml").select { |doc| doc["kind"] == "Ingress" }
+uptime_dashboard = uptime_ingresses.find { |doc| doc.dig("metadata", "name") == "uptime-kuma" } || raise("missing Uptime Kuma Ingress")
+uptime_status = uptime_ingresses.find { |doc| doc.dig("metadata", "name") == "uptime-kuma-status" } || raise("missing Uptime Kuma status Ingress")
+raise "uptime.polinetwork.org must use the SSO gateway" unless uptime_dashboard.dig("metadata", "annotations", "traefik.ingress.kubernetes.io/router.middlewares") == "uptime-kuma-sso@kubernetescrd"
+raise "Only uptime.polinetwork.org may skip the status allowlist" unless uptime_dashboard.dig("spec", "rules").map { |rule| rule["host"] } == ["uptime.polinetwork.org"]
+status_paths = %r{\A/(status|status-page|api/(status-page|badge|entry-page|push)|assets|upload|[\w.-]+\.(ico|svg|png|json|js|txt))?\z}
+uptime_status.dig("spec", "rules").each do |rule|
+  raise "status host must stay status.polinetwork.org" unless rule["host"] == "status.polinetwork.org"
+  rule.dig("http", "paths").each do |path|
+    raise "status host must not expose #{path["path"]}" unless path["path"].match?(status_paths)
+    raise "status host must route / exactly, never as a prefix" if path["path"] == "/" && path["pathType"] != "Exact"
+  end
+end
+uptime_middleware = documents("apps/uptime-kuma/middleware.yaml").find { |doc| doc["kind"] == "Middleware" } || raise("missing Uptime Kuma SSO Middleware")
+raise "Uptime Kuma SSO must require uptime:access" unless uptime_middleware.dig("spec", "forwardAuth", "address").end_with?("?allowed_groups=uptime:access")
+raise "Uptime Kuma SSO must return refreshed session cookies" unless uptime_middleware.dig("spec", "forwardAuth", "addAuthCookiesToResponse")&.include?("__Secure-pn_sso")
+uptime_policy = documents("apps/uptime-kuma/network-policy.yaml").find { |doc| doc["kind"] == "NetworkPolicy" } || raise("missing Uptime Kuma NetworkPolicy")
+raise "Only Traefik may reach Uptime Kuma" unless uptime_policy.dig("spec", "ingress").flat_map { |rule| rule["from"] }.all? { |peer| peer.dig("podSelector", "matchLabels", "app.kubernetes.io/name") == "traefik" }
+
 claims = Dir.glob(File.join(ROOT, "apps/*/*.yaml")).flat_map do |path|
   YAML.load_stream(File.read(path)).compact.select { |doc| doc["kind"] == "PersistentVolumeClaim" }
 end

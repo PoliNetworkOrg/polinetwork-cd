@@ -8,6 +8,7 @@ spec:
     - name: infrastructure-secret-stores
     - name: infrastructure-storage
     - name: infrastructure-traefik
+    - name: infrastructure-sso
   interval: 30m
   retryInterval: 1m
   timeout: 5m

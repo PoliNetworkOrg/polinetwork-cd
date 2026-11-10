@@ -1,0 +1,123 @@
+# oauth2-proxy as a Traefik forwardAuth server. Traefik sends each request to
+# a protected host to "/?allowed_groups=<permission>": oauth2-proxy answers 202
+# when the session holds that permission, 403 when it doesn't, and redirects to
+# auth.polinetwork.org when there is no session.
+#
+# - Sessions live in an encrypted cookie on .polinetwork.org, so one sign-in
+#   covers every protected host and the replicas share no state.
+# - Permissions come from polinetwork_permission_list, the array copy of
+#   polinetwork_permissions. groups carries roles and must not authorize.
+# - ID and access tokens last 5 minutes; refreshing after 4 re-reads
+#   permissions, so losing one takes effect within about 5 minutes. The IdP
+#   rotates refresh tokens, so the Middleware must hand the refreshed cookie
+#   back to the browser (addAuthCookiesToResponse).
+# - The web entrypoint trusts X-Forwarded-* from the pod network (cloudflared),
+#   which keeps the https scheme for post-login redirects.
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy
+  namespace: sso
+spec:
+  selector:
+    app: oauth2-proxy
+  ports:
+    - name: http
+      port: 4180
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy
+  namespace: sso
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: oauth2-proxy
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: oauth2-proxy
+          # v7.15.6
+          image: quay.io/oauth2-proxy/oauth2-proxy@sha256:c3415e8660af553f5e18f5d90db050614c02493c0ac6260ac59442f6d9b12048
+          args:
+            - --http-address=0.0.0.0:4180
+            - --provider=oidc
+            - --provider-display-name=PoliNetwork
+            - --oidc-issuer-url=https://auth.polinetwork.org/api/auth
+            - --client-id=WCfLYlJHnnpjqfPahuvhlhotivVZGLgk
+            - --code-challenge-method=S256
+            - --scope=openid profile email polinetwork:identity offline_access
+            - --oidc-groups-claim=polinetwork_permission_list
+            - --email-domain=*
+            - --redirect-url=https://sso.polinetwork.org/oauth2/callback
+            - --whitelist-domain=.polinetwork.org
+            - --cookie-domain=.polinetwork.org
+            - --cookie-name=__Secure-pn_sso
+            - --cookie-secure=true
+            - --cookie-samesite=lax
+            - --cookie-expire=24h
+            - --cookie-refresh=4m
+            - --cookie-csrf-per-request=true
+            - --cookie-csrf-expire=10m
+            - --reverse-proxy=true
+            - --trusted-proxy-ip=10.52.0.0/16
+            - --upstream=static://202
+            - --skip-provider-button=true
+            - --set-xauthrequest=true
+            - --silence-ping-logging=true
+          env:
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy
+                  key: client-secret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy
+                  key: cookie-secret
+          ports:
+            - name: http
+              containerPort: 4180
+          startupProbe:
+            httpGet:
+              path: /ping
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

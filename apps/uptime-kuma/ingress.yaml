@@ -1,10 +1,12 @@
 # Cloudflare Tunnel sends every HTTP hostname to Traefik, which routes by host.
+# The dashboard sits behind the SSO gateway (middleware.yaml).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: uptime-kuma
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: uptime-kuma-sso@kubernetescrd
 spec:
   ingressClassName: traefik
   rules:
@@ -18,11 +20,143 @@ spec:
                 name: uptime-service
                 port:
                   number: 3001
+---
+# The public status page. Uptime Kuma's own login is disabled, so this host
+# lists only what status pages, badges and push monitors use: never
+# /socket.io, /metrics or /dashboard, which would hand out admin access.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: uptime-kuma-status
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
     - host: status.polinetwork.org
       http:
         paths:
           - path: /
+            pathType: Exact
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /status
             pathType: Prefix
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /status-page
+            pathType: Exact
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /api/status-page
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /api/badge
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /api/entry-page
+            pathType: Exact
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /api/push
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /assets
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /upload
+            pathType: Prefix
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /favicon.ico
+            pathType: Exact
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /icon.svg
+            pathType: Exact
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /icon.png
+            pathType: Exact
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /icon-192x192.png
+            pathType: Exact
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /icon-512x512.png
+            pathType: Exact
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /apple-touch-icon.png
+            pathType: Exact
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /manifest.json
+            pathType: Exact
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /serviceWorker.js
+            pathType: Exact
+            backend:
+              service:
+                name: uptime-service
+                port:
+                  number: 3001
+          - path: /robots.txt
+            pathType: Exact
             backend:
               service:
                 name: uptime-service

@@ -11,7 +11,7 @@ documented in [ansible/README.md](ansible/README.md).
 ```
 ansible/          host provisioning and verification
 clusters/k3s/     Flux entry point and reconciliation order
-infrastructure/   storage, Traefik, External Secrets, cloudflared, image automation, Flux UI
+infrastructure/   storage, Traefik, SSO gateway, External Secrets, cloudflared, image automation, Flux UI
 apps/<ns>/        one folder per application namespace
 tests/            manifest checks run in CI
 bot-prod/ bot-rooms/ mariadb/   legacy AKS folders, disabled
@@ -23,11 +23,16 @@ bot-prod/ bot-rooms/ mariadb/   legacy AKS folders, disabled
   denies all inbound traffic except WireGuard on UDP 48726, which reaches the
   WireGuard Portal Pod through a hostPort; the tunnel cannot carry it.
   Auth uses `AUTH_CLIENT_IP_HEADER=cf-connecting-ip` for per-address rate limits.
-  Cloudflare supplies that header; Traefik's default handling of `X-Forwarded-For`
-  does not preserve the visitor address without trusted proxy configuration.
-  Keep Auth behind the tunnel and ensure Cloudflare does not remove the header.
+  Cloudflare supplies that header. The `web` entrypoint trusts `X-Forwarded-*`
+  from the pod network, where cloudflared runs, but Auth keeps reading
+  `cf-connecting-ip`. Keep Auth behind the tunnel and ensure Cloudflare does
+  not remove the header.
   Cluster-internal IdP calls carry no visitor address and share Auth's bounded
   token budget of 60 requests per minute.
+- **SSO gateway:** apps without their own OIDC login sit behind oauth2-proxy
+  ([`infrastructure/sso`](infrastructure/sso)), which Traefik calls through a
+  `forwardAuth` Middleware. People sign in once at `auth.polinetwork.org`, and each
+  app's Middleware requires one permission (`?allowed_groups=<permission>`).
 - **Secrets:** `ExternalSecret`s sync from Azure Key Vault (`kv-pn-apps`,
   `kv-pn-infra`). No secrets live in Git.
 - **Images:** PoliNetwork apps run `ghcr.io/polinetworkorg/<app>:latest`. The
@@ -46,6 +51,11 @@ bot-prod/ bot-rooms/ mariadb/   legacy AKS folders, disabled
 - **New app:** add `apps/<ns>/` and `clusters/k3s/apps/<ns>.yaml`, list it in
   `clusters/k3s/apps/kustomization.yaml`, and allow the namespace in
   `infrastructure/secret-stores/` if it needs secrets.
+- **Put an app behind SSO:** create an `<app>:access` permission in Auth and grant
+  it to a role, copy [`apps/uptime-kuma/middleware.yaml`](apps/uptime-kuma/middleware.yaml)
+  with that permission, reference it from the Ingress with
+  `traefik.ingress.kubernetes.io/router.middlewares: <ns>-sso@kubernetescrd`, and
+  admit only Traefik with a NetworkPolicy.
 - **Status:** Flux UI at `flux.polinetwork.org`.
 
 CI (`.github/workflows/ansible.yml`) syntax-checks the playbooks, builds the

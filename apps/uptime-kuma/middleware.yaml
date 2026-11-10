@@ -1,0 +1,26 @@
+# Sign-in through the SSO gateway (infrastructure/sso); only people with the
+# uptime:access permission get through. Copy this for another app and change
+# the permission in allowed_groups.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: sso
+spec:
+  forwardAuth:
+    address: http://oauth2-proxy.sso.svc.cluster.local:4180/?allowed_groups=uptime:access
+    # Pass the scheme and host the entrypoint accepted from Cloudflare, so
+    # oauth2-proxy sends people back to https://<host>/<path> after sign-in.
+    trustForwardHeader: true
+    # Identity for the app; Traefik also strips these from client requests.
+    authResponseHeaders:
+      - X-Auth-Request-User
+      - X-Auth-Request-Email
+      - X-Auth-Request-Preferred-Username
+    # The refreshed session cookie, which may be split into numbered chunks.
+    # Without it the browser keeps a spent refresh token.
+    addAuthCookiesToResponse:
+      - __Secure-pn_sso
+      - __Secure-pn_sso_0
+      - __Secure-pn_sso_1
+      - __Secure-pn_sso_2
+    maxResponseBodySize: 1048576

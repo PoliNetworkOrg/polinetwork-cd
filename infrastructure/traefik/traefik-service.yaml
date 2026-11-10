@@ -4,7 +4,16 @@ metadata:
   name: traefik
   namespace: kube-system
 spec:
+  # Traefik is ClusterIP, so traffic only arrives from pods (10.52.0.0/16),
+  # in practice cloudflared. Keep the X-Forwarded-* headers they send:
+  # Cloudflare's X-Forwarded-Proto (https) is what the SSO gateway builds
+  # post-login redirects from.
   valuesContent: |-
     service:
       spec:
         type: ClusterIP
+    ports:
+      web:
+        forwardedHeaders:
+          trustedIPs:
+            - 10.52.0.0/16
