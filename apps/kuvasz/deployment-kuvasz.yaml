@@ -1,0 +1,138 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kuvasz
+  labels:
+    app: kuvasz
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: kuvasz
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kuvasz
+spec:
+  replicas: 1
+  # A second instance would run every check twice and send duplicate alerts.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: kuvasz
+  template:
+    metadata:
+      labels:
+        app: kuvasz
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kuvasz
+          image: kuvaszmonitoring/kuvasz:4.7.0@sha256:e511ec42bcf2e64a6147ba17bff85fcf565dec54a24099c5e448d7767a07f335
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: TZ
+              value: "Europe/Rome"
+            - name: DATABASE_HOST
+              value: "postgres-service.postgres.svc.cluster.local"
+            - name: DATABASE_NAME
+              value: "kuvasz"
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: db-pass
+            # Sign-in only through auth.polinetwork.org; with OIDC on, Kuvasz
+            # disables its username/password form (ADMIN_USER is unused).
+            # Kuvasz cannot check roles, so the it-member restriction lives in
+            # the gate in front of /oauth (ingress.yaml).
+            # Redirect URI: https://uptime.polinetwork.org/oauth/callback/oidc
+            # Post-logout URI: https://uptime.polinetwork.org/auth/logout
+            - name: ENABLE_OIDC
+              value: "true"
+            - name: OIDC_ISSUER
+              value: "https://auth.polinetwork.org/api/auth"
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oidc-client-id
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: oidc-client-secret
+            # Bounds how long someone removed from IT keeps an open session.
+            - name: AUTH_MAX_AGE
+              value: "28800"
+            # Kuvasz builds its OIDC redirect URI from these headers; Traefik
+            # sets X-Forwarded-Host, the forwarded-https middleware the scheme.
+            - name: MICRONAUT_SERVER_HOST_RESOLUTION_HOST_HEADER
+              value: "X-Forwarded-Host"
+            - name: MICRONAUT_SERVER_HOST_RESOLUTION_PROTOCOL_HEADER
+              value: "X-Forwarded-Proto"
+            # The image is pinned; upgrades go through this file.
+            - name: ENABLE_CHECK_UPDATES
+              value: "false"
+          startupProbe:
+            httpGet:
+              path: /api/v2/health
+              port: 8080
+            periodSeconds: 2
+            failureThreshold: 90
+          readinessProbe:
+            httpGet:
+              path: /api/v2/health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/v2/health
+              port: 8080
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "384Mi"
+            limits:
+              memory: "768Mi"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            # The only path Kuvasz writes to (YAML exports).
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: kuvasz-config
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi

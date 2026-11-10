@@ -1,0 +1,32 @@
+# Traefik does not trust cloudflared's X-Forwarded-Proto and reports `http`
+# (the tunnel ends on the `web` entrypoint). Kuvasz and oauth2-proxy build
+# their OIDC redirect URIs from it, and visitors only ever arrive over https.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: forwarded-https
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: https
+---
+# Admits only it-member to the routes it guards (ingress.yaml). It must come
+# after forwarded-https: trustForwardHeader passes that scheme on to the gate.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: it-member-gate
+spec:
+  forwardAuth:
+    address: http://kuvasz-gate.kuvasz.svc.cluster.local:4180/
+    trustForwardHeader: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: status-page-redirect
+spec:
+  redirectRegex:
+    regex: "^.*$"
+    replacement: "https://status.polinetwork.org/status/polinetwork"
+    permanent: false

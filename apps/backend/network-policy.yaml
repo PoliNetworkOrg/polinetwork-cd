@@ -1,7 +1,7 @@
 # Only the in-cluster callers may reach the backend (RFC v3 §12): the admin
 # dashboard and the website (tRPC, esign agent proxy), the Telegram bot (tRPC
 # and its socket), the IdP (access-changed events on /internal/events) and
-# Uptime Kuma (health monitoring).
+# Kuvasz (uptime monitoring).
 # Nothing reaches it from outside the cluster since the Ingress was removed.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -41,10 +41,10 @@ spec:
               app: auth
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: uptime-kuma
+              kubernetes.io/metadata.name: kuvasz
           podSelector:
             matchLabels:
-              app: uptime-kuma
+              app: kuvasz
       ports:
         - port: 3000
           protocol: TCP
