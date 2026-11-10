@@ -2,8 +2,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # SSO gateway: oauth2-proxy behind Traefik forwardAuth, signing people in
-# through auth.polinetwork.org. Apps opt in with a forwardAuth Middleware; see
-# apps/uptime-kuma/middleware.yaml.
+# through auth.polinetwork.org. No app uses it yet: apps opt in with a
+# forwardAuth Middleware, as "Put an app behind SSO" in the README describes.
 
 resources:
   - namespace.yaml

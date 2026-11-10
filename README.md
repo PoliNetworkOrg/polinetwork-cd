@@ -52,10 +52,27 @@ bot-prod/ bot-rooms/ mariadb/   legacy AKS folders, disabled
   `clusters/k3s/apps/kustomization.yaml`, and allow the namespace in
   `infrastructure/secret-stores/` if it needs secrets.
 - **Put an app behind SSO:** create an `<app>:access` permission in Auth and grant
-  it to a role, copy [`apps/uptime-kuma/middleware.yaml`](apps/uptime-kuma/middleware.yaml)
-  with that permission, reference it from the Ingress with
-  `traefik.ingress.kubernetes.io/router.middlewares: <ns>-sso@kubernetescrd`, and
-  admit only Traefik with a NetworkPolicy.
+  it to a role. Add this Middleware to `apps/<ns>/`, changing only the permission:
+
+  ```yaml
+  apiVersion: traefik.io/v1alpha1
+  kind: Middleware
+  metadata:
+    name: sso
+  spec:
+    forwardAuth:
+      address: http://oauth2-proxy.sso.svc.cluster.local:4180/?allowed_groups=<app>:access
+      trustForwardHeader: true
+      authResponseHeaders: [X-Auth-Request-User, X-Auth-Request-Email, X-Auth-Request-Preferred-Username]
+      # Auth rotates refresh tokens: without this, sessions break after 4 minutes.
+      addAuthCookiesToResponse: [__Secure-pn_sso, __Secure-pn_sso_0, __Secure-pn_sso_1, __Secure-pn_sso_2]
+      maxResponseBodySize: 1048576
+  ```
+
+  Reference it from the Ingress with
+  `traefik.ingress.kubernetes.io/router.middlewares: <ns>-sso@kubernetescrd`, add
+  `infrastructure-sso` to the app's `dependsOn`, and admit only Traefik with a
+  NetworkPolicy. Public paths go in a separate Ingress without the Middleware.
 - **Status:** Flux UI at `flux.polinetwork.org`.
 
 CI (`.github/workflows/ansible.yml`) syntax-checks the playbooks, builds the

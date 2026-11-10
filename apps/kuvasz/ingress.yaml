@@ -1,0 +1,108 @@
+# Cloudflare Tunnel sends every HTTP hostname to Traefik, which routes by host.
+#
+# uptime.polinetwork.org: Kuvasz, signed in through auth.polinetwork.org.
+# Kuvasz cannot restrict who signs in, so its sign-in routes (/oauth/login and
+# /oauth/callback; Kuvasz serves nothing else under /oauth) go through the
+# it-member gate. Without the gate's cookie nobody completes a Kuvasz sign-in;
+# everything else is guarded by Kuvasz's own session, except what Kuvasz
+# deliberately serves anonymously: public status pages, assets, push
+# heartbeats and /api/v2/health.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kuvasz
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: kuvasz-forwarded-https@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: uptime.polinetwork.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kuvasz
+                port:
+                  number: 8080
+          # oauth2-proxy's own sign-in and callback.
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: kuvasz-gate
+                port:
+                  number: 4180
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kuvasz-sign-in
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: kuvasz-forwarded-https@kubernetescrd,kuvasz-it-member-gate@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: uptime.polinetwork.org
+      http:
+        paths:
+          - path: /oauth
+            pathType: Prefix
+            backend:
+              service:
+                name: kuvasz
+                port:
+                  number: 8080
+---
+# status.polinetwork.org: only the public status page and its assets.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kuvasz-status
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: kuvasz-forwarded-https@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: status.polinetwork.org
+      http:
+        paths:
+          - path: /status/polinetwork
+            pathType: Exact
+            backend:
+              service:
+                name: kuvasz
+                port:
+                  number: 8080
+          - path: /public
+            pathType: Prefix
+            backend:
+              service:
+                name: kuvasz
+                port:
+                  number: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kuvasz-status-redirect
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: kuvasz-status-page-redirect@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: status.polinetwork.org
+      http:
+        paths:
+          - path: /
+            pathType: Exact
+            backend:
+              service:
+                name: kuvasz
+                port:
+                  number: 8080

@@ -134,27 +134,20 @@ end
 end
 raise "oauth2-proxy must refresh sessions before the 5-minute tokens expire" unless sso_args.include?("--cookie-refresh=4m")
 
-# Uptime Kuma runs with its own login disabled: socket.io logs anyone in as
-# admin, so the public status host may only list status page paths and the
-# dashboard host must go through the SSO gateway.
-uptime_ingresses = documents("apps/uptime-kuma/ingress.yaml").select { |doc| doc["kind"] == "Ingress" }
-uptime_dashboard = uptime_ingresses.find { |doc| doc.dig("metadata", "name") == "uptime-kuma" } || raise("missing Uptime Kuma Ingress")
-uptime_status = uptime_ingresses.find { |doc| doc.dig("metadata", "name") == "uptime-kuma-status" } || raise("missing Uptime Kuma status Ingress")
-raise "uptime.polinetwork.org must use the SSO gateway" unless uptime_dashboard.dig("metadata", "annotations", "traefik.ingress.kubernetes.io/router.middlewares") == "uptime-kuma-sso@kubernetescrd"
-raise "Only uptime.polinetwork.org may skip the status allowlist" unless uptime_dashboard.dig("spec", "rules").map { |rule| rule["host"] } == ["uptime.polinetwork.org"]
-status_paths = %r{\A/(status|status-page|api/(status-page|badge|entry-page|push)|assets|upload|[\w.-]+\.(ico|svg|png|json|js|txt))?\z}
-uptime_status.dig("spec", "rules").each do |rule|
-  raise "status host must stay status.polinetwork.org" unless rule["host"] == "status.polinetwork.org"
-  rule.dig("http", "paths").each do |path|
-    raise "status host must not expose #{path["path"]}" unless path["path"].match?(status_paths)
-    raise "status host must route / exactly, never as a prefix" if path["path"] == "/" && path["pathType"] != "Exact"
+# Every Middleware that calls the SSO gateway must name a permission, keep the
+# https scheme for post-login redirects, and hand refreshed cookies back: Auth
+# rotates refresh tokens on every use.
+Dir.glob(File.join(ROOT, "apps/*/*.yaml")).each do |path|
+  YAML.load_stream(File.read(path)).compact.each do |doc|
+    next unless doc["kind"] == "Middleware"
+    auth = doc.dig("spec", "forwardAuth")
+    next unless auth && auth["address"].to_s.start_with?("http://oauth2-proxy.sso.svc.cluster.local:4180/")
+    name = "#{path.delete_prefix("#{ROOT}/")}: #{doc.dig("metadata", "name")}"
+    raise "#{name} must require a permission with ?allowed_groups=" unless auth["address"].match?(/\?allowed_groups=[^&]+/)
+    raise "#{name} must set trustForwardHeader" unless auth["trustForwardHeader"] == true
+    raise "#{name} must return refreshed session cookies" unless auth["addAuthCookiesToResponse"]&.include?("__Secure-pn_sso")
   end
 end
-uptime_middleware = documents("apps/uptime-kuma/middleware.yaml").find { |doc| doc["kind"] == "Middleware" } || raise("missing Uptime Kuma SSO Middleware")
-raise "Uptime Kuma SSO must require uptime:access" unless uptime_middleware.dig("spec", "forwardAuth", "address").end_with?("?allowed_groups=uptime:access")
-raise "Uptime Kuma SSO must return refreshed session cookies" unless uptime_middleware.dig("spec", "forwardAuth", "addAuthCookiesToResponse")&.include?("__Secure-pn_sso")
-uptime_policy = documents("apps/uptime-kuma/network-policy.yaml").find { |doc| doc["kind"] == "NetworkPolicy" } || raise("missing Uptime Kuma NetworkPolicy")
-raise "Only Traefik may reach Uptime Kuma" unless uptime_policy.dig("spec", "ingress").flat_map { |rule| rule["from"] }.all? { |peer| peer.dig("podSelector", "matchLabels", "app.kubernetes.io/name") == "traefik" }
 
 claims = Dir.glob(File.join(ROOT, "apps/*/*.yaml")).flat_map do |path|
   YAML.load_stream(File.read(path)).compact.select { |doc| doc["kind"] == "PersistentVolumeClaim" }

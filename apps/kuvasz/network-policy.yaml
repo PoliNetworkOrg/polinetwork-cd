@@ -1,15 +1,15 @@
-# Uptime Kuma's own login is disabled (Settings -> Security -> Disable Auth):
-# anything that opens its socket.io endpoint is logged in as admin. Only
-# Traefik may connect, so every request passes through the SSO gateway or the
-# public status page paths (ingress.yaml).
+# Only Traefik reaches Kuvasz and its gate. The gate in particular must not be
+# reachable any other way: it trusts the X-Forwarded-* headers it is sent.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-traefik
 spec:
   podSelector:
-    matchLabels:
-      app: uptime-kuma
+    matchExpressions:
+      - key: app
+        operator: In
+        values: [kuvasz, kuvasz-gate]
   policyTypes: [Ingress]
   ingress:
     - from:
@@ -20,5 +20,7 @@ spec:
             matchLabels:
               app.kubernetes.io/name: traefik
       ports:
-        - port: 3001
+        - port: 8080
+          protocol: TCP
+        - port: 4180
           protocol: TCP
