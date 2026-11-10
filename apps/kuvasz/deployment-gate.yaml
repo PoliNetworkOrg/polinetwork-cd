@@ -1,0 +1,121 @@
+# oauth2-proxy as a Traefik forwardAuth endpoint. It admits only people whose
+# `groups` claim (their roles, inheritance expanded) contains it-member, and
+# guards nothing but Kuvasz's sign-in routes, so status pages and push
+# heartbeats stay public and Kuvasz keeps its own sessions.
+# Redirect URI: https://uptime.polinetwork.org/oauth2/callback
+apiVersion: v1
+kind: Service
+metadata:
+  name: kuvasz-gate
+  labels:
+    app: kuvasz-gate
+spec:
+  ports:
+    - name: http
+      port: 4180
+      targetPort: 4180
+  selector:
+    app: kuvasz-gate
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kuvasz-gate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kuvasz-gate
+  template:
+    metadata:
+      labels:
+        app: kuvasz-gate
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6@sha256:c3415e8660af553f5e18f5d90db050614c02493c0ac6260ac59442f6d9b12048
+          imagePullPolicy: IfNotPresent
+          args:
+            - --http-address=0.0.0.0:4180
+            - --provider=oidc
+            - --oidc-issuer-url=https://auth.polinetwork.org/api/auth
+            - --scope=openid profile email polinetwork:identity
+            - --code-challenge-method=S256
+            - --redirect-url=https://uptime.polinetwork.org/oauth2/callback
+            - --whitelist-domain=uptime.polinetwork.org
+            - --oidc-groups-claim=groups
+            - --allowed-group=it-member
+            # Access is decided by role, not by address, and Telegram-only
+            # accounts may have no (verified) email: identify people by sub.
+            - --oidc-email-claim=sub
+            - --email-domain=*
+            - --insecure-oidc-allow-unverified-email=true
+            # forwardAuth mode: 202 for an admitted person, otherwise a
+            # redirect to auth.polinetwork.org or a 403.
+            - --upstream=static://202
+            - --reverse-proxy=true
+            - --trusted-proxy-ip=10.52.0.0/16
+            - --skip-provider-button=true
+            # The gate is only crossed while signing in to Kuvasz, so a short
+            # session makes every sign-in re-check the role.
+            - --cookie-name=_kuvasz_gate
+            - --cookie-secure=true
+            - --cookie-samesite=lax
+            - --cookie-expire=15m
+            - --silence-ping-logging=true
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: gate-client-id
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: gate-client-secret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: gate-cookie-secret
+          ports:
+            - containerPort: 4180
+          startupProbe:
+            httpGet:
+              path: /ping
+              port: 4180
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 4180
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 4180
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: "5m"
+              memory: "16Mi"
+            limits:
+              memory: "64Mi"

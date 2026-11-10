@@ -1,0 +1,75 @@
+# Kuvasz monitors and status pages. Kuvasz loads this file on startup and makes
+# every monitor type and status page defined here read-only in the UI.
+# A type that is left out stays editable in the UI; an empty list (e.g.
+# `push-monitors: []`) deletes every monitor of that type.
+# Reference: https://kuvasz-uptime.dev/management/managing-monitors/
+
+http-monitors:
+  # Public endpoints, through Cloudflare like real visitors.
+  - name: "Website"
+    url: "https://polinetwork.org"
+    uptime-check-interval: 60
+  - name: "Website (beta)"
+    url: "https://beta.polinetwork.org"
+    uptime-check-interval: 60
+  - name: "Auth"
+    url: "https://auth.polinetwork.org/api/auth/.well-known/openid-configuration"
+    uptime-check-interval: 60
+    expected-keyword: "issuer"
+  - name: "Admin dashboard"
+    url: "https://admin.polinetwork.org"
+    uptime-check-interval: 60
+  - name: "Live Audience"
+    url: "https://live.polinetwork.org/healthz"
+    uptime-check-interval: 60
+  - name: "polinet.cc"
+    url: "https://polinet.cc"
+    uptime-check-interval: 60
+  - name: "Vaultwarden"
+    url: "https://vault.polinetwork.org/alive"
+    uptime-check-interval: 60
+  - name: "Grafana"
+    url: "https://monitoring.polinetwork.org/api/health"
+    uptime-check-interval: 120
+  - name: "InfluxDB"
+    url: "https://influx.polinetwork.org/health"
+    uptime-check-interval: 120
+  - name: "Flux"
+    url: "https://flux.polinetwork.org"
+    uptime-check-interval: 300
+  # In-cluster only: the backend has no Ingress (apps/backend/network-policy.yaml
+  # admits this namespace).
+  - name: "Backend"
+    url: "http://backend-service.backend.svc.cluster.local:3000/"
+    uptime-check-interval: 60
+    ssl-check-enabled: false
+    expected-keyword: "hi"
+
+tcp-monitors:
+  - name: "PostgreSQL"
+    host: "postgres-service.postgres.svc.cluster.local"
+    port: 5432
+    uptime-check-interval: 60
+  - name: "Redis"
+    host: "redis-service.redis.svc.cluster.local"
+    port: 6379
+    uptime-check-interval: 60
+
+# The default page lists every monitor, internal ones included, so it stays
+# private (signed-in users only).
+default-status-page:
+  public: false
+  title: "PoliNetwork (all monitors)"
+
+# status.polinetwork.org redirects here.
+status-pages:
+  - title: "PoliNetwork status"
+    slug: "polinetwork"
+    public: true
+    theme-base: "GRAY"
+    monitors:
+      - "http:Website"
+      - "http:Auth"
+      - "http:Admin dashboard"
+      - "http:Live Audience"
+      - "http:polinet.cc"

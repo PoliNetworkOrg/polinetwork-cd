@@ -71,7 +71,6 @@ sqlite_backup() {
     tar -C "$dir" --exclude="./${db}" --exclude="./${db}-*" --exclude=./lost+found \
       -cf "${work_dir}/${name}-files.tar" .
 }
-sqlite_backup "${volumes}/uptime-kuma/uptime-pvc" kuma.db uptime-kuma
 sqlite_backup "${volumes}/monitoring/grafana-pvc" grafana.db grafana
 
 # Vaultwarden: the vault itself is in the PostgreSQL dump; the volume keeps the

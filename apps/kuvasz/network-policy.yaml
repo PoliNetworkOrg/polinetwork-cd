@@ -1,0 +1,26 @@
+# Only Traefik reaches Kuvasz and its gate. The gate in particular must not be
+# reachable any other way: it trusts the X-Forwarded-* headers it is sent.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: [kuvasz, kuvasz-gate]
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 8080
+          protocol: TCP
+        - port: 4180
+          protocol: TCP

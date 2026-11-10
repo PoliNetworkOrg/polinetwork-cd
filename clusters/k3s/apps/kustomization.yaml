@@ -9,11 +9,11 @@ resources:
   - bot-mat.yaml
   - bot-ts.yaml
   - influxdb.yaml
+  - kuvasz.yaml
   - live-audience.yaml
   - monitoring.yaml
   - polinetcc.yaml
   - postgres.yaml
   - redis.yaml
-  - uptime-kuma.yaml
   - vaultwarden.yaml
   - web.yaml
