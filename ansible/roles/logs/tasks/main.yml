@@ -1,0 +1,53 @@
+---
+- name: Create the journald drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Bound journald retention
+  ansible.builtin.template:
+    src: 90-polinetwork-retention.conf.j2
+    dest: /etc/systemd/journald.conf.d/90-polinetwork-retention.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart journald
+
+- name: Install the Pod log retention script
+  ansible.builtin.template:
+    src: pod-log-retention.sh.j2
+    dest: /usr/local/sbin/pod-log-retention
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Install the Pod log retention service
+  ansible.builtin.template:
+    src: pod-log-retention.service.j2
+    dest: /etc/systemd/system/pod-log-retention.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd for logs
+
+- name: Install the Pod log retention timer
+  ansible.builtin.template:
+    src: pod-log-retention.timer.j2
+    dest: /etc/systemd/system/pod-log-retention.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd for logs
+
+- name: Apply log retention handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start the Pod log retention timer
+  ansible.builtin.systemd_service:
+    name: pod-log-retention.timer
+    enabled: true
+    state: started
+  when: not ansible_check_mode

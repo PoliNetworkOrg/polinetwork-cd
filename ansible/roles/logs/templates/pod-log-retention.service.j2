@@ -1,0 +1,13 @@
+[Unit]
+Description=Delete container logs older than {{ log_retention_days }} days
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pod-log-retention
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/log/pods

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Container logs are kept for at most {{ log_retention_days }} days. Kubelet
+# rotates them by size only, so delete what is older than that.
+readonly pod_logs=/var/log/pods
+readonly max_age_minutes={{ log_retention_days * 24 * 60 }}
+
+# Rotated files (0.log.<timestamp>, optionally .gz) are never written again.
+find "$pod_logs" -type f -name '*.log.*' -mmin "+${max_age_minutes}" -delete
+
+# A current file untouched for that long holds only expired lines. Truncate it
+# rather than delete it, so a running container keeps logging to the same file.
+find "$pod_logs" -type f -name '*.log' -mmin "+${max_age_minutes}" -size +0c \
+  -exec truncate --size=0 -- {} +
