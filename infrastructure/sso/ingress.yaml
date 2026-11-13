@@ -1,0 +1,22 @@
+# The sign-in callback and sign-out (/oauth2/sign_out) for every protected
+# host. Cloudflare Tunnel sends every HTTP hostname to Traefik.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oauth2-proxy
+  namespace: sso
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: sso.polinetwork.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: oauth2-proxy
+                port:
+                  name: http

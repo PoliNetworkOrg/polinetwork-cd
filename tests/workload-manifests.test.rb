@@ -112,6 +112,43 @@ raise "WireGuard Portal must store its state in PostgreSQL" unless wg_portal_env
   raise "WireGuard Portal must read #{name} from a secret" unless wg_portal_env.dig(name, "valueFrom", "secretKeyRef")
 end
 
+sso_deployment = deployment("infrastructure/sso/deployment.yaml", "oauth2-proxy")
+sso = container(sso_deployment, "oauth2-proxy")
+sso_args = sso["args"]
+sso_env = sso["env"].to_h { |item| [item["name"], item] }
+raise "oauth2-proxy image must be pinned" unless sso["image"].include?("@sha256:")
+raise "oauth2-proxy must expose startup, readiness, and liveness probes" unless sso["startupProbe"] && sso["readinessProbe"] && sso["livenessProbe"]
+raise "oauth2-proxy must declare resources" unless sso.dig("resources", "requests") && sso.dig("resources", "limits")
+raise "oauth2-proxy must drop all capabilities" unless sso.dig("securityContext", "capabilities", "drop") == ["ALL"]
+%w[OAUTH2_PROXY_CLIENT_SECRET OAUTH2_PROXY_COOKIE_SECRET].each do |name|
+  raise "oauth2-proxy must read #{name} from a secret" unless sso_env.dig(name, "valueFrom", "secretKeyRef")
+end
+[
+  "--code-challenge-method=S256",
+  "--oidc-groups-claim=polinetwork_permission_list",
+  "--cookie-secure=true",
+  "--whitelist-domain=.polinetwork.org",
+  "--trusted-proxy-ip=10.52.0.0/16",
+].each do |arg|
+  raise "oauth2-proxy must run with #{arg}" unless sso_args.include?(arg)
+end
+raise "oauth2-proxy must refresh sessions before the 5-minute tokens expire" unless sso_args.include?("--cookie-refresh=4m")
+
+# Every Middleware that calls the SSO gateway must name a permission, keep the
+# https scheme for post-login redirects, and hand refreshed cookies back: Auth
+# rotates refresh tokens on every use.
+Dir.glob(File.join(ROOT, "apps/*/*.yaml")).each do |path|
+  YAML.load_stream(File.read(path)).compact.each do |doc|
+    next unless doc["kind"] == "Middleware"
+    auth = doc.dig("spec", "forwardAuth")
+    next unless auth && auth["address"].to_s.start_with?("http://oauth2-proxy.sso.svc.cluster.local:4180/")
+    name = "#{path.delete_prefix("#{ROOT}/")}: #{doc.dig("metadata", "name")}"
+    raise "#{name} must require a permission with ?allowed_groups=" unless auth["address"].match?(/\?allowed_groups=[^&]+/)
+    raise "#{name} must set trustForwardHeader" unless auth["trustForwardHeader"] == true
+    raise "#{name} must return refreshed session cookies" unless auth["addAuthCookiesToResponse"]&.include?("__Secure-pn_sso")
+  end
+end
+
 claims = Dir.glob(File.join(ROOT, "apps/*/*.yaml")).flat_map do |path|
   YAML.load_stream(File.read(path)).compact.select { |doc| doc["kind"] == "PersistentVolumeClaim" }
 end
