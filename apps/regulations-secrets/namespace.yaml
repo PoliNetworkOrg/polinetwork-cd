@@ -1,3 +1,5 @@
+# latex-worker's namespace lives here so its secret can sync before the worker
+# image exists.
 apiVersion: v1
 kind: Namespace
 metadata:

@@ -1,6 +1,7 @@
 # Generates the latex-worker Kustomization with the current digest of
 # ghcr.io/polinetworkorg/latex-worker:latest (provider latex-worker-image).
-# Nothing is deployed until the backend repository publishes that image.
+# Nothing is deployed until that image is pullable (the backend repository
+# publishes it, and the package is public) and regulations-secrets is Ready.
 apiVersion: fluxcd.controlplane.io/v1
 kind: ResourceSet
 metadata:
@@ -23,9 +24,9 @@ spec:
           fluxcd.controlplane.io/prune: disabled
       spec:
         dependsOn:
-          - name: infrastructure-secret-stores
+          - name: regulations-secrets
         interval: 30m
-        retryInterval: 1m
+        retryInterval: 2m
         timeout: 5m
         prune: true
         wait: true

@@ -16,5 +16,6 @@ resources:
   - polinetcc.yaml
   - postgres.yaml
   - redis.yaml
+  - regulations-secrets.yaml
   - vaultwarden.yaml
   - web.yaml

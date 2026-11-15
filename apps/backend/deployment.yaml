@@ -101,11 +101,14 @@ spec:
                   key: oauth-private-jwk
             # Regulations editor: every variable is optional and the feature
             # stays off without them. Empty values (TODO) are pending from
-            # Lorenzo; the backend reads env with emptyStringAsUndefined.
+            # Lorenzo; the backend reads env with emptyStringAsUndefined. The
+            # secrets come from apps/regulations-secrets; env from a Secret is
+            # read at container start, so restart the backend once after they
+            # first sync.
             - name: REGULATIONS_INTERNAL_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: regulations
+                  name: regulations-core
                   key: internal-secret
                   optional: true
             - name: REGULATIONS_COLLAB_PUBLIC_URL # handed to browsers in collab tickets
@@ -117,7 +120,7 @@ spec:
             - name: REGULATIONS_WORKER_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: regulations
+                  name: regulations-core
                   key: worker-secret
                   optional: true
             - name: REGULATIONS_GITHUB_MODE
@@ -128,16 +131,16 @@ spec:
             - name: REGULATIONS_GITHUB_WEBHOOK_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: regulations
-                  key: github-webhook-secret
+                  name: regulations-github
+                  key: webhook-secret
                   optional: true
             - name: REGULATIONS_GITHUB_APP_ID
               value: "" # TODO: GitHub App ID
             - name: REGULATIONS_GITHUB_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
-                  name: regulations
-                  key: github-app-private-key
+                  name: regulations-github
+                  key: private-key
                   optional: true
             - name: REGULATIONS_GITHUB_REPO
               value: "PoliNetworkOrg/legal"
@@ -150,8 +153,8 @@ spec:
             - name: REGULATIONS_LLM_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: regulations
-                  key: llm-api-key
+                  name: regulations-llm
+                  key: api-key
                   optional: true
             - name: REGULATIONS_TELEGRAM_CHAT_ID
               value: "" # TODO: Soci group chat id

@@ -14,7 +14,9 @@ spec:
       targetPort: 4101
 ---
 # Hocuspocus server for the regulations editor: the backend image with another
-# entrypoint, so it always runs the backend's digest (same Flux Kustomization).
+# entrypoint, so it always runs the backend's digest (same ResourceSet input).
+# Its Flux Kustomization waits for regulations-secrets, so this Pod is created
+# only once REGULATIONS_INTERNAL_SECRET and REGULATIONS_WORKER_SECRET exist.
 # Port 4100 is the editors' websocket, published on collab.polinetwork.org; it
 # accepts only single-use tickets from regulations.collabTicket. Port 4101 is
 # the internal API, for the backend only. Exactly one replica, replaced with
@@ -89,14 +91,14 @@ spec:
             - name: REGULATIONS_INTERNAL_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: regulations
+                  name: regulations-core
                   key: internal-secret
             - name: REGULATIONS_WORKER_URL
               value: "http://latex-worker.latex-worker.svc.cluster.local:4200"
             - name: REGULATIONS_WORKER_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: regulations
+                  name: regulations-core
                   key: worker-secret
                   optional: true
           startupProbe:

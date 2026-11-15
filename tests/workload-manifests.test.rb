@@ -115,9 +115,9 @@ def peers(policy, port)
   policy.dig("spec", "ingress").select { |rule| rule["ports"].any? { |item| item["port"] == port } }.flat_map { |rule| rule["from"] }
 end
 
-collab_deployment = deployment("apps/backend/regulations-collab.yaml", "regulations-collab")
+collab_deployment = deployment("apps/regulations-collab/deployment.yaml", "regulations-collab")
 collab = container(collab_deployment, "regulations-collab")
-collab_policy = network_policy("apps/backend/network-policy.yaml", "regulations-collab")
+collab_policy = network_policy("apps/regulations-collab/network-policy.yaml", "regulations-collab")
 raise "Collab must run the backend image, so it ships with the backend's digest" unless collab["image"] == container(deployment("apps/backend/deployment.yaml", "backend"), "backend")["image"]
 raise "Collab must run exactly one replica" unless collab_deployment.dig("spec", "replicas") == 1
 raise "Collab must use Recreate so one process owns each open document" unless collab_deployment.dig("spec", "strategy", "type") == "Recreate"
@@ -169,7 +169,10 @@ raise "LaTeX worker quota must cap CPU and memory limits" unless quota.dig("spec
 # IngressRoutes only reach Services in their own namespace) exactly one router
 # targets backend-service, with exactly this rule and these middlewares.
 PUBLIC_RULE = "Host(`api.polinetwork.org`) && PathPrefix(`/public/`) && PathRegexp(`^/public(/[A-Za-z0-9_-]+)+$`)".freeze
-backend_docs = Dir.glob(File.join(ROOT, "apps/backend/*.yaml")).flat_map { |path| YAML.load_stream(File.read(path)).compact }
+backend_dirs = Dir.glob(File.join(ROOT, "apps/*/kustomization.yaml")).select { |path| YAML.safe_load(File.read(path))["namespace"] == "backend" }.map { |path| File.dirname(path) }
+raise "expected apps/backend and apps/regulations-collab in the backend namespace" unless backend_dirs.map { |dir| File.basename(dir) }.sort == %w[backend regulations-collab]
+backend_docs = backend_dirs.flat_map { |dir| Dir.glob(File.join(dir, "*.yaml")) }.reject { |path| path.end_with?("kustomization.yaml") }.flat_map { |path| YAML.load_stream(File.read(path)).compact }
+backend_docs += documents("apps/regulations-secrets/external-secrets.yaml").select { |doc| doc.dig("metadata", "namespace") == "backend" }
 backend_docs.select { |doc| doc["kind"] == "Ingress" }.flat_map { |ingress| ingress.dig("spec", "rules") }.flat_map { |rule| rule.dig("http", "paths") }.each do |path|
   raise "Ingresses in the backend namespace may only publish the collab websocket" unless path.dig("backend", "service") == { "name" => "regulations-collab", "port" => { "number" => 4100 } }
 end
@@ -199,6 +202,35 @@ end
 ].each do |path|
   raise "#{path} must not match the public route" if path.start_with?("/public/") && public_path.match?(path)
 end
+
+# Merging must be harmless before Lorenzo creates the regulations secrets and
+# the worker image is pullable: nothing that needs them may run, fail or alert.
+def flux_kustomizations(path)
+  YAML.load_stream(File.read(File.join(ROOT, path))).compact.flat_map do |doc|
+    doc["kind"] == "ResourceSet" ? doc.dig("spec", "resources") : [doc]
+  end.select { |doc| doc["kind"] == "Kustomization" }.to_h { |doc| [doc.dig("metadata", "name"), doc["spec"]] }
+end
+flux = flux_kustomizations("clusters/k3s/apps/backend.yaml").merge(flux_kustomizations("clusters/k3s/apps/latex-worker.yaml")).merge(flux_kustomizations("clusters/k3s/apps/regulations-secrets.yaml"))
+gate = flux.fetch("regulations-secrets")
+raise "clusters/k3s/apps/kustomization.yaml must list regulations-secrets.yaml" unless YAML.safe_load(File.read(File.join(ROOT, "clusters/k3s/apps/kustomization.yaml")))["resources"].include?("regulations-secrets.yaml")
+raise "regulations-secrets must check only the core secrets, not every ExternalSecret" unless gate["wait"] == false && gate["healthChecks"]
+gated_secrets = gate["healthChecks"].select { |check| check["kind"] == "ExternalSecret" }.map { |check| [check["namespace"], check["name"]] }
+external_secrets = documents("apps/regulations-secrets/external-secrets.yaml").to_h { |doc| [[doc.dig("metadata", "namespace"), doc.dig("metadata", "name")], doc.dig("spec", "target", "name")] }
+%w[regulations-collab latex-worker].each do |name|
+  raise "#{name} must wait for regulations-secrets" unless flux.fetch(name)["dependsOn"].map { |dep| dep["name"] }.include?("regulations-secrets")
+end
+raise "The backend Kustomization must not wait for regulations-secrets" if flux.fetch("backend")["dependsOn"].map { |dep| dep["name"] }.include?("regulations-secrets")
+{ collab_deployment => "backend", worker_deployment => "latex-worker" }.each do |resource, namespace|
+  resource.dig("spec", "template", "spec", "containers").flat_map { |item| item.fetch("env", []) }.map { |item| item.dig("valueFrom", "secretKeyRef") }.compact.reject { |ref| ref["optional"] }.each do |ref|
+    next if ref["name"] == "azure-kv"
+    raise "#{resource.dig("metadata", "name")} requires Secret #{ref["name"]}, which regulations-secrets does not gate" unless gated_secrets.any? { |ns, es| ns == namespace && external_secrets[[ns, es]] == ref["name"] }
+  end
+end
+backend_app = container(deployment("apps/backend/deployment.yaml", "backend"), "backend")
+backend_app.fetch("env", []).map { |item| item.dig("valueFrom", "secretKeyRef") }.compact.reject { |ref| ref["name"] == "azure-kv" }.each do |ref|
+  raise "The backend must read regulations Secret #{ref["name"]} with optional: true" unless ref["optional"] == true && external_secrets.value?(ref["name"])
+end
+raise "apps/backend must not hold ExternalSecrets other than azure-kv" unless documents("apps/backend/external-secret.yaml").map { |doc| doc.dig("metadata", "name") } == ["azure-kv"]
 
 %w[core edge gateway].each do |component|
   name = "defguard-#{component}"

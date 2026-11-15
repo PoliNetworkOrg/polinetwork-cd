@@ -1,5 +1,6 @@
-# Generates the backend Kustomization with the current digest of
-# ghcr.io/polinetworkorg/backend:latest (provider backend-image).
+# Generates the backend and regulations-collab Kustomizations with the current
+# digest of ghcr.io/polinetworkorg/backend:latest (provider backend-image), so
+# collab always runs the backend's image.
 apiVersion: fluxcd.controlplane.io/v1
 kind: ResourceSet
 metadata:
@@ -36,6 +37,33 @@ spec:
           kind: GitRepository
           name: flux-system
         path: ./apps/backend
+        images:
+          - name: ghcr.io/polinetworkorg/backend
+            newTag: << inputs.backend_image.tag | quote >>
+            digest: << inputs.backend_image.digest | quote >>
+    # Hocuspocus for the regulations editor, from the same image. It waits for
+    # regulations-secrets (its required secrets) and for the backend (which runs
+    # the database migrations); before then nothing of it is applied.
+    - apiVersion: kustomize.toolkit.fluxcd.io/v1
+      kind: Kustomization
+      metadata:
+        name: regulations-collab
+        namespace: flux-system
+        annotations:
+          fluxcd.controlplane.io/prune: disabled
+      spec:
+        dependsOn:
+          - name: regulations-secrets
+          - name: backend
+        interval: 30m
+        retryInterval: 2m
+        timeout: 5m
+        prune: true
+        wait: true
+        sourceRef:
+          kind: GitRepository
+          name: flux-system
+        path: ./apps/regulations-collab
         images:
           - name: ghcr.io/polinetworkorg/backend
             newTag: << inputs.backend_image.tag | quote >>
