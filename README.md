@@ -28,6 +28,15 @@ bot-prod/ bot-rooms/ mariadb/   legacy AKS folders, disabled
   Keep Auth behind the tunnel and ensure Cloudflare does not remove the header.
   Cluster-internal IdP calls carry no visitor address and share Auth's bounded
   token budget of 60 requests per minute.
+- **Backend exposure:** the backend is in-cluster only except its declared
+  `/public` prefix, routed on `api.polinetwork.org/public/...` by one
+  IngressRoute with a path whitelist, body limit and rate limits
+  (`apps/backend/public-route.yaml`; `tests/` enforces it). New public routes
+  are added in the backend, never as new Ingresses here.
+- **Regulations editor:** `regulations-collab` (backend image, `backend`
+  namespace) publishes only its websocket on `collab.polinetwork.org`.
+  `latex-worker` runs untrusted LaTeX with no egress, a read-only root and a
+  namespace quota.
 - **Secrets:** `ExternalSecret`s sync from Azure Key Vault (`kv-pn-apps`,
   `kv-pn-infra`). No secrets live in Git.
 - **Images:** PoliNetwork apps run `ghcr.io/polinetworkorg/<app>:latest`. The

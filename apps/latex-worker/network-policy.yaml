@@ -1,0 +1,28 @@
+# Only the backend and regulations-collab may call the worker, and the worker may call nothing: not
+# even DNS. Compiles get every input in the request.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: latex-worker
+  namespace: latex-worker
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: backend
+          podSelector:
+            matchLabels:
+              app: backend
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: backend
+          podSelector:
+            matchLabels:
+              app: regulations-collab
+      ports:
+        - port: 4200
+          protocol: TCP
+  egress: []

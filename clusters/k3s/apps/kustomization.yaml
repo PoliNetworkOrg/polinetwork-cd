@@ -10,6 +10,7 @@ resources:
   - bot-ts.yaml
   - influxdb.yaml
   - kuvasz.yaml
+  - latex-worker.yaml
   - live-audience.yaml
   - monitoring.yaml
   - polinetcc.yaml

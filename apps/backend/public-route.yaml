@@ -1,0 +1,80 @@
+# The backend's only public surface: its declared /public prefix (regulations
+# spec, "Public backend routes"), on api.polinetwork.org through the tunnel.
+# Every other path, on any host, stays in-cluster only (#28): this is the only
+# router that targets backend-service, and the test suite enforces it.
+#
+# The match is a whitelist: after Traefik's own path sanitizing, the path must
+# be /public followed by plain segments of letters, digits, "-" and "_". Dots,
+# "%" (encoded characters), empty segments and a trailing slash never match,
+# so /public/../api or /public/%2e%2e/api cannot reach another backend route.
+# The backend checks again, authenticates every route itself (GitHub HMAC) and
+# keeps its own body and rate limits. Bun resolves ".." and "%2e%2e" before the
+# app sees the path, so the backend can't spot an escape from the path alone:
+# public-ingress-marker stamps every request from this route, overwriting any
+# client value, and the backend lets a stamped request reach only its declared
+# /public routes.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: backend-public
+spec:
+  entryPoints: [web]
+  routes:
+    - kind: Rule
+      match: Host(`api.polinetwork.org`) && PathPrefix(`/public/`) && PathRegexp(`^/public(/[A-Za-z0-9_-]+)+$`)
+      middlewares:
+        - name: public-rate-limit-total
+        - name: public-rate-limit-client
+        - name: public-body-limit
+        - name: public-ingress-marker
+      services:
+        - name: backend-service
+          port: 3000
+---
+# GitHub webhook payloads are a few tens of KiB; refuse anything over 1 MiB
+# with 413 before it reaches the backend.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: public-body-limit
+spec:
+  buffering:
+    maxRequestBodyBytes: 1048576
+    memRequestBodyBytes: 1048576
+---
+# Per visitor: Cloudflare sets Cf-Connecting-Ip at the edge (see README,
+# Traffic); the TCP peer is always a cloudflared Pod.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: public-rate-limit-client
+spec:
+  rateLimit:
+    average: 1
+    period: 1s
+    burst: 20
+    sourceCriterion:
+      requestHeaderName: Cf-Connecting-Ip
+---
+# Whole prefix: every request shares the api.polinetwork.org bucket.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: public-rate-limit-total
+spec:
+  rateLimit:
+    average: 5
+    period: 1s
+    burst: 50
+    sourceCriterion:
+      requestHost: true
+---
+# Set, never appended: Traefik replaces whatever the client sent.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: public-ingress-marker
+spec:
+  headers:
+    customRequestHeaders:
+      X-PoliNetwork-Ingress: "public"
