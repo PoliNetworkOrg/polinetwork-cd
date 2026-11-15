@@ -1,3 +1,21 @@
+# Unlike the other image providers (infrastructure/image-automation), this one
+# lives here, under the root sync, which does not wait for health: until the
+# image exists and its package is public, the provider is the only thing that
+# reports an error, and infrastructure-image-automation stays Ready.
+apiVersion: fluxcd.controlplane.io/v1
+kind: ResourceSetInputProvider
+metadata:
+  name: latex-worker-image
+  namespace: flux-system
+  annotations:
+    fluxcd.controlplane.io/reconcileEvery: "6h"
+spec:
+  type: OCIArtifactTag
+  url: oci://ghcr.io/polinetworkorg/latex-worker
+  filter:
+    includeTag: '^latest$'
+    limit: 1
+---
 # Generates the latex-worker Kustomization with the current digest of
 # ghcr.io/polinetworkorg/latex-worker:latest (provider latex-worker-image).
 # Nothing is deployed until that image is pullable (the backend repository
