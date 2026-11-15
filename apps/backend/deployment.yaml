@@ -157,9 +157,9 @@ spec:
                   key: api-key
                   optional: true
             - name: REGULATIONS_TELEGRAM_CHAT_ID
-              value: "" # TODO: Soci group chat id
+              value: "-1001897010014" # Soci group (t.me/c/1897010014)
             - name: REGULATIONS_TELEGRAM_TOPIC_ID
-              value: "" # TODO: Soci group topic id
+              value: "" # General topic (id 1): Telegram wants no message_thread_id there
             - name: REGULATIONS_EMAIL_SENDER
               value: "noreply@polinetwork.org" # TODO: confirm the final sender
             - name: REGULATIONS_EMAIL_TO
