@@ -36,7 +36,10 @@ bot-prod/ bot-rooms/ mariadb/   legacy AKS folders, disabled
 - **Regulations editor:** `regulations-collab` (backend image, `backend`
   namespace) publishes only its websocket on `collab.polinetwork.org`.
   `latex-worker` runs untrusted LaTeX with no egress, a read-only root and a
-  namespace quota.
+  namespace quota. Both wait for the `regulations-secrets` Kustomization,
+  which is Ready only once the Key Vault entries `regulations-internal-secret`
+  and `regulations-worker-secret` exist; the worker also waits for its image.
+  Until then nothing of theirs runs; afterwards they start by themselves.
 - **Secrets:** `ExternalSecret`s sync from Azure Key Vault (`kv-pn-apps`,
   `kv-pn-infra`). No secrets live in Git.
 - **Images:** PoliNetwork apps run `ghcr.io/polinetworkorg/<app>:latest`. The
