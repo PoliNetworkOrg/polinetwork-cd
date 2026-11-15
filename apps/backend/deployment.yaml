@@ -135,7 +135,7 @@ spec:
                   key: webhook-secret
                   optional: true
             - name: REGULATIONS_GITHUB_APP_ID
-              value: "" # TODO: GitHub App ID
+              value: "5769580" # pn-regolamenti, installed on PoliNetworkOrg/legal
             - name: REGULATIONS_GITHUB_PRIVATE_KEY
               valueFrom:
                 secretKeyRef:
