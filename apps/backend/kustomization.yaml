@@ -7,4 +7,5 @@ resources:
   - namespace.yaml
   - external-secret.yaml
   - deployment.yaml
+  - public-route.yaml
   - network-policy.yaml

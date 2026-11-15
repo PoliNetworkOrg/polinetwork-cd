@@ -1,0 +1,11 @@
+# latex-worker's namespace lives here so its secret can sync before the worker
+# image exists.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: latex-worker
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
