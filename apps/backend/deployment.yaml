@@ -166,6 +166,8 @@ spec:
               value: "soci@polinetwork.org"
             - name: REGULATIONS_EMAIL_REPLY_TO
               value: "direttivo@polinetwork.org"
+            - name: REGULATIONS_EMAIL_CC # the Soci's notice of an emanation only
+              value: "direttivo@polinetwork.org,probiviri@polinetwork.org"
             - name: REGULATIONS_DIRETTIVO_EMAIL
               value: "direttivo@polinetwork.org"
           startupProbe:
