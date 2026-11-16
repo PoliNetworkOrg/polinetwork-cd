@@ -175,6 +175,10 @@ spec:
                 secretKeyRef:
                   name: azure-kv
                   key: live-mailer-token
+            - name: SOCI_IBAN
+              value: "IT58L0623001653000044398658"
+            - name: SOCI_BENEFICIARI
+              value: "PoliNetwork APS"
           startupProbe:
             tcpSocket:
               port: 3000
