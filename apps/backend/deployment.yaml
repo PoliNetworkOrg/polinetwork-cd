@@ -170,6 +170,11 @@ spec:
               value: "direttivo@polinetwork.org,probiviri@polinetwork.org"
             - name: REGULATIONS_DIRETTIVO_EMAIL
               value: "direttivo@polinetwork.org"
+            - name: LIVE_MAILER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: live-mailer-token
           startupProbe:
             tcpSocket:
               port: 3000

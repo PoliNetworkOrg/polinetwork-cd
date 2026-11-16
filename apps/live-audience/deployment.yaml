@@ -84,6 +84,13 @@ spec:
               value: "socio"
             - name: ADMIN_PERMISSION
               value: "live-audience:admin"
+            - name: MAILER_URL
+              value: "http://backend-service.backend.svc.cluster.local:3000/internal/secret-santa/emails"
+            - name: MAILER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: azure-kv
+                  key: live-mailer-token
           startupProbe:
             httpGet:
               path: /healthz
