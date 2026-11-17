@@ -91,6 +91,13 @@ spec:
             # The image is pinned; upgrades go through this file.
             - name: ENABLE_CHECK_UPDATES
               value: "false"
+            # The image sets JAVA_TOOL_OPTIONS="-Xms64M -Xmx192M", which leaves
+            # Netty's direct memory at the heap size (~186 MiB): once full, every
+            # status page request failed with OutOfDirectMemoryError (HTTP 500).
+            # Setting the variable replaces the image's value, so the heap flags
+            # are repeated unchanged.
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xms64M -Xmx192M -XX:MaxDirectMemorySize=256M"
           startupProbe:
             httpGet:
               path: /api/v2/health
@@ -120,8 +127,9 @@ spec:
             requests:
               cpu: "50m"
               memory: "384Mi"
+            # Heap 192M + direct 256M + ~330M for the rest of the JVM.
             limits:
-              memory: "768Mi"
+              memory: "1Gi"
           volumeMounts:
             - name: config
               mountPath: /config
