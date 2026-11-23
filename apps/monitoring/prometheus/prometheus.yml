@@ -145,3 +145,9 @@ scrape_configs:
       - source_labels:
           - __meta_kubernetes_pod_name
         target_label: pod
+
+  # Gatus (uptime.polinetwork.org): one result per endpoint check.
+  - job_name: 'gatus'
+    static_configs:
+      - targets:
+          - 'gatus.gatus.svc:8080'

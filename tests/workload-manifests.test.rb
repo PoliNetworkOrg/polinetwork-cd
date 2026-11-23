@@ -258,6 +258,64 @@ raise "WireGuard Portal must store its state in PostgreSQL" unless wg_portal_env
   raise "WireGuard Portal must read #{name} from a secret" unless wg_portal_env.dig(name, "valueFrom", "secretKeyRef")
 end
 
+# Gatus: status.polinetwork.org is anonymous, so the public instance must load
+# nothing but the public endpoints, and every path of uptime.polinetwork.org
+# except the gate's own /oauth2 must cross the it-member gate.
+gatus_kustomization = YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/kustomization.yaml")))
+gatus_maps = gatus_kustomization["configMapGenerator"].to_h { |map| [map["name"], map["files"]] }
+raise "The public Gatus instance must load only the public endpoints and its settings" unless gatus_maps["gatus-status-config"].sort == %w[config/endpoints-public.yaml config/status.yaml]
+status_settings = YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/status.yaml")))
+raise "The public Gatus settings must not define endpoints, metrics, security or alerting" if (status_settings.keys & %w[endpoints external-endpoints suites metrics security alerting]).any?
+public_endpoints = YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/endpoints-public.yaml")))["endpoints"]
+raise "Public Gatus endpoints must be https URLs, never in-cluster addresses" unless public_endpoints.all? { |item| item["url"].start_with?("https://") && !item["url"].include?(".svc") }
+gatus_names = (public_endpoints + YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/endpoints-internal.yaml")))["endpoints"]).map { |item| item["name"] }
+raise "Gatus endpoint names must be unique" unless gatus_names.uniq.size == gatus_names.size
+
+{ "gatus" => "gatus-config", "gatus-status" => "gatus-status-config" }.each do |name, config_map|
+  resource = deployment("apps/gatus/deployment-#{name == "gatus" ? "gatus" : "status"}.yaml", name)
+  app = container(resource, "gatus")
+  pod = resource.dig("spec", "template", "spec")
+  hardened!(name, resource, app)
+  raise "#{name} image must be pinned" unless app["image"].include?("@sha256:")
+  raise "#{name} must use Recreate with its single-writer SQLite PVC" unless resource.dig("spec", "strategy", "type") == "Recreate"
+  raise "#{name} must expose startup, readiness, and liveness probes" unless app["startupProbe"] && app["readinessProbe"] && app["livenessProbe"]
+  raise "#{name} must declare resources" unless app.dig("resources", "requests") && app.dig("resources", "limits")
+  config_volume = pod["volumes"].find { |volume| volume.dig("configMap", "name") == config_map } || raise("#{name} must mount #{config_map}")
+  # Gatus walks its whole config directory, including the ..<timestamp>
+  # directory of a plain ConfigMap mount, and would load every file twice.
+  file_mounts = app["volumeMounts"].select { |mount| mount["name"] == config_volume["name"] }
+  raise "#{name} must mount each config file with subPath" unless file_mounts.all? { |mount| mount["subPath"] && mount["mountPath"] == "/etc/gatus/#{mount["subPath"]}" }
+  raise "#{name} must mount exactly the files of #{config_map}" unless file_mounts.map { |mount| mount["subPath"] }.sort == gatus_maps[config_map].map { |file| File.basename(file) }.sort
+end
+
+gatus_gate = container(deployment("apps/gatus/deployment-gate.yaml", "gatus-gate"), "oauth2-proxy")
+hardened!("Gatus gate", deployment("apps/gatus/deployment-gate.yaml", "gatus-gate"), gatus_gate)
+raise "The Gatus gate must admit only it-member" unless gatus_gate["args"].select { |arg| arg.start_with?("--allowed-group") } == ["--allowed-group=it-member"]
+raise "The Gatus gate must use PKCE" unless gatus_gate["args"].include?("--code-challenge-method=S256")
+
+gatus_ingresses = documents("apps/gatus/ingress.yaml")
+gatus_ingresses.each do |ingress|
+  middlewares = ingress.dig("metadata", "annotations", "traefik.ingress.kubernetes.io/router.middlewares").to_s.split(",")
+  ingress.dig("spec", "rules").each do |rule|
+    rule.dig("http", "paths").each do |path|
+      service = path.dig("backend", "service", "name")
+      case rule["host"]
+      when "uptime.polinetwork.org"
+        next if service == "gatus-gate" && path["path"] == "/oauth2"
+        raise "uptime.polinetwork.org may only route to the internal instance" unless service == "gatus"
+        raise "uptime.polinetwork.org must cross the it-member gate" unless middlewares.include?("gatus-it-member-gate@kubernetescrd")
+      when "status.polinetwork.org"
+        raise "status.polinetwork.org may only route to the public instance" unless service == "gatus-status"
+      else
+        raise "unexpected Gatus host #{rule["host"]}"
+      end
+    end
+  end
+end
+gatus_policy = network_policy("apps/gatus/network-policy.yaml", "allow-traefik")
+raise "Only Traefik may reach the Gatus web ports" unless peers(gatus_policy, 4180) == [TRAEFIK] && peers(gatus_policy, 8080) == [TRAEFIK]
+raise "Only Prometheus may reach the internal Gatus besides Traefik" unless peers(network_policy("apps/gatus/network-policy.yaml", "allow-prometheus"), 8080).all? { |peer| from_pod?(peer, "monitoring", "prometheus-server") }
+
 claims = Dir.glob(File.join(ROOT, "apps/*/*.yaml")).flat_map do |path|
   YAML.load_stream(File.read(path)).compact.select { |doc| doc["kind"] == "PersistentVolumeClaim" }
 end

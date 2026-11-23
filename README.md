@@ -59,6 +59,11 @@ bot-prod/ bot-rooms/ mariadb/   legacy AKS folders, disabled
   `clusters/k3s/apps/kustomization.yaml`, and allow the namespace in
   `infrastructure/secret-stores/` if it needs secrets.
 - **Status:** Flux UI at `flux.polinetwork.org`.
+- **Uptime:** Gatus (`apps/gatus/`) checks every service. IT (it-member) sees
+  all of it at `uptime.polinetwork.org`; `status.polinetwork.org` is the public
+  page, a separate instance that loads only `config/endpoints-public.yaml`.
+  Add or change checks in `apps/gatus/config/`; Prometheus alerts on them in
+  Telegram (`EndpointDown`).
 
 CI (`.github/workflows/ansible.yml`) syntax-checks the playbooks, builds the
 Kustomizations and runs `tests/`.

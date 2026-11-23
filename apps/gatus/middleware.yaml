@@ -1,0 +1,48 @@
+# Traefik does not trust cloudflared's X-Forwarded-Proto and reports `http`
+# (the tunnel ends on the `web` entrypoint). oauth2-proxy builds its redirects
+# from it, and visitors only ever arrive over https.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: forwarded-https
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: https
+---
+# Admits only it-member to uptime.polinetwork.org (ingress.yaml). It must come
+# after forwarded-https: trustForwardHeader passes that scheme on to the gate.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: it-member-gate
+spec:
+  forwardAuth:
+    address: http://gatus-gate.gatus.svc.cluster.local:4180/
+    trustForwardHeader: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers
+spec:
+  headers:
+    frameDeny: true
+    contentTypeNosniff: true
+    referrerPolicy: strict-origin-when-cross-origin
+---
+# status.polinetwork.org is anonymous. Per visitor: Cloudflare sets
+# Cf-Connecting-Ip at the edge (see README, Traffic); the TCP peer is always a
+# cloudflared Pod. A page load is a few dozen requests (badges and charts),
+# then one refresh a minute.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: status-rate-limit-client
+spec:
+  rateLimit:
+    average: 10
+    period: 1s
+    burst: 100
+    sourceCriterion:
+      requestHeaderName: Cf-Connecting-Ip

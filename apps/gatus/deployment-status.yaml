@@ -1,0 +1,116 @@
+# The public instance behind status.polinetwork.org: public endpoints only.
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatus-status
+  labels:
+    app: gatus-status
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: gatus-status
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatus-status
+spec:
+  replicas: 1
+  # One writer for the SQLite database on a ReadWriteOnce volume.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: gatus-status
+  template:
+    metadata:
+      labels:
+        app: gatus-status
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gatus
+          image: ghcr.io/twin/gatus:v5.38.0@sha256:085ed63da963728965d00a3c78aa6167e3bf135218485b893201758e079e8415
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GATUS_CONFIG_PATH
+              value: /etc/gatus
+            - name: GATUS_LOG_LEVEL
+              value: INFO
+            - name: GOMEMLIMIT
+              value: 96MiB
+          ports:
+            - containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "48Mi"
+            limits:
+              memory: "128Mi"
+          volumeMounts:
+            # See deployment-gatus.yaml: one file per mount, nothing else in
+            # the directory.
+            - name: config-dir
+              mountPath: /etc/gatus
+            - name: config
+              mountPath: /etc/gatus/endpoints-public.yaml
+              subPath: endpoints-public.yaml
+              readOnly: true
+            - name: config
+              mountPath: /etc/gatus/status.yaml
+              subPath: status.yaml
+              readOnly: true
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config-dir
+          emptyDir:
+            sizeLimit: 1Mi
+        - name: config
+          configMap:
+            name: gatus-status-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: gatus-status-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi

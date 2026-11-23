@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gatus
+
+resources:
+  - namespace.yaml
+  - external-secret.yaml
+  - storage.yaml
+  - deployment-gatus.yaml
+  - deployment-status.yaml
+  - deployment-gate.yaml
+  - middleware.yaml
+  - ingress.yaml
+  - network-policy.yaml
+
+# Two Gatus instances: `gatus` (uptime.polinetwork.org, every endpoint) and
+# `gatus-status` (status.polinetwork.org, public endpoints only). Gatus merges
+# every file in its config directory, so both load config/endpoints-public.yaml.
+# The generated names carry a content hash, so editing a file rolls out every
+# instance that reads it.
+configMapGenerator:
+  - name: gatus-config
+    files:
+      - config/endpoints-public.yaml
+      - config/endpoints-internal.yaml
+      - config/gatus.yaml
+  - name: gatus-status-config
+    files:
+      - config/endpoints-public.yaml
+      - config/status.yaml

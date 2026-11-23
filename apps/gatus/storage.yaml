@@ -1,0 +1,29 @@
+# One SQLite database per instance. Gatus keeps 30 days of hourly uptime plus
+# the last 100 results and 50 events per endpoint, a few MiB in all.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gatus-data
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gatus-status-data
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: fast
+  resources:
+    requests:
+      storage: 1Gi
