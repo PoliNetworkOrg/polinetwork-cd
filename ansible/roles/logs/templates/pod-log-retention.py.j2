@@ -14,7 +14,6 @@ import gzip
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 
@@ -49,8 +48,16 @@ def open_log(path, mode):
     return gzip.open(path, mode) if path.endswith(".gz") else open(path, mode)
 
 
-def open_paths():
-    """Every file under POD_LOGS that some process holds open."""
+def file_id(path):
+    status = os.stat(path)
+    return status.st_dev, status.st_ino
+
+
+def open_files():
+    """(device, inode) of every file under POD_LOGS some process holds open.
+
+    By inode, so a file renamed since (by kubelet or by rotate()) still counts.
+    """
     held = set()
     for pid in filter(str.isdigit, os.listdir("/proc")):
         try:
@@ -59,11 +66,10 @@ def open_paths():
             continue
         for fd in fds:
             try:
-                target = os.readlink(f"/proc/{pid}/fd/{fd}")
+                if os.readlink(f"/proc/{pid}/fd/{fd}").startswith(POD_LOGS + "/"):
+                    held.add(file_id(f"/proc/{pid}/fd/{fd}"))
             except OSError:
                 continue
-            if target.startswith(POD_LOGS + "/"):
-                held.add(target)
     return held
 
 
@@ -112,12 +118,16 @@ def prune(path, cutoff):
     tmp = os.path.join(directory, f"{TMP_PREFIX}{name}")
     kept = False
     with open_log(path, "rb") as source, open_log(tmp, "wb") as target:
+        # Every line: a clock correction can put an older entry after a newer one.
         for line in source:
             if not expired(line, cutoff):
                 target.write(line)
-                shutil.copyfileobj(source, target)
                 kept = True
-                break
+    # Checked again right before replacing: a writer may have reached this
+    # inode since the walk started. Replacing it would lose all its new lines.
+    if file_id(path) in open_files():
+        os.unlink(tmp)
+        return
     if not kept and not name.endswith(".log"):
         # A rotated file with nothing left goes away; a current one stays, empty.
         os.unlink(tmp)
@@ -132,8 +142,8 @@ def prune(path, cutoff):
 def main():
     now = datetime.datetime.now(datetime.timezone.utc)
     cutoff = now - MAX_AGE
-    running = running_containers()
-    held = open_paths()
+    held = open_files()
+    running = None
     failed = False
 
     for directory, _, names in os.walk(POD_LOGS):
@@ -149,16 +159,24 @@ def main():
                     first = log.readline()
                 if not first or not expired(first, cutoff):
                     continue
-                if path in held:
+                if file_id(path) in held:
                     if not name.endswith(".log"):
                         continue  # just rotated; pruned once the runtime lets go
+                    if running is None:
+                        # Only needed for live logs: if the runtime is down,
+                        # closed files are still pruned.
+                        try:
+                            running = running_containers()
+                        except Exception as error:
+                            print(f"listing running containers: {error}", file=sys.stderr)
+                            running, failed = {}, True
                     if path not in running:
                         print(f"{path}: open but not a running container's log, skipped", file=sys.stderr)
                         continue
                     path = rotate(path, running[path], now)
-                    if path is None or path in open_paths():
-                        continue  # pruned on the next run, once it is closed
-                prune(path, cutoff)
+                    if path is None:
+                        continue
+                prune(path, cutoff)  # skips it if the runtime still holds it
             except FileNotFoundError:
                 continue  # kubelet rotated or removed it meanwhile
             except Exception as error:  # keep going; the unit still fails
