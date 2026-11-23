@@ -279,9 +279,10 @@ gatus_http = (public_endpoints + YAML.safe_load(File.read(File.join(ROOT, "apps/
 raise "Gatus HTTP endpoints must not follow redirects" unless gatus_http.all? { |item| item.dig("client", "ignore-redirect") == true }
 # A failing connectivity check makes Gatus skip every endpoint while its gauges
 # keep the last results, so no EndpointDown could ever fire.
-%w[gatus.yaml status.yaml].each do |file|
-  raise "Gatus #{file} must not use the connectivity checker" if YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/#{file}"))).key?("connectivity")
+gatus_maps.values.flatten.uniq.each do |file|
+  raise "Gatus #{file} must not use the connectivity checker" if YAML.safe_load(File.read(File.join(ROOT, "apps/gatus", file))).key?("connectivity")
 end
+raise "endpoints-internal.yaml must hold only endpoints" unless YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/endpoints-internal.yaml"))).keys == ["endpoints"]
 gatus_rules = YAML.safe_load(File.read(File.join(ROOT, "apps/monitoring/prometheus/alert-rules.yml")))["groups"].flat_map { |group| group["rules"] }.map { |rule| rule["alert"] }
 %w[EndpointDown UptimeChecksStalled].each { |name| raise "Prometheus must alert #{name}" unless gatus_rules.include?(name) }
 # Every Gatus endpoint shares one scrape instance: a critical EndpointDown must
