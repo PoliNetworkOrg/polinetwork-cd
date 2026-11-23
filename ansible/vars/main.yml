@@ -9,6 +9,9 @@ k3s_cluster_cidr: 10.52.0.0/16
 k3s_service_cidr: 10.53.0.0/16
 k3s_cluster_dns: 10.53.0.10
 
+# Its bundled Traefik is overridden by digest in
+# infrastructure/traefik/traefik-service.yaml; on upgrade, drop that override
+# if the new K3s bundles a Traefik at least as recent.
 k3s_version: v1.36.3+k3s1
 k3s_release_url: https://github.com/k3s-io/k3s/releases/download/v1.36.3%2Bk3s1/k3s-arm64
 k3s_sha256: c9a209103f480f163b7c6a56f00862b4481927b284dc29a3716bb70d886691a8

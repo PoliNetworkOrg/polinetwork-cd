@@ -5,6 +5,16 @@ metadata:
   namespace: kube-system
 spec:
   valuesContent: |-
+    # K3s v1.36.3+k3s1 bundles Traefik 3.7.8 (chart 40.1.4+up40.1.0), which
+    # misses the security fixes of 3.7.9-3.7.18. Traefik is the only auth
+    # layer in front of the internal Gatus (forwardAuth), so the image is
+    # pinned here, by digest, to the Rancher mirror K3s itself uses. The chart
+    # keeps `tag` for its version checks. Drop this block once the K3s
+    # version in ansible/vars/main.yml bundles a newer Traefik.
+    image:
+      repository: rancher/mirrored-library-traefik
+      tag: "3.7.19"
+      digest: sha256:aa942a00bce033c909bf1f7e861d93761be4b31a035f10d2410d33e38a8f41cf
     logs:
       access:
         enabled: true
