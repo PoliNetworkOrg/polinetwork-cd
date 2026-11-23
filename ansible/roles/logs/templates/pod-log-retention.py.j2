@@ -1,0 +1,172 @@
+#!/usr/bin/python3
+"""Keep container log entries under /var/log/pods for at most {{ log_retention_days }} days.
+
+Kubelet rotates container logs by size only, so a quiet container can keep
+months of lines in one file. Every line starts with its CRI timestamp; this
+drops the expired ones. A file someone still holds open is never rewritten:
+the runtime would go on writing to the replaced inode and lose every new line.
+A live container's file is first rotated the way kubelet does it, by renaming
+it and asking the runtime to reopen its log.
+"""
+
+import datetime
+import gzip
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+
+POD_LOGS = "/var/log/pods"
+CRICTL = ["/usr/local/bin/k3s", "crictl"]
+# One day below the limit: the hourly timer and its delay never push an entry
+# past {{ log_retention_days }} days.
+MAX_AGE = datetime.timedelta(days={{ log_retention_days - 1 }})
+TMP_PREFIX = ".pod-log-retention-"
+# <attempt>.log, rotated as <attempt>.log.<YYYYMMDD-HHMMSS>[.gz]
+LOG_NAME = re.compile(r"^\d+\.log(\.\d{8}-\d{6}(\.gz)?)?$")
+TIMESTAMP = re.compile(rb"^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.\d+)?(Z|[+-]\d\d:\d\d) ")
+
+
+def entry_time(line):
+    match = TIMESTAMP.match(line)
+    if match is None:
+        return None
+    zone = match[2].decode()
+    return datetime.datetime.fromisoformat(
+        match[1].decode() + ("+00:00" if zone == "Z" else zone)
+    )
+
+
+def expired(line, cutoff):
+    # A line without a timestamp cannot be dated; treat it as expired.
+    time = entry_time(line)
+    return time is None or time < cutoff
+
+
+def open_log(path, mode):
+    return gzip.open(path, mode) if path.endswith(".gz") else open(path, mode)
+
+
+def open_paths():
+    """Every file under POD_LOGS that some process holds open."""
+    held = set()
+    for pid in filter(str.isdigit, os.listdir("/proc")):
+        try:
+            fds = os.listdir(f"/proc/{pid}/fd")
+        except OSError:
+            continue
+        for fd in fds:
+            try:
+                target = os.readlink(f"/proc/{pid}/fd/{fd}")
+            except OSError:
+                continue
+            if target.startswith(POD_LOGS + "/"):
+                held.add(target)
+    return held
+
+
+def running_containers():
+    """Map each running container's current log file to its ID."""
+    ids = subprocess.run(
+        [*CRICTL, "ps", "--quiet", "--state", "running"],
+        check=True, capture_output=True, text=True, timeout=60,
+    ).stdout.split()
+    logs = {}
+    for container in ids:
+        inspected = subprocess.run(
+            [*CRICTL, "inspect", "--output", "json", container],
+            capture_output=True, text=True, timeout=60,
+        )
+        if inspected.returncode != 0:
+            continue  # it stopped meanwhile
+        path = json.loads(inspected.stdout)["status"].get("logPath")
+        if path:
+            logs[path] = container
+    return logs
+
+
+def rotate(path, container, now):
+    """Rename a live log and have the runtime reopen it; return the new name."""
+    rotated = f"{path}.{now:%Y%m%d-%H%M%S}"
+    if os.path.lexists(rotated):
+        return None
+    os.rename(path, rotated)
+    reopened = subprocess.run(
+        [*CRICTL, "logs", "--reopen", container],
+        capture_output=True, text=True, timeout=60,
+    )
+    if reopened.returncode != 0:
+        # The runtime still writes to the renamed file; put it back, unless it
+        # already created a new one.
+        if not os.path.lexists(path):
+            os.rename(rotated, path)
+        raise RuntimeError(f"crictl logs --reopen {container}: {reopened.stderr.strip()}")
+    return rotated
+
+
+def prune(path, cutoff):
+    """Rewrite a closed log file without its expired entries."""
+    directory, name = os.path.split(path)
+    tmp = os.path.join(directory, f"{TMP_PREFIX}{name}")
+    kept = False
+    with open_log(path, "rb") as source, open_log(tmp, "wb") as target:
+        for line in source:
+            if not expired(line, cutoff):
+                target.write(line)
+                shutil.copyfileobj(source, target)
+                kept = True
+                break
+    if not kept and not name.endswith(".log"):
+        # A rotated file with nothing left goes away; a current one stays, empty.
+        os.unlink(tmp)
+        os.unlink(path)
+        return
+    status = os.stat(path)
+    os.chown(tmp, status.st_uid, status.st_gid)
+    os.chmod(tmp, status.st_mode & 0o7777)
+    os.replace(tmp, path)
+
+
+def main():
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cutoff = now - MAX_AGE
+    running = running_containers()
+    held = open_paths()
+    failed = False
+
+    for directory, _, names in os.walk(POD_LOGS):
+        for name in names:
+            path = os.path.join(directory, name)
+            try:
+                if name.startswith(TMP_PREFIX):
+                    os.unlink(path)  # left behind by an interrupted run
+                    continue
+                if not LOG_NAME.match(name) or os.path.islink(path):
+                    continue
+                with open_log(path, "rb") as log:
+                    first = log.readline()
+                if not first or not expired(first, cutoff):
+                    continue
+                if path in held:
+                    if not name.endswith(".log"):
+                        continue  # just rotated; pruned once the runtime lets go
+                    if path not in running:
+                        print(f"{path}: open but not a running container's log, skipped", file=sys.stderr)
+                        continue
+                    path = rotate(path, running[path], now)
+                    if path is None or path in open_paths():
+                        continue  # pruned on the next run, once it is closed
+                prune(path, cutoff)
+            except FileNotFoundError:
+                continue  # kubelet rotated or removed it meanwhile
+            except Exception as error:  # keep going; the unit still fails
+                print(f"{path}: {error}", file=sys.stderr)
+                failed = True
+
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

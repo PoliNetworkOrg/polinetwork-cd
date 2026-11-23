@@ -51,12 +51,13 @@ that its SQLite database and custody files can be restored locally. A clean-VM
 off-host restore remains mandatory before application cutover.
 
 Technical logs are kept for at most 30 days (`log_retention_days`), as the
-privacy policy states. journald rotates daily and drops entries past the limit.
-Kubelet rotates container logs by size only (5Mi, 10 files), so the hourly
-`pod-log-retention` timer deletes rotated files under `/var/log/pods` and
-empties current files once they are older than the limit. A container that keeps
-logging but never fills 5Mi can still hold older lines in its current file
-until it rotates or restarts.
+privacy policy states. journald rotates daily and drops entries past the limit;
+rsyslog, which the Azure image ships, is removed with the files it wrote.
+Kubelet rotates container logs by size only, so a quiet container can keep
+months of lines in one file. The hourly `pod-log-retention` timer drops entries
+under `/var/log/pods` older than 29 days by their CRI timestamp. It only
+rewrites files no process holds open; a running container's log is first
+rotated like kubelet does it (rename, then `crictl logs --reopen`).
 
 Daily SSH uses Cloudflare Access for Infrastructure: WARP routes 10.43.1.4/32
 through the `k3s01` tunnel, the "k3s01 SSH" Access application admits the

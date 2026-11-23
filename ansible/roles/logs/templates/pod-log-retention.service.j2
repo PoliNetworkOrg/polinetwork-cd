@@ -1,5 +1,6 @@
 [Unit]
-Description=Delete container logs older than {{ log_retention_days }} days
+Description=Drop container log entries older than {{ log_retention_days }} days
+After=k3s.service
 
 [Service]
 Type=oneshot
