@@ -50,6 +50,8 @@ spec:
               value: "http://auth-service.auth.svc.cluster.local:3000"
             - name: OIDC_CLIENT_ID
               value: "OuhShWGpgcwoWRzogbEftkoceOVbIpTt"
+            - name: ADMIN_MCP_CLIENT_ID
+              value: "SSrpFnHtzYlzkyqvKssRNCcVAhZVwKNu" # public native client "PoliNetwork Admin MCP"
             - name: OIDC_CLIENT_PRIVATE_JWK
               valueFrom:
                 secretKeyRef:
