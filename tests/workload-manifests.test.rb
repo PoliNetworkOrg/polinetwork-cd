@@ -266,10 +266,17 @@ gatus_maps = gatus_kustomization["configMapGenerator"].to_h { |map| [map["name"]
 raise "The public Gatus instance must load only the public endpoints and its settings" unless gatus_maps["gatus-status-config"].sort == %w[config/endpoints-public.yaml config/status.yaml]
 status_settings = YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/status.yaml")))
 raise "The public Gatus settings must not define endpoints, metrics, security or alerting" if (status_settings.keys & %w[endpoints external-endpoints suites metrics security alerting]).any?
-public_endpoints = YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/endpoints-public.yaml")))["endpoints"]
+public_config = YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/endpoints-public.yaml")))
+raise "endpoints-public.yaml must hold only endpoints: the anonymous instance loads it" unless public_config.keys == ["endpoints"]
+public_endpoints = public_config["endpoints"]
+raise "Public Gatus endpoints must hide check errors on the anonymous page" unless public_endpoints.all? { |item| item.dig("ui", "hide-errors") == true }
 raise "Public Gatus endpoints must be https URLs, never in-cluster addresses" unless public_endpoints.all? { |item| item["url"].start_with?("https://") && !item["url"].include?(".svc") }
 gatus_names = (public_endpoints + YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/endpoints-internal.yaml")))["endpoints"]).map { |item| item["name"] }
 raise "Gatus endpoint names must be unique" unless gatus_names.uniq.size == gatus_names.size
+# The internal instance may reach in-cluster services: a monitored origin must
+# not be able to redirect it there.
+gatus_http = (public_endpoints + YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/endpoints-internal.yaml")))["endpoints"]).select { |item| item["url"].start_with?("http") }
+raise "Gatus HTTP endpoints must not follow redirects" unless gatus_http.all? { |item| item.dig("client", "ignore-redirect") == true }
 # A failing connectivity check makes Gatus skip every endpoint while its gauges
 # keep the last results, so no EndpointDown could ever fire.
 %w[gatus.yaml status.yaml].each do |file|
@@ -303,6 +310,7 @@ gatus_gate = container(deployment("apps/gatus/deployment-gate.yaml", "gatus-gate
 hardened!("Gatus gate", deployment("apps/gatus/deployment-gate.yaml", "gatus-gate"), gatus_gate)
 raise "The Gatus gate must admit only it-member" unless gatus_gate["args"].select { |arg| arg.start_with?("--allowed-group") } == ["--allowed-group=it-member"]
 raise "The Gatus gate must use PKCE" unless gatus_gate["args"].include?("--code-challenge-method=S256")
+raise "The Gatus gate cookie must be a __Host- cookie" unless gatus_gate["args"].any? { |arg| arg.start_with?("--cookie-name=__Host-") }
 
 gatus_ingresses = documents("apps/gatus/ingress.yaml")
 gatus_ingresses.each do |ingress|

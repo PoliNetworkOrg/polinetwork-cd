@@ -65,7 +65,9 @@ spec:
             - --skip-provider-button=true
             # The session is the whole dashboard session; without refresh
             # tokens, someone removed from IT keeps access for at most 8h.
-            - --cookie-name=_uptime_gate
+            # __Host-: host-only, Secure, path /; no sibling subdomain can
+            # set or shadow it.
+            - --cookie-name=__Host-uptime_gate
             - --cookie-secure=true
             - --cookie-samesite=lax
             - --cookie-expire=8h

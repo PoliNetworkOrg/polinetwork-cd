@@ -1,10 +1,14 @@
 # Shown only on uptime.polinetwork.org, behind the it-member gate.
 # Prometheus alerts on "Internal tools" as warning, on the rest as critical
 # (apps/monitoring/prometheus).
+# Redirects are never followed: this instance may reach the backend, PostgreSQL
+# and Redis, so a monitored origin must not be able to point it there.
 endpoints:
   - name: Website (beta)
     group: Public services
     url: https://beta.polinetwork.org
+    client:
+      ignore-redirect: true
     interval: 60s
     conditions:
       - "[STATUS] == 200"
@@ -12,6 +16,8 @@ endpoints:
   - name: Vaultwarden
     group: Internal tools
     url: https://vault.polinetwork.org/alive
+    client:
+      ignore-redirect: true
     interval: 60s
     conditions:
       - "[STATUS] == 200"
@@ -19,6 +25,8 @@ endpoints:
   - name: Grafana
     group: Internal tools
     url: https://monitoring.polinetwork.org/api/health
+    client:
+      ignore-redirect: true
     interval: 120s
     conditions:
       - "[STATUS] == 200"
@@ -27,6 +35,8 @@ endpoints:
   - name: InfluxDB
     group: Internal tools
     url: https://influx.polinetwork.org/health
+    client:
+      ignore-redirect: true
     interval: 120s
     conditions:
       - "[STATUS] == 200"
@@ -35,6 +45,8 @@ endpoints:
   - name: Flux
     group: Internal tools
     url: https://flux.polinetwork.org
+    client:
+      ignore-redirect: true
     interval: 300s
     conditions:
       - "[STATUS] == 200"
@@ -43,6 +55,8 @@ endpoints:
   - name: Regulations collab
     group: Internal tools
     url: https://collab.polinetwork.org
+    client:
+      ignore-redirect: true
     interval: 120s
     conditions:
       - "[STATUS] == 200"
@@ -52,6 +66,8 @@ endpoints:
   - name: Backend
     group: Cluster
     url: http://backend-service.backend.svc.cluster.local:3000/
+    client:
+      ignore-redirect: true
     interval: 60s
     conditions:
       - "[STATUS] == 200"

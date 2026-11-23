@@ -1,12 +1,21 @@
 # Public services: shown on status.polinetwork.org and on uptime.polinetwork.org
-# (both instances load this file). Checked through Cloudflare like a visitor,
-# following redirects.
+# (both instances load this file). Checked through Cloudflare like a visitor.
+#
+# Only `endpoints` belongs here: the anonymous instance loads this file, so a
+# top-level key (metrics, external-endpoints, ...) would be public.
+# Every endpoint: redirects are not followed, so a monitored origin can never
+# point Gatus at an in-cluster address, and check errors (resolver and origin
+# addresses) are not shown on the public page; Gatus still logs them.
 # Prometheus alerts on these as critical (apps/monitoring/prometheus).
 # Reference: https://github.com/TwiN/gatus#endpoints
 endpoints:
   - name: Website
     group: Public services
     url: https://polinetwork.org
+    client:
+      ignore-redirect: true
+    ui:
+      hide-errors: true
     interval: 60s
     conditions:
       - "[STATUS] == 200"
@@ -14,15 +23,23 @@ endpoints:
   - name: Auth
     group: Public services
     url: https://auth.polinetwork.org/api/auth/.well-known/openid-configuration
+    client:
+      ignore-redirect: true
+    ui:
+      hide-errors: true
     interval: 60s
     conditions:
       - "[STATUS] == 200"
       - "[BODY].issuer == https://auth.polinetwork.org/api/auth"
 
-  # Redirects to the sign-in page on auth.polinetwork.org.
+  # The dashboard's own sign-in page; / and /dashboard redirect to it.
   - name: Admin dashboard
     group: Public services
-    url: https://admin.polinetwork.org
+    url: https://admin.polinetwork.org/login
+    client:
+      ignore-redirect: true
+    ui:
+      hide-errors: true
     interval: 60s
     conditions:
       - "[STATUS] == 200"
@@ -30,6 +47,10 @@ endpoints:
   - name: Live Audience
     group: Public services
     url: https://live.polinetwork.org/healthz
+    client:
+      ignore-redirect: true
+    ui:
+      hide-errors: true
     interval: 60s
     conditions:
       - "[STATUS] == 200"
@@ -38,6 +59,10 @@ endpoints:
   - name: polinet.cc
     group: Public services
     url: https://polinet.cc
+    client:
+      ignore-redirect: true
+    ui:
+      hide-errors: true
     interval: 60s
     conditions:
-      - "[STATUS] == 200"
+      - "[STATUS] == any(301, 302, 307, 308)"
