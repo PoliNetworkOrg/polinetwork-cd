@@ -9,8 +9,12 @@ spec:
     # misses the security fixes of 3.7.9-3.7.18. Traefik is the only auth
     # layer in front of the internal Gatus (forwardAuth), so the image is
     # pinned here, by digest, to the Rancher mirror K3s itself uses. The chart
-    # keeps `tag` for its version checks. Drop this block once the K3s
-    # version in ansible/vars/main.yml bundles a newer Traefik.
+    # keeps `tag` for its version checks, but the digest is what runs: bump
+    # both together and check them with
+    #   docker run --rm --platform linux/arm64 \
+    #     rancher/mirrored-library-traefik@<digest> version
+    # Drop this block once the K3s version in ansible/vars/main.yml bundles a
+    # newer Traefik, and the Traefik check in tests/ with it.
     image:
       repository: rancher/mirrored-library-traefik
       tag: "3.7.19"

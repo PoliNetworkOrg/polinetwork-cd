@@ -337,7 +337,9 @@ raise "Only Traefik may reach the Gatus web ports" unless peers(gatus_policy, 41
 raise "Only Prometheus may reach the internal Gatus besides Traefik" unless peers(network_policy("apps/gatus/network-policy.yaml", "allow-prometheus"), 8080).all? { |peer| from_pod?(peer, "monitoring", "prometheus-server") }
 
 # Traefik is the only auth layer in front of the internal Gatus: its image
-# must be digest-pinned and carry the 3.7.18 security fixes.
+# must be digest-pinned, and its declared tag at least 3.7.18. The test cannot
+# tie the digest to the tag; infrastructure/traefik/traefik-service.yaml says
+# how to check that when bumping them.
 traefik_values = YAML.safe_load(documents("infrastructure/traefik/traefik-service.yaml").find { |doc| doc["kind"] == "HelmChartConfig" }.dig("spec", "valuesContent"))
 raise "Traefik must be pinned by digest" unless traefik_values.dig("image", "digest").to_s.match?(/\Asha256:[0-9a-f]{64}\z/)
 raise "Traefik must be at least 3.7.18" unless Gem::Version.new(traefik_values.dig("image", "tag").to_s) >= Gem::Version.new("3.7.18")
