@@ -11,4 +11,5 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
-ReadWritePaths=/var/log/pods
+# "-": a node rebuilt from scratch has no /var/log/pods until kubelet starts.
+ReadWritePaths=-/var/log/pods
