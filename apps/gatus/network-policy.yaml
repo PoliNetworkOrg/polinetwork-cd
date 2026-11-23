@@ -2,10 +2,9 @@
 # instance's /metrics. The gate in particular must not be reachable any other
 # way: it trusts the X-Forwarded-* headers it is sent.
 #
-# Egress: DNS, the connectivity check (1.1.1.1:53), and HTTPS to public
-# addresses only, which is how every public endpoint and auth.polinetwork.org
-# are reached (through Cloudflare). Only the internal instance reaches the
-# in-cluster endpoints it checks.
+# Egress: DNS and HTTPS to public addresses only, which is how every public
+# endpoint and auth.polinetwork.org are reached (through Cloudflare). Only the
+# internal instance reaches the in-cluster endpoints it checks.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -74,12 +73,6 @@ spec:
       ports:
         - port: 53
           protocol: UDP
-        - port: 53
-          protocol: TCP
-    - to:
-        - ipBlock:
-            cidr: 1.1.1.1/32
-      ports:
         - port: 53
           protocol: TCP
     - to:

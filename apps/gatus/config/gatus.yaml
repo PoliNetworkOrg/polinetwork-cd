@@ -12,13 +12,6 @@ storage:
   path: /data/gatus.db
   caching: true
 
-# Skips checks while the Pod itself has no internet, instead of reporting every
-# endpoint down.
-connectivity:
-  checker:
-    target: 1.1.1.1:53
-    interval: 60s
-
 ui:
   title: PoliNetwork uptime
   description: Uptime of every PoliNetwork service, for the IT team.

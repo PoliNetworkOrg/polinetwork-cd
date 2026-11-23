@@ -270,6 +270,17 @@ public_endpoints = YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/e
 raise "Public Gatus endpoints must be https URLs, never in-cluster addresses" unless public_endpoints.all? { |item| item["url"].start_with?("https://") && !item["url"].include?(".svc") }
 gatus_names = (public_endpoints + YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/endpoints-internal.yaml")))["endpoints"]).map { |item| item["name"] }
 raise "Gatus endpoint names must be unique" unless gatus_names.uniq.size == gatus_names.size
+# A failing connectivity check makes Gatus skip every endpoint while its gauges
+# keep the last results, so no EndpointDown could ever fire.
+%w[gatus.yaml status.yaml].each do |file|
+  raise "Gatus #{file} must not use the connectivity checker" if YAML.safe_load(File.read(File.join(ROOT, "apps/gatus/config/#{file}"))).key?("connectivity")
+end
+gatus_rules = YAML.safe_load(File.read(File.join(ROOT, "apps/monitoring/prometheus/alert-rules.yml")))["groups"].flat_map { |group| group["rules"] }.map { |rule| rule["alert"] }
+%w[EndpointDown UptimeChecksStalled].each { |name| raise "Prometheus must alert #{name}" unless gatus_rules.include?(name) }
+# Every Gatus endpoint shares one scrape instance: a critical EndpointDown must
+# only mute the warning of the same endpoint.
+inhibit = YAML.safe_load(File.read(File.join(ROOT, "apps/monitoring/alertmanager/alertmanager.yml")))["inhibit_rules"]
+raise "Alertmanager inhibition must compare the Gatus endpoint key" unless inhibit.all? { |rule| rule["equal"].include?("key") }
 
 { "gatus" => "gatus-config", "gatus-status" => "gatus-status-config" }.each do |name, config_map|
   resource = deployment("apps/gatus/deployment-#{name == "gatus" ? "gatus" : "status"}.yaml", name)
