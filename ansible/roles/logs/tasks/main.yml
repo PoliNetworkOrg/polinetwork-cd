@@ -1,0 +1,85 @@
+---
+- name: Create the journald drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Bound journald retention
+  ansible.builtin.template:
+    src: 90-polinetwork-retention.conf.j2
+    dest: /etc/systemd/journald.conf.d/90-polinetwork-retention.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart journald
+
+# The Azure image ships rsyslog, whose weekly logrotate keeps auth.log (SSH
+# client addresses) for about five weeks. journald already holds the same
+# entries within the limit, so remove rsyslog and what it wrote.
+- name: Remove rsyslog
+  ansible.builtin.apt:
+    name: rsyslog
+    state: absent
+    purge: true
+
+- name: Find logs written by rsyslog
+  ansible.builtin.find:
+    paths: /var/log
+    patterns:
+      - "syslog*"
+      - "auth.log*"
+      - "kern.log*"
+      - "user.log*"
+      - "daemon.log*"
+      - "messages*"
+      - "debug*"
+      - "mail.*"
+      - "cron.log*"
+  register: logs_rsyslog_files
+
+- name: Delete logs written by rsyslog
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ logs_rsyslog_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Install the Pod log retention script
+  ansible.builtin.template:
+    src: pod-log-retention.py.j2
+    dest: /usr/local/sbin/pod-log-retention
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Install the Pod log retention service
+  ansible.builtin.template:
+    src: pod-log-retention.service.j2
+    dest: /etc/systemd/system/pod-log-retention.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd for logs
+
+- name: Install the Pod log retention timer
+  ansible.builtin.template:
+    src: pod-log-retention.timer.j2
+    dest: /etc/systemd/system/pod-log-retention.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd for logs
+
+- name: Apply log retention handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start the Pod log retention timer
+  ansible.builtin.systemd_service:
+    name: pod-log-retention.timer
+    enabled: true
+    state: started
+  when: not ansible_check_mode

@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly container log retention
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=5m
+Persistent=true
+Unit=pod-log-retention.service
+
+[Install]
+WantedBy=timers.target

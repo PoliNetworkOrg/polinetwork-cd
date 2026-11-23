@@ -1,0 +1,15 @@
+[Unit]
+Description=Drop container log entries older than {{ log_retention_days }} days
+After=k3s.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pod-log-retention
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+# "-": a node rebuilt from scratch has no /var/log/pods until kubelet starts.
+ReadWritePaths=-/var/log/pods
