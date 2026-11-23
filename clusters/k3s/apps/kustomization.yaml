@@ -8,8 +8,8 @@ resources:
   - backend.yaml
   - bot-mat.yaml
   - bot-ts.yaml
+  - gatus.yaml
   - influxdb.yaml
-  - kuvasz.yaml
   - latex-worker.yaml
   - live-audience.yaml
   - monitoring.yaml

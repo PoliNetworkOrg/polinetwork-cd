@@ -1,0 +1,122 @@
+# The internal instance: every endpoint, metrics for Prometheus.
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatus
+  labels:
+    app: gatus
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: gatus
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatus
+spec:
+  replicas: 1
+  # One writer for the SQLite database on a ReadWriteOnce volume.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: gatus
+  template:
+    metadata:
+      labels:
+        app: gatus
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gatus
+          image: ghcr.io/twin/gatus:v5.38.0@sha256:085ed63da963728965d00a3c78aa6167e3bf135218485b893201758e079e8415
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: GATUS_CONFIG_PATH
+              value: /etc/gatus
+            - name: GATUS_LOG_LEVEL
+              value: INFO
+            # Keeps the Go heap well under the container limit.
+            - name: GOMEMLIMIT
+              value: 96MiB
+          ports:
+            - containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "48Mi"
+            limits:
+              memory: "128Mi"
+          volumeMounts:
+            # Gatus merges every *.yaml under its config directory, including
+            # the hidden ..<timestamp> directory of a plain ConfigMap mount, so
+            # each file is mounted on its own into an otherwise empty directory.
+            - name: config-dir
+              mountPath: /etc/gatus
+            - name: config
+              mountPath: /etc/gatus/endpoints-public.yaml
+              subPath: endpoints-public.yaml
+              readOnly: true
+            - name: config
+              mountPath: /etc/gatus/endpoints-internal.yaml
+              subPath: endpoints-internal.yaml
+              readOnly: true
+            - name: config
+              mountPath: /etc/gatus/gatus.yaml
+              subPath: gatus.yaml
+              readOnly: true
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config-dir
+          emptyDir:
+            sizeLimit: 1Mi
+        - name: config
+          configMap:
+            name: gatus-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: gatus-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi

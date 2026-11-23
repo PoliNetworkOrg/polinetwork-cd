@@ -1,0 +1,67 @@
+# Cloudflare Tunnel sends every HTTP hostname to Traefik, which routes by host.
+#
+# uptime.polinetwork.org: the internal instance, every path behind the
+# it-member gate except the gate's own sign-in and callback under /oauth2.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gatus
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: gatus-forwarded-https@kubernetescrd,gatus-it-member-gate@kubernetescrd,gatus-security-headers@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: uptime.polinetwork.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gatus
+                port:
+                  number: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gatus-gate
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: gatus-forwarded-https@kubernetescrd,gatus-security-headers@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: uptime.polinetwork.org
+      http:
+        paths:
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: gatus-gate
+                port:
+                  number: 4180
+---
+# status.polinetwork.org: the public instance, anonymous.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gatus-status
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: gatus-status-rate-limit-client@kubernetescrd,gatus-security-headers@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: status.polinetwork.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gatus-status
+                port:
+                  number: 8080

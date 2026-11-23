@@ -1,7 +1,7 @@
 # Only the in-cluster callers may reach the backend (RFC v3 §12): the admin
 # dashboard and the website (tRPC, esign agent proxy), the Telegram bot (tRPC
 # and its socket), the IdP (access-changed events on /internal/events) and
-# Kuvasz (uptime monitoring).
+# Gatus (uptime monitoring).
 # From outside the cluster, Traefik reaches it only through the backend-public
 # IngressRoute (public-route.yaml), which matches the declared /public prefix
 # and nothing else; a NetworkPolicy cannot filter paths, so that route is the
@@ -44,10 +44,10 @@ spec:
               app: auth
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: kuvasz
+              kubernetes.io/metadata.name: gatus
           podSelector:
             matchLabels:
-              app: kuvasz
+              app: gatus
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system

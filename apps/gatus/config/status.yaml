@@ -1,0 +1,16 @@
+# status.polinetwork.org: the public status page. This instance loads only
+# endpoints-public.yaml, so nothing internal is checked, stored or served here.
+# It sends no alerts and exposes no metrics.
+concurrency: 5
+
+storage:
+  type: sqlite
+  path: /data/gatus.db
+  caching: true
+
+ui:
+  title: PoliNetwork status
+  description: Live status of PoliNetwork's public services.
+  header: PoliNetwork status
+  link: https://polinetwork.org
+  default-sort-by: group

@@ -158,6 +158,44 @@ groups:
         annotations:
           summary: 'Prometheus cannot scrape {{ $labels.job }} ({{ $labels.instance }})'
 
+  # Gatus checks every endpoint once every 1-5 minutes (apps/gatus/config).
+  # Public services and the cluster are critical; internal tools a warning.
+  - name: uptime
+    rules:
+      - alert: EndpointDown
+        expr: gatus_results_endpoint_success{group!="Internal tools"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: '{{ $labels.name }} ({{ $labels.group }}) is failing its uptime check'
+
+      - alert: EndpointDown
+        expr: gatus_results_endpoint_success{group="Internal tools"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: '{{ $labels.name }} ({{ $labels.group }}) is failing its uptime check'
+
+      # Gatus is up (TargetDown covers that) but has stopped checking:
+      # its gauges would keep the last results forever.
+      - alert: UptimeChecksStalled
+        expr: sum(increase(gatus_results_total[15m])) < 1 or absent(gatus_results_total)
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Gatus has recorded no uptime check in 15 minutes; endpoint alerts are blind'
+
+      - alert: EndpointCertificateExpiring
+        expr: gatus_results_certificate_expiration_seconds > 0 and gatus_results_certificate_expiration_seconds < 7 * 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: 'TLS certificate of {{ $labels.name }} expires in {{ $value | humanizeDuration }}'
+
   - name: platform
     rules:
       - alert: NodeInodesLow
