@@ -171,7 +171,9 @@ def main():
                             print(f"listing running containers: {error}", file=sys.stderr)
                             running, failed = {}, True
                     if path not in running:
+                        # Also where crictl inspect failed: report it, keep going.
                         print(f"{path}: open but not a running container's log, skipped", file=sys.stderr)
+                        failed = True
                         continue
                     path = rotate(path, running[path], now)
                     if path is None:
