@@ -94,6 +94,8 @@ spec:
               value: "cOLVzDyABDuChVIjNoKQlGhobVpklvEL"
             - name: OAUTH_BOT_CLIENT_ID # to validate bot requests
               value: "BpVpKudIaGgTalELuHTSgtOrTCGCvjsX"
+            - name: OAUTH_WEBSITE_CLIENT_ID # to validate website problem reports
+              value: "bnuiObLGByzpfFDWUjxOPiWjEAqScQBr"
             - name: OAUTH_BACKEND_PRIVATE_JWK
               valueFrom:
                 secretKeyRef:
